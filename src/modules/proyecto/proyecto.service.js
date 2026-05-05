@@ -1,7 +1,7 @@
 const proyectoRepository = require("./proyecto.repository");
 const pool = require("../../config/db");
 
-const getProyectosByEmpresa = async (empresaId) => {
+const getProyectos = async (empresaId) => {
   return await proyectoRepository.findByEmpresaId(empresaId);
 };
 
@@ -161,7 +161,7 @@ const getHorasResumenByProyecto = async (proyectoId, empresaId) => {
 };
 
 module.exports = {
-  getProyectosByEmpresa,
+  getProyectos,
   getMisProyectos,
   getProyectosDisponibles,
   getProyectoById,

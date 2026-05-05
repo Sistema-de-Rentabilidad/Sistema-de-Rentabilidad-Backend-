@@ -1,54 +1,26 @@
 const pool = require("../../config/db");
 
-/* ─── findByEmpresaId ───────────────────────────────────────────────────── */
 const findByEmpresaId = async (empresaId) => {
-  try {
-    const result = await pool.query(
-      `SELECT
-          p.id_proyecto,
-          p.nombre,
-          p.descripcion,
-          p.presupuesto,
-          p.horas_estimadas,
-          p.fecha_inicio,
-          p.fecha_fin_estimada,
-          p.fecha_fin_real,
-          p.is_active,
-          p.id_servicio,
-          s.nombre AS servicio_nombre,
-          p.id_lider,
-          (
-            SELECT STRING_AGG(u2.nombre, ', ' ORDER BY u2.id_usuario)
-            FROM proyecto_lider pl
-            INNER JOIN usuario u2 ON u2.id_usuario = pl.id_lider
-            WHERE pl.id_proyecto = p.id_proyecto
-          ) AS lider_nombre
-       FROM proyecto p
-       LEFT JOIN servicio s ON s.id_servicio = p.id_servicio
-       WHERE p.id_empresa = $1
-       ORDER BY p.is_active DESC, p.id_proyecto DESC`,
-      [empresaId]
-    );
-    return result.rows;
-  } catch {
-    // Fallback cuando proyecto_lider aún no existe
-    const result = await pool.query(
-      `SELECT
-          p.id_proyecto, p.nombre, p.descripcion, p.presupuesto,
-          p.horas_estimadas, p.fecha_inicio, p.fecha_fin_estimada,
-          p.fecha_fin_real, p.is_active, p.id_servicio,
-          s.nombre AS servicio_nombre,
-          p.id_lider,
-          u.nombre AS lider_nombre
-       FROM proyecto p
-       LEFT JOIN servicio s ON s.id_servicio = p.id_servicio
-       LEFT JOIN usuario  u ON u.id_usuario  = p.id_lider
-       WHERE p.id_empresa = $1
-       ORDER BY p.is_active DESC, p.id_proyecto DESC`,
-      [empresaId]
-    );
-    return result.rows;
-  }
+  const result = await pool.query(
+    `SELECT 
+        p.id_proyecto,
+        p.nombre,
+        p.descripcion,
+        p.presupuesto,
+        p.fecha_inicio,
+        p.fecha_fin_estimada,
+        p.id_servicio,
+        p.id_lider,
+        p.is_active,
+        u.nombre AS nombre_lider
+     FROM proyecto p
+     JOIN usuario u ON p.id_lider = u.id_usuario
+     WHERE p.id_empresa = $1
+       AND p.is_active = true
+     ORDER BY p.fecha_inicio DESC`,
+    [empresaId]
+  );
+  return result.rows;
 };
 
 /* ─── findById ──────────────────────────────────────────────────────────── */

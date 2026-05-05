@@ -20,12 +20,26 @@ const resolveEmpresa = async (req, res) => {
 
 const getProyectos = async (req, res, next) => {
   try {
-    const userDB = await resolveEmpresa(req, res);
-    if (!userDB) return;
-    const proyectos = await proyectoService.getProyectosByEmpresa(userDB.id_empresa);
-    return res.status(200).json({ success: true, data: proyectos });
-  } catch (err) {
-    next(err);
+    const empresaId = req.empresaId; // viene del middleware
+
+    const proyectos = await proyectoService.getProyectos(empresaId);
+
+    // ✅ Caso: no hay proyectos registrados
+    if (proyectos.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No hay proyectos disponibles",
+        data: [],
+      });
+    }
+
+    // ✅ Caso: hay proyectos
+    return res.status(200).json({
+      success: true,
+      data: proyectos
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
