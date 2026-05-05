@@ -37,35 +37,80 @@ const getProyectoById = async (proyectoId, empresaId) => {
     throw err;
   }
   const empleados = await proyectoRepository.findEmpleadosByProyecto(proyectoId);
-  const lideres   = await proyectoRepository.findLideresByProyecto(proyectoId);
+  const lideres = await proyectoRepository.findLideresByProyecto(proyectoId);
   return { ...proyecto, empleados, lideres };
 };
 
 const createProyecto = async (empresaId, data) => {
-  if (!data.nombre || data.nombre.trim().length < 3) {
-    const err = new Error("El nombre del proyecto debe tener al menos 3 caracteres");
-    err.status = 422;
-    throw err;
+  const {
+    nombre,
+    descripcion,
+    presupuesto,
+    horas_estimadas,
+    fecha_inicio,
+    fecha_fin_estimada,
+    id_servicio,
+    id_lider,
+    empleados = []
+  } = data;
+
+  const duplicado = await proyectoRepository.findByNombreAndEmpresa(
+    nombre.trim(),
+    empresaId
+  );
+
+  if (duplicado) {
+    throw Object.assign(
+      new Error('Ya existe un proyecto con ese nombre en tu empresa'),
+      { status: 400 }
+    );
   }
 
-  const { empleados_ids, lider_ids, id_lider: legacyLider, ...proyectoData } = data;
-  const primaryLider  = lider_ids?.length > 0 ? lider_ids[0] : (legacyLider || null);
-  const lidersToSync  = lider_ids?.length > 0 ? lider_ids : (primaryLider ? [primaryLider] : []);
+  // Validar servicio pertenece a empresa
+  const servicio = await proyectoRepository.findServicioById(id_servicio);
+  if (!servicio || servicio.id_empresa !== empresaId) {
+    throw Object.assign(new Error('Servicio no válido'), { status: 400 });
+  }
 
-  const nuevo = await proyectoRepository.create({
-    ...proyectoData,
-    id_empresa: empresaId,
-    id_lider:   primaryLider,
+  // Validar líder pertenece a empresa
+  const lider = await proyectoRepository.findUsuarioById(id_lider);
+  if (!lider || lider.id_empresa !== empresaId || lider.rol !== 'lider') {
+    throw Object.assign(new Error('Líder no válido'), { status: 400 });
+  }
+
+  // Validar empleados
+  if (empleados.length > 0) {
+    const unique = new Set(empleados);
+    if (unique.size !== empleados.length) {
+      throw Object.assign(new Error('Empleados duplicados'), { status: 400 });
+    }
+
+    const empleadosDB = await proyectoRepository.findUsuariosByIds(empleados);
+
+    if (empleadosDB.length !== empleados.length) {
+      throw Object.assign(new Error('Empleado no válido'), { status: 400 });
+    }
+
+    empleadosDB.forEach(e => {
+      if (e.id_empresa !== empresaId || e.rol !== 'empleado') {
+        throw Object.assign(new Error('Empleado no válido'), { status: 400 });
+      }
+    });
+  }
+
+  // Crear proyecto + empleados
+  return await proyectoRepository.create({
+    nombre,
+    descripcion,
+    presupuesto,
+    horas_estimadas,
+    fecha_inicio,
+    fecha_fin_estimada,
+    id_servicio,
+    id_lider,
+    empresaId,
+    empleados
   });
-
-  if (empleados_ids?.length > 0) {
-    try { await proyectoRepository.syncEmpleados(nuevo.id_proyecto, empleados_ids); } catch { /* tabla puede no existir aún */ }
-  }
-  if (lidersToSync.length > 0) {
-    try { await proyectoRepository.syncLideres(nuevo.id_proyecto, lidersToSync); } catch { /* tabla puede no existir aún */ }
-  }
-
-  return nuevo;
 };
 
 const updateProyecto = async (proyectoId, empresaId, data) => {

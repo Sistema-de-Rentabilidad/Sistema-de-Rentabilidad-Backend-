@@ -84,13 +84,19 @@ const getProyectoById = async (req, res, next) => {
 
 const createProyecto = async (req, res, next) => {
   try {
-    const userDB = await resolveEmpresa(req, res);
-    if (!userDB) return;
-    const nuevo = await proyectoService.createProyecto(userDB.id_empresa, req.body);
-    return res.status(201).json({ success: true, data: nuevo });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-    next(err);
+    const empresaId = req.empresaId;
+
+    const proyecto = await proyectoService.createProyecto(
+      empresaId,
+      req.body
+    );
+
+    return res.status(201).json({
+      success: true,
+      data: proyecto
+    });
+  } catch (error) {
+    next(error);
   }
 };
 

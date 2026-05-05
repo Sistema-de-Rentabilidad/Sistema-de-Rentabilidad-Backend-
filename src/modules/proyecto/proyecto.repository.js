@@ -158,17 +158,106 @@ const findAssignedByEmpleado = async (empleadoId) => {
   return result.rows;
 };
 
-/* ─── create ────────────────────────────────────────────────────────────── */
-const create = async ({ id_empresa, id_servicio, id_lider, nombre, descripcion, presupuesto, horas_estimadas, fecha_inicio, fecha_fin_estimada }) => {
-  const result = await pool.query(
-    `INSERT INTO proyecto
-       (id_empresa, id_servicio, id_lider, nombre, descripcion, presupuesto, horas_estimadas, fecha_inicio, fecha_fin_estimada, is_active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
-     RETURNING id_proyecto, nombre, descripcion, presupuesto, horas_estimadas, fecha_inicio, fecha_fin_estimada, id_empresa, id_servicio, id_lider`,
-    [id_empresa, id_servicio || null, id_lider || null, nombre, descripcion || null,
-     presupuesto || null, horas_estimadas || null, fecha_inicio || null, fecha_fin_estimada || null]
+const findByNombreAndEmpresa = async (nombre, empresaId) => {
+  const res = await pool.query(
+    `SELECT id_proyecto 
+     FROM proyecto
+     WHERE LOWER(nombre) = LOWER($1)
+       AND id_empresa = $2
+       AND is_active = true`,
+    [nombre, empresaId]
   );
-  return result.rows[0];
+
+  return res.rows[0];
+};
+
+const findServicioById = async (id) => {
+  const res = await pool.query(
+    'SELECT id_servicio, id_empresa FROM servicio WHERE id_servicio = $1',
+    [id]
+  );
+  return res.rows[0];
+};
+
+const findUsuarioById = async (id) => {
+  const res = await pool.query(
+    `SELECT id_usuario, id_empresa, rol 
+     FROM usuario 
+     WHERE id_usuario = $1`,
+    [id]
+  );
+  return res.rows[0];
+};
+
+const findUsuariosByIds = async (ids) => {
+  const res = await pool.query(
+    `SELECT id_usuario, id_empresa, rol
+     FROM usuario 
+     WHERE id_usuario = ANY($1)`,
+    [ids]
+  );
+  return res.rows;
+};
+
+const create = async (data) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const proyectoRes = await client.query(
+      `INSERT INTO proyecto (
+        nombre, 
+        descripcion, 
+        presupuesto, 
+        horas_estimadas, 
+        fecha_inicio, 
+        fecha_fin_estimada, 
+        id_servicio, 
+        id_lider, 
+        id_empresa, 
+        is_active
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
+      RETURNING *`,
+      [
+        data.nombre,
+        data.descripcion ?? null,
+        data.presupuesto,
+        data.horas_estimadas,
+        data.fecha_inicio,
+        data.fecha_fin_estimada,
+        data.id_servicio,
+        data.id_lider,
+        data.empresaId
+      ]
+    );
+
+    const proyecto = proyectoRes.rows[0];
+
+    // empleados (batch insert limpio)
+    if (data.empleados.length > 0) {
+      const values = data.empleados
+        .map((_, i) => `($1, $${i + 2})`)
+        .join(',');
+
+      await client.query(
+        `INSERT INTO proyecto_empleado (id_proyecto, id_empleado)
+         VALUES ${values}`,
+        [proyecto.id_proyecto, ...data.empleados]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    return proyecto;
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 /* ─── update ────────────────────────────────────────────────────────────── */
@@ -188,8 +277,8 @@ const update = async (proyectoId, { id_servicio, id_lider, nombre, descripcion, 
      RETURNING id_proyecto, nombre, descripcion, presupuesto, horas_estimadas,
                fecha_inicio, fecha_fin_estimada, fecha_fin_real, id_empresa, id_servicio, id_lider`,
     [proyectoId, nombre || null, descripcion || null, presupuesto || null, horas_estimadas || null,
-     fecha_inicio || null, fecha_fin_estimada || null, fecha_fin_real || null,
-     id_servicio || null, id_lider || null]
+      fecha_inicio || null, fecha_fin_estimada || null, fecha_fin_real || null,
+      id_servicio || null, id_lider || null]
   );
   return result.rows[0];
 };
@@ -302,6 +391,10 @@ module.exports = {
   findByEmpleado,
   findActiveByEmpresa,
   findAssignedByEmpleado,
+  findByNombreAndEmpresa,
+  findServicioById,
+  findUsuarioById,
+  findUsuariosByIds,
   create,
   update,
   deactivate,
