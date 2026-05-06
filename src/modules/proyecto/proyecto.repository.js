@@ -10,20 +10,50 @@ const findByEmpresaId = async (empresaId) => {
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.id_servicio,
+        s.nombre AS nombre_servicio,
         p.id_lider,
+        u.nombre AS nombre_lider,
         p.is_active,
-        u.nombre AS nombre_lider
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id_usuario', ue.id_usuario,
+              'nombre', ue.nombre
+            )
+          ) FILTER (WHERE ue.id_usuario IS NOT NULL),
+          '[]'
+        ) AS empleados
      FROM proyecto p
-     JOIN usuario u ON p.id_lider = u.id_usuario
+     LEFT JOIN usuario u ON p.id_lider = u.id_usuario
+     LEFT JOIN servicio s ON p.id_servicio = s.id_servicio
+     LEFT JOIN proyecto_empleado pe 
+       ON pe.id_proyecto = p.id_proyecto
+     LEFT JOIN usuario ue 
+       ON pe.id_empleado = ue.id_usuario
      WHERE p.id_empresa = $1
+       AND u.id_empresa = $1
+       AND s.id_empresa = $1
        AND p.is_active = true
+     GROUP BY 
+       p.id_proyecto,
+       u.nombre,
+       s.nombre
      ORDER BY p.fecha_inicio DESC`,
     [empresaId]
   );
   return result.rows;
 };
 
-/* ─── findById ──────────────────────────────────────────────────────────── */
+const findBasicById = async (id) => {
+  const res = await pool.query(
+    `SELECT id_proyecto, id_empresa, nombre
+     FROM proyecto
+     WHERE id_proyecto = $1 AND is_active = true`,
+    [id]
+  );
+  return res.rows[0];
+};
+
 const findById = async (proyectoId) => {
   const result = await pool.query(
     `SELECT
@@ -32,7 +62,6 @@ const findById = async (proyectoId) => {
         p.nombre,
         p.descripcion,
         p.presupuesto,
-        p.horas_estimadas,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
@@ -40,13 +69,33 @@ const findById = async (proyectoId) => {
         p.id_servicio,
         s.nombre AS servicio_nombre,
         p.id_lider,
-        u.nombre AS lider_nombre
+        u.nombre AS lider_nombre,
+        p.is_active,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id_usuario', ue.id_usuario,
+              'nombre', ue.nombre
+            )
+          ) FILTER (WHERE ue.id_usuario IS NOT NULL),
+          '[]'
+        ) AS empleados
      FROM proyecto p
      LEFT JOIN servicio s ON s.id_servicio = p.id_servicio
-     LEFT JOIN usuario  u ON u.id_usuario  = p.id_lider
-     WHERE p.id_proyecto = $1 AND p.is_active = true`,
+     LEFT JOIN usuario u ON u.id_usuario = p.id_lider
+     LEFT JOIN proyecto_empleado pe 
+       ON pe.id_proyecto = p.id_proyecto
+     LEFT JOIN usuario ue 
+       ON ue.id_usuario = pe.id_empleado
+     WHERE p.id_proyecto = $1
+       AND p.is_active = true
+     GROUP BY 
+       p.id_proyecto,
+       s.nombre,
+       u.nombre`,
     [proyectoId]
   );
+
   return result.rows[0] || null;
 };
 
@@ -59,7 +108,6 @@ const findByLider = async (liderId) => {
           p.nombre,
           p.descripcion,
           p.presupuesto,
-          p.horas_estimadas,
           p.fecha_inicio,
           p.fecha_fin_estimada,
           p.is_active,
@@ -210,7 +258,6 @@ const create = async (data) => {
         nombre, 
         descripcion, 
         presupuesto, 
-        horas_estimadas, 
         fecha_inicio, 
         fecha_fin_estimada, 
         id_servicio, 
@@ -218,13 +265,12 @@ const create = async (data) => {
         id_empresa, 
         is_active
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true)
       RETURNING *`,
       [
         data.nombre,
         data.descripcion ?? null,
         data.presupuesto,
-        data.horas_estimadas,
         data.fecha_inicio,
         data.fecha_fin_estimada,
         data.id_servicio,
@@ -260,45 +306,80 @@ const create = async (data) => {
   }
 };
 
-/* ─── update ────────────────────────────────────────────────────────────── */
-const update = async (proyectoId, { id_servicio, id_lider, nombre, descripcion, presupuesto, horas_estimadas, fecha_inicio, fecha_fin_estimada, fecha_fin_real }) => {
+const update = async (proyectoId, data) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // update base
+    const res = await client.query(
+      `UPDATE proyecto
+       SET nombre = COALESCE($2, nombre),
+           descripcion = COALESCE($3, descripcion),
+           presupuesto = COALESCE($4, presupuesto),
+           fecha_inicio = COALESCE($5, fecha_inicio),
+           fecha_fin_estimada = COALESCE($6, fecha_fin_estimada),
+           id_servicio = COALESCE($7, id_servicio),
+           id_lider = COALESCE($8, id_lider)
+       WHERE id_proyecto = $1
+       RETURNING *`,
+      [
+        proyectoId,
+        data.nombre ?? null,
+        data.descripcion ?? null,
+        data.presupuesto ?? null,
+        data.fecha_inicio ?? null,
+        data.fecha_fin_estimada ?? null,
+        data.id_servicio ?? null,
+        data.id_lider ?? null
+      ]
+    );
+
+    // SYNC empleados
+    if (data.empleados) {
+
+      // eliminar actuales
+      await client.query(
+        `DELETE FROM proyecto_empleado WHERE id_proyecto = $1`,
+        [proyectoId]
+      );
+
+      // insertar nuevos
+      if (data.empleados.length > 0) {
+        const values = data.empleados
+          .map((_, i) => `($1, $${i + 2})`)
+          .join(',');
+
+        await client.query(
+          `INSERT INTO proyecto_empleado (id_proyecto, id_empleado)
+           VALUES ${values}`,
+          [proyectoId, ...data.empleados]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    return res.rows[0];
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const desactivar = async (proyectoId) => {
   const result = await pool.query(
     `UPDATE proyecto
-     SET nombre             = COALESCE($2,  nombre),
-         descripcion        = COALESCE($3,  descripcion),
-         presupuesto        = COALESCE($4,  presupuesto),
-         horas_estimadas    = COALESCE($5,  horas_estimadas),
-         fecha_inicio       = COALESCE($6,  fecha_inicio),
-         fecha_fin_estimada = COALESCE($7,  fecha_fin_estimada),
-         fecha_fin_real     = COALESCE($8,  fecha_fin_real),
-         id_servicio        = COALESCE($9,  id_servicio),
-         id_lider           = COALESCE($10, id_lider)
+     SET is_active = false
      WHERE id_proyecto = $1
-     RETURNING id_proyecto, nombre, descripcion, presupuesto, horas_estimadas,
-               fecha_inicio, fecha_fin_estimada, fecha_fin_real, id_empresa, id_servicio, id_lider`,
-    [proyectoId, nombre || null, descripcion || null, presupuesto || null, horas_estimadas || null,
-      fecha_inicio || null, fecha_fin_estimada || null, fecha_fin_real || null,
-      id_servicio || null, id_lider || null]
-  );
-  return result.rows[0];
-};
-
-/* ─── deactivate / activate / hardDelete ───────────────────────────────── */
-const deactivate = async (proyectoId) => {
-  const result = await pool.query(
-    `UPDATE proyecto SET is_active = false WHERE id_proyecto = $1
-     RETURNING id_proyecto, nombre, is_active`,
+     RETURNING *`,
     [proyectoId]
   );
-  return result.rows[0];
-};
 
-const activate = async (proyectoId) => {
-  const result = await pool.query(
-    `UPDATE proyecto SET is_active = true WHERE id_proyecto = $1
-     RETURNING id_proyecto, nombre, is_active`,
-    [proyectoId]
-  );
   return result.rows[0];
 };
 
@@ -386,6 +467,7 @@ const findHorasResumenByProyecto = async (proyectoId) => {
 
 module.exports = {
   findByEmpresaId,
+  findBasicById,
   findById,
   findByLider,
   findByEmpleado,
@@ -397,8 +479,7 @@ module.exports = {
   findUsuariosByIds,
   create,
   update,
-  deactivate,
-  activate,
+  desactivar,
   hardDelete,
   findEmpleadosByProyecto,
   syncEmpleados,
