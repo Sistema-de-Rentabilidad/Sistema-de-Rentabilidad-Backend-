@@ -20,9 +20,6 @@ const createServicioValidation = [
 ];
 
 const updateServicioValidation = [
-  param('id')
-    .isInt({ min: 1 }).withMessage('ID de servicio inválido'),
-
   body('nombre')
     .optional({ checkFalsy: true })
     .isLength({ min: 3, max: 100 }).withMessage('El nombre debe tener entre 3 y 100 caracteres')
