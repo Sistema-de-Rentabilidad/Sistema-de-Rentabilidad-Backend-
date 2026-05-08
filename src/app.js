@@ -10,6 +10,8 @@ const usuarioRoutes = require("./modules/usuario/usuario.routes");
 const historialRoutes = require("./modules/historial_horas/historial.routes");
 const proyectoRoutes = require("./modules/proyecto/proyecto.routes");
 const horasRoutes = require("./modules/horas/horas.routes");
+const fasesRoutes = require("./modules/fases/fases.routes");
+const notasRoutes = require("./modules/notas/notas.routes");
 
 const errorHandler = require("./modules/middlewares/errorHandler");
 
@@ -29,6 +31,8 @@ app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/historiales", historialRoutes);
 app.use("/api/proyectos", proyectoRoutes);
 app.use("/api/horas", horasRoutes);
+app.use("/api", fasesRoutes);
+app.use("/api", notasRoutes);
 
 // SIEMPRE AL FINAL
 app.use(errorHandler);
