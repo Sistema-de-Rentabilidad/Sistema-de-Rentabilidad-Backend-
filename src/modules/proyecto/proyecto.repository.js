@@ -1,7 +1,6 @@
 const pool = require("../../config/db");
 
 const findAll = async ({ empresaId, liderId = null }) => {
-
   let query = `
     SELECT 
         p.id_proyecto,
@@ -60,7 +59,7 @@ const findAll = async ({ empresaId, liderId = null }) => {
 
 const findBasicById = async (id) => {
   const res = await pool.query(
-    `SELECT id_proyecto, id_empresa, nombre
+    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real
      FROM proyecto
      WHERE id_proyecto = $1 AND is_active = true`,
     [id]
@@ -68,7 +67,7 @@ const findBasicById = async (id) => {
 
   return res.rows[0];
 };
-
+  
 const findById = async (proyectoId) => {
   const result = await pool.query(
     `SELECT
@@ -379,6 +378,20 @@ const desactivar = async (proyectoId) => {
   return result.rows[0];
 };
 
+const finalizarProyecto = async (proyectoId) => {
+  const result = await pool.query(
+    `
+    UPDATE proyecto
+    SET fecha_fin_real = NOW()
+    WHERE id_proyecto = $1
+    RETURNING *
+    `,
+    [proyectoId]
+  );
+
+  return result.rows[0];
+};
+
 /* ─── proyecto_empleado helpers ─────────────────────────────────────────── */
 const findEmpleadosByProyecto = async (proyectoId) => {
   try {
@@ -445,6 +458,7 @@ module.exports = {
   create,
   update,
   desactivar,
+  finalizarProyecto,
   findEmpleadosByProyecto,
   findLideresByProyecto,
   findHorasResumenByProyecto,

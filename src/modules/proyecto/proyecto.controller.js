@@ -138,6 +138,27 @@ const desactivarProyecto = async (req, res, next) => {
   }
 };
 
+const finalizarProyecto = async (req, res, next) => {
+  try {
+
+    const proyectoId = parseInt(req.params.id, 10);
+
+    const proyecto = await proyectoService.finalizarProyecto({
+      proyectoId,
+      empresaId: req.empresaId,
+      liderId: req.user.id_usuario
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: proyecto
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getEmpleadosProyecto = async (req, res, next) => {
   try {
     const userDB = await resolveEmpresa(req, res);
@@ -170,6 +191,7 @@ module.exports = {
   createProyecto,
   updateProyecto,
   desactivarProyecto,
+  finalizarProyecto,
   getHorasResumenProyecto,
   getEmpleadosProyecto,
 };

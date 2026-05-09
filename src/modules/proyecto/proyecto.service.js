@@ -228,6 +228,48 @@ const desactivarProyecto = async (proyectoId, empresaId) => {
   return await proyectoRepository.desactivar(proyectoId);
 };
 
+const finalizarProyecto = async ({
+  proyectoId,
+  empresaId,
+  liderId
+}) => {
+  // validar existencia
+  const proyecto = await proyectoRepository.findBasicById(proyectoId);
+
+  if (!proyecto) {
+    throw Object.assign(
+      new Error("Proyecto no encontrado"),
+      { status: 404 }
+    );
+  }
+
+  // validar empresa
+  if (proyecto.id_empresa !== empresaId) {
+    throw Object.assign(
+      new Error("No pertenece a tu empresa"),
+      { status: 403 }
+    );
+  }
+
+  // validar líder responsable
+  if (proyecto.id_lider !== liderId) {
+    throw Object.assign(
+      new Error("No eres líder de este proyecto"),
+      { status: 403 }
+    );
+  }
+
+  // evitar doble finalización
+  if (proyecto.fecha_fin_real) {
+    throw Object.assign(
+      new Error("El proyecto ya fue finalizado"),
+      { status: 400 }
+    );
+  }
+
+  return await proyectoRepository.finalizarProyecto(proyectoId);
+};
+
 const getEmpleadosProyecto = async (proyectoId, empresaId) => {
   const proyecto = await proyectoRepository.findById(proyectoId);
   if (!proyecto) {
@@ -241,26 +283,6 @@ const getEmpleadosProyecto = async (proyectoId, empresaId) => {
     throw err;
   }
   return await proyectoRepository.findEmpleadosByProyecto(proyectoId);
-};
-
-const activarProyecto = async (proyectoId, empresaId) => {
-  const { rows } = await pool.query(
-    "SELECT id_proyecto, id_empresa FROM proyecto WHERE id_proyecto = $1",
-    [proyectoId]
-  );
-  if (!rows[0]) { const e = new Error("Proyecto no encontrado"); e.status = 404; throw e; }
-  if (rows[0].id_empresa !== empresaId) { const e = new Error("No autorizado"); e.status = 403; throw e; }
-  return await proyectoRepository.activate(proyectoId);
-};
-
-const eliminarProyecto = async (proyectoId, empresaId) => {
-  const { rows } = await pool.query(
-    "SELECT id_proyecto, id_empresa FROM proyecto WHERE id_proyecto = $1",
-    [proyectoId]
-  );
-  if (!rows[0]) { const e = new Error("Proyecto no encontrado"); e.status = 404; throw e; }
-  if (rows[0].id_empresa !== empresaId) { const e = new Error("No autorizado"); e.status = 403; throw e; }
-  return await proyectoRepository.hardDelete(proyectoId);
 };
 
 const getHorasResumenByProyecto = async (proyectoId, empresaId) => {
@@ -281,8 +303,7 @@ module.exports = {
   createProyecto,
   updateProyecto,
   desactivarProyecto,
-  activarProyecto,
-  eliminarProyecto,
+  finalizarProyecto,
   getHorasResumenByProyecto,
   getEmpleadosProyecto,
 };
