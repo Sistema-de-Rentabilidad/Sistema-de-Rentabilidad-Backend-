@@ -19,3 +19,5 @@ const verifyProyectoAccess = async (proyectoId, empresaId) => {
 
   return proyecto;
 };
+
+module.exports = verifyProyectoAccess;

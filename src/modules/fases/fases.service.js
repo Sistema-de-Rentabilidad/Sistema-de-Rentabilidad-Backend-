@@ -7,13 +7,16 @@ const getFasesByProyecto = async (proyectoId, empresaId) => {
   return await fasesRepository.findFasesByProyecto(proyectoId);
 };
 
-const createFase = async (proyectoId, data, user) => {
-  await verifyProyectoAccess(proyectoId, user.id_empresa);
+const createFase = async (proyectoId, data, empresaId) => {
+  await verifyProyectoAccess(proyectoId, empresaId);
+
+  const nombreLimpio = data.nombre.trim();
 
   const duplicado = await fasesRepository.findFaseByNombreAndProyecto(
-    data.nombre.trim(),
+    nombreLimpio,
     proyectoId
   );
+
   if (duplicado) {
     throw Object.assign(
       new Error("Ya existe una fase con ese nombre en este proyecto"),
@@ -21,19 +24,21 @@ const createFase = async (proyectoId, data, user) => {
     );
   }
 
-  return await fasesRepository.insertFase({
+  return await fasesRepository.createFase({
     id_proyecto: proyectoId,
-    nombre: data.nombre.trim(),
+    nombre: nombreLimpio,
     horas_estimadas: data.horas_estimadas,
   });
 };
 
-const getFaseById = async (faseId, user) => {
+const getFaseById = async (faseId, empresaId) => {
   const fase = await fasesRepository.findFaseById(faseId);
+
   if (!fase) {
     throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
   }
-  if (fase.id_empresa !== user.id_empresa) {
+
+  if (fase.id_empresa !== empresaId) {
     throw Object.assign(
       new Error("No tienes permisos para acceder a esta fase"),
       { status: 403 }
@@ -42,12 +47,14 @@ const getFaseById = async (faseId, user) => {
   return fase;
 };
 
-const updateFase = async (faseId, data, user) => {
+const updateFase = async (faseId, data, empresaId) => {
   const fase = await fasesRepository.findFaseById(faseId);
+
   if (!fase) {
     throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
   }
-  if (fase.id_empresa !== user.id_empresa) {
+
+  if (fase.id_empresa !== empresaId) {
     throw Object.assign(
       new Error("No tienes permisos para editar esta fase"),
       { status: 403 }
@@ -60,12 +67,14 @@ const updateFase = async (faseId, data, user) => {
       nombreLimpio,
       fase.id_proyecto
     );
+
     if (duplicado && duplicado.id_fase !== faseId) {
       throw Object.assign(
         new Error("Ya existe una fase con ese nombre en este proyecto"),
         { status: 400 }
       );
     }
+
     data.nombre = nombreLimpio;
   }
 

@@ -12,12 +12,12 @@ const empresa = require('../middlewares/empresaMiddleware');
 router.get("/proyectos/:id/fases", auth, role("propietario", "lider"), empresa, proyectoIdValidation, fasesController.getFasesByProyecto);
 
 // POST /proyectos/:id/fases
-router.post("/proyectos/:id/fases", auth, role("propietario"), proyectoIdValidation, createFaseValidation, fasesController.createFase);
+router.post("/proyectos/:id/fases", auth, role("propietario"), empresa, proyectoIdValidation, createFaseValidation, fasesController.createFase);
 
 // GET /fases/:id
-router.get("/fases/:id", auth, role("propietario", "lider"), faseIdValidation, fasesController.getFaseById);
+router.get("/fases/:id", auth, role("propietario", "lider"), empresa, faseIdValidation, fasesController.getFaseById);
 
 // PUT /fases/:id
-router.put("/fases/:id", auth, role("propietario"), faseIdValidation, updateFaseValidation, fasesController.updateFase);
+router.put("/fases/:id", auth, role("propietario"), empresa, faseIdValidation, updateFaseValidation, fasesController.updateFase);
 
 module.exports = router;

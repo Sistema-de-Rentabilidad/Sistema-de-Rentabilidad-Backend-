@@ -12,7 +12,7 @@ const createEmpresa = async ({ nombre }) => {
   const existe = await empresaRepository.findByName(nombre);
 
   if (existe) {
-    const error = new Error('La empresa ya existe');
+    const error = new Error('Ya existe una empresa con ese nombre');
     error.status = 400;
     throw error;
   }

@@ -3,14 +3,11 @@ const historialService = require('./historial.service');
 const createHistorial = async (req, res, next) => {
     try {
         const data = req.body;
-        const user = req.user;
+        const empresaId = req.empresaId;
 
-        const historial = await historialService.createHistorial(data, user);
+        const historial = await historialService.createHistorial(data, empresaId);
 
-        res.status(201).json({
-            success: true,
-            data: historial
-        });
+        res.status(201).json({ success: true, data: historial });
     } catch (error) {
         next(error);
     }

@@ -25,8 +25,11 @@ const getFasesByProyecto = async (req, res, next) => {
 const createFase = async (req, res, next) => {
   try {
     const proyectoId = parseInt(req.params.id, 10);
-    const fase = await fasesService.createFase(proyectoId, req.body, req.user);
-    return res.status(201).json({ success: true, data: fase });
+    const empresaId = req.empresaId; // viene del middleware
+
+    const nuevaFase = await fasesService.createFase(proyectoId, req.body, empresaId);
+    
+    return res.status(201).json({ success: true, data: nuevaFase });
   } catch (err) {
     next(err);
   }
@@ -35,7 +38,10 @@ const createFase = async (req, res, next) => {
 const getFaseById = async (req, res, next) => {
   try {
     const faseId = parseInt(req.params.id, 10);
-    const fase = await fasesService.getFaseById(faseId, req.user);
+    const empresaId = req.empresaId; // viene del middleware
+
+    const fase = await fasesService.getFaseById(faseId, empresaId);
+    
     return res.status(200).json({ success: true, data: fase });
   } catch (err) {
     next(err);
@@ -45,8 +51,11 @@ const getFaseById = async (req, res, next) => {
 const updateFase = async (req, res, next) => {
   try {
     const faseId = parseInt(req.params.id, 10);
-    const fase = await fasesService.updateFase(faseId, req.body, req.user);
-    return res.status(200).json({ success: true, data: fase });
+    const empresaId = req.empresaId; // viene del middleware
+
+    const faseActualizada = await fasesService.updateFase(faseId, req.body, empresaId);
+
+    return res.status(200).json({ success: true, data: faseActualizada });
   } catch (err) {
     next(err);
   }
