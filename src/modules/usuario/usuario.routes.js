@@ -15,7 +15,7 @@ router.get(
     usuarioController.getUsuarios
 );
 
-// POST /usuarios (admin crea propietario)
+// POST /usuarios (admin crea propietario y propietario crea empleado/lider)
 router.post(
     '/',
     auth,

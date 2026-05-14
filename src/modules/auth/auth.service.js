@@ -93,26 +93,7 @@ const registerOwnerService = async (id_empresa, nombre, email, password) => {
     return newUser;
 };
 
-const getOwnerContactService = async (email) => {
-    const user = await authRepository.findUserByEmail(email);
-    if (!user) {
-        throw new Error("USUARIO_NO_ENCONTRADO");
-    }
-    if (user.rol === "propietario") {
-        return { email: user.email, nombre: user.nombre };
-    }
-    if (!user.id_empresa) {
-        throw new Error("SIN_EMPRESA");
-    }
-    const owner = await authRepository.findOwnerByEmpresaId(user.id_empresa);
-    if (!owner) {
-        throw new Error("PROPIETARIO_NO_ENCONTRADO");
-    }
-    return { email: owner.email, nombre: owner.nombre };
-};
-
 module.exports = {
     loginService,
-    registerOwnerService,
-    getOwnerContactService,
+    registerOwnerService
 };

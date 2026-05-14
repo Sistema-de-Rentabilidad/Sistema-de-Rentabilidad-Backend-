@@ -33,19 +33,7 @@ const createOwner = async (id_empresa, nombre, email, hashedPassword, rol) => {
     return result.rows[0];
 };
 
-const findOwnerByEmpresaId = async (id_empresa) => {
-    const query = `
-    SELECT id_usuario, nombre, email, rol
-    FROM usuario
-    WHERE id_empresa = $1 AND rol = 'propietario' AND is_active = true
-    LIMIT 1
-  `;
-    const result = await pool.query(query, [id_empresa]);
-    return result.rows[0] || null;
-};
-
 module.exports = {
     findUserByEmail,
-    createOwner,
-    findOwnerByEmpresaId,
+    createOwner
 };
