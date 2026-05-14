@@ -2,7 +2,7 @@ const pool = require("../../config/db");
 
 const findProyectoById = async (proyectoId) => {
   const res = await pool.query(
-    `SELECT id_proyecto, id_empresa, id_lider, is_active
+    `SELECT id_proyecto, id_empresa, id_lider
      FROM proyecto
      WHERE id_proyecto = $1 AND is_active = true`,
     [proyectoId]
@@ -10,8 +10,7 @@ const findProyectoById = async (proyectoId) => {
   return res.rows[0] || null;
 };
 
-const findFasesByProyecto = async (proyectoId, orderBy) => {
-  const order = orderBy === "nombre" ? "nombre ASC" : "id_fase DESC";
+const findFasesByProyecto = async (proyectoId) => {
   const res = await pool.query(
     `SELECT id_fase, id_proyecto, nombre, horas_estimadas, is_active
      FROM fase

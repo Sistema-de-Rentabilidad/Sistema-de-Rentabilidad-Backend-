@@ -1,5 +1,5 @@
 const historialRepository = require('./historial.repository.js');
-const usuarioRepository = require('../usuario/usuario.repository');
+const usuarioRepository = require('../usuario/usuario.repository.js');
 
 const createHistorial = async (data, currentUser) => {
     const { id_usuario, tipo_pago, monto, horas_mensuales } = data;

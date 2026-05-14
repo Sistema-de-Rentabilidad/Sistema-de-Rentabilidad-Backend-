@@ -4,8 +4,8 @@ const router = express.Router();
 const empresaController = require('./empresa.controller');
 const { createEmpresaValidation, empresaIdParamValidation, updateEmpresaValidation } = require('./empresa.validation');
 
-const auth = require('../../modules/middlewares/authMiddleware');
-const role = require('../../modules/middlewares/roleMiddleware');
+const auth = require('../middlewares/authMiddleware');
+const role = require('../middlewares/roleMiddleware');
 
 // GET /empresas
 router.get('/', auth, role('admin'), empresaController.getEmpresas);

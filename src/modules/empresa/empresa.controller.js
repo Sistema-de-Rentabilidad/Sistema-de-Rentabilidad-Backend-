@@ -4,7 +4,7 @@ const getEmpresas = async (req, res, next) => {
   try {
     const empresas = await empresaService.getEmpresas();
 
-    // ✅ Caso: no hay empresas registradas
+    // no hay empresas registradas
     if (empresas.length === 0) {
       return res.status(200).json({
         success: true,
@@ -13,7 +13,7 @@ const getEmpresas = async (req, res, next) => {
       });
     }
 
-    // ✅ Caso: hay empresas
+    // hay empresas
     return res.status(200).json({
       success: true,
       data: empresas

@@ -1,22 +1,10 @@
 const fasesRepository = require("./fases.repository");
+const verifyProyectoAccess = require("../../utils/verifyProyectoAccess")
 
-const verifyProyectoAccess = async (proyectoId, empresaId) => {
-  const proyecto = await fasesRepository.findProyectoById(proyectoId);
-  if (!proyecto) {
-    throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
-  }
-  if (proyecto.id_empresa !== empresaId) {
-    throw Object.assign(
-      new Error("No tienes permisos para acceder a este proyecto"),
-      { status: 403 }
-    );
-  }
-  return proyecto;
-};
+const getFasesByProyecto = async (proyectoId, empresaId) => {
+  await verifyProyectoAccess(proyectoId, empresaId);
 
-const getFasesByProyecto = async (proyectoId, orderBy, user) => {
-  await verifyProyectoAccess(proyectoId, user.id_empresa);
-  return await fasesRepository.findFasesByProyecto(proyectoId, orderBy);
+  return await fasesRepository.findFasesByProyecto(proyectoId);
 };
 
 const createFase = async (proyectoId, data, user) => {

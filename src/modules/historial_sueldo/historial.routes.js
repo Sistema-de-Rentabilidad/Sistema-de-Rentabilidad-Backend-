@@ -4,8 +4,8 @@ const router = express.Router();
 const historialController = require('./historial.controller');
 const { createHistorialValidation } = require('./historial.validation');
 
-const auth = require('../../modules/middlewares/authMiddleware');
-const role = require('../../modules/middlewares/roleMiddleware');
+const auth = require('../middlewares/authMiddleware');
+const role = require('../middlewares/roleMiddleware');
 
 // POST /historiales
 router.post(

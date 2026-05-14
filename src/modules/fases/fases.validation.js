@@ -1,12 +1,9 @@
-const { param, body, query } = require("express-validator");
+const { param, body } = require("express-validator");
 const { handleValidationErrors } = require("../middlewares/validationMiddleware");
 
 const proyectoIdValidation = [
   param("id").isInt({ min: 1 }).withMessage("ID de proyecto inválido"),
-  query("orderBy")
-    .optional()
-    .isIn(["nombre", "fecha"])
-    .withMessage("orderBy debe ser 'nombre' o 'fecha'"),
+
   handleValidationErrors,
 ];
 

@@ -8,7 +8,7 @@ const getEmpresas = async () => {
 };
 
 const createEmpresa = async ({ nombre }) => {
-  // 🔒 regla: no duplicados
+  // regla: no duplicados
   const existe = await empresaRepository.findByName(nombre);
 
   if (existe) {
@@ -31,7 +31,7 @@ const getEmpresaById = async ({ id, user }) => {
     throw error;
   }
 
-  // 🔐 REGLA: owner solo ve su empresa
+  // REGLA: owner solo ve su empresa
   if (user.rol === 'propietario' && empresa.id_empresa !== user.id_empresa) {
     const error = new Error('No tienes acceso a esta empresa');
     error.status = 403;
@@ -42,7 +42,7 @@ const getEmpresaById = async ({ id, user }) => {
 };
 
 const updateEmpresa = async ({ id, nombre, user }) => {
-  // 🔍 verificar si existe
+  // verificar si existe
   const empresa = await empresaRepository.findById(id);
 
   if (!empresa) {
@@ -51,14 +51,14 @@ const updateEmpresa = async ({ id, nombre, user }) => {
     throw error;
   }
 
-  // 🔐 VALIDACIÓN DE PROPIEDAD
+  // VALIDACIÓN DE PROPIEDAD
   if (user.rol === 'propietario' && empresa.id_empresa !== user.id_empresa) {
     const error = new Error('No puedes modificar esta empresa');
     error.status = 403;
     throw error;
   }
 
-  // 🔒 evitar duplicados (excepto sí misma)
+  // evitar duplicados (excepto sí misma)
   const empresaDuplicada = await empresaRepository.findByName(nombre);
 
   if (empresaDuplicada && empresaDuplicada.id_empresa !== parseInt(id)) {

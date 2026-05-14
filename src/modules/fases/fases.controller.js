@@ -3,8 +3,19 @@ const fasesService = require("./fases.service");
 const getFasesByProyecto = async (req, res, next) => {
   try {
     const proyectoId = parseInt(req.params.id, 10);
-    const orderBy = req.query.orderBy || "fecha";
-    const fases = await fasesService.getFasesByProyecto(proyectoId, orderBy, req.user);
+    const empresaId = req.empresaId; // viene del middleware
+
+    const fases = await fasesService.getFasesByProyecto(proyectoId, empresaId);
+
+    // no hay fases registradas
+    if (fases.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No hay fases disponibles",
+        data: [],
+      });
+    }
+
     return res.status(200).json({ success: true, data: fases });
   } catch (err) {
     next(err);

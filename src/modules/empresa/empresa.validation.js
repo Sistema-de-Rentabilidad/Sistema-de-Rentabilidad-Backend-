@@ -12,8 +12,7 @@ const createEmpresaValidation = [
 ];
 
 const empresaIdParamValidation = [
-  param('id')
-    .isInt({ min: 1 }).withMessage('ID de empresa inválido'),
+  param('id').isInt({ min: 1 }).withMessage('ID de empresa inválido'),
 
   handleValidationErrors
 ];
