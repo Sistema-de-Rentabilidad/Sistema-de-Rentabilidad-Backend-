@@ -1,6 +1,6 @@
 const pool = require('../../config/db');
 
-// 🔍 historial activo (sin fecha_fin)
+// busca historial activo (sin fecha_fin)
 const findActivo = async (id_usuario) => {
     const result = await pool.query(
         `SELECT * FROM historial_sueldo
@@ -11,7 +11,7 @@ const findActivo = async (id_usuario) => {
     return result.rows[0];
 };
 
-// 🛑 cerrar historial
+// cerrar historial
 const cerrarHistorial = async (id_historial, fecha_fin) => {
     await pool.query(
         `UPDATE historial_sueldo
@@ -21,7 +21,7 @@ const cerrarHistorial = async (id_historial, fecha_fin) => {
     );
 };
 
-// ✅ crear nuevo
+// crear nuevo
 const create = async ({
     id_usuario,
     tipo_pago,

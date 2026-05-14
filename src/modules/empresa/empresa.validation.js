@@ -4,7 +4,7 @@ const { handleValidationErrors } = require('../../modules/middlewares/validation
 const createEmpresaValidation = [
   body('nombre')
     .notEmpty().withMessage('El nombre es obligatorio')
-    .isLength({ min: 3 }).withMessage('Mínimo 3 caracteres')
+    .isLength({ min: 3, max: 100 }).withMessage("El nombre debe tener entre 3 y 100 caracteres")
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
     .withMessage('El nombre solo debe contener letras y espacios'),
 
@@ -12,19 +12,15 @@ const createEmpresaValidation = [
 ];
 
 const empresaIdParamValidation = [
-  param('id')
-    .isInt({ min: 1 }).withMessage('ID de empresa inválido'),
+  param('id').isInt({ min: 1 }).withMessage('ID de empresa inválido'),
 
   handleValidationErrors
 ];
 
 const updateEmpresaValidation = [
-  param('id')
-    .isInt().withMessage('ID de empresa inválido'),
-
   body('nombre')
     .notEmpty().withMessage('El nombre es obligatorio')
-    .isLength({ min: 3 }).withMessage('Mínimo 3 caracteres')
+    .isLength({ min: 3, max: 100 }).withMessage("El nombre debe tener entre 3 y 100 caracteres")
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
     .withMessage('El nombre solo debe contener letras y espacios'),
 

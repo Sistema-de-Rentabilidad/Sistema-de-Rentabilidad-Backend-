@@ -11,11 +11,16 @@ const createHistorialValidation = [
     body('monto')
         .notEmpty().withMessage('El monto es obligatorio')
         .isNumeric().withMessage('El monto debe ser numérico')
-        .isFloat({ gt: 0 }).withMessage('Monto debe ser mayor a 0'),
+        .isFloat({ min: 1 }).withMessage('El monto debe ser mayor a 0'),
 
     body('horas_mensuales')
-        .optional()
-        .isInt({ gt: 0 }).withMessage('Horas mensuales inválidas'),
+        .if(body('tipo_pago').equals('mensual'))
+        .notEmpty()
+        .withMessage(
+            'Las horas mensuales son obligatorias'
+        )
+        .isNumeric().withMessage('Las horas mensuales deben ser números')
+        .isInt({ min: 1 }).withMessage('Las horas mensuales deben ser mayor a 0'),
 
     (req, res, next) => {
         const errors = validationResult(req);

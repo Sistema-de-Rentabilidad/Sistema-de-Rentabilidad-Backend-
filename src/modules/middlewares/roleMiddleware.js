@@ -3,7 +3,7 @@ const roleMiddleware = (...rolesPermitidos) => {
         try {
             const user = req.user;
 
-            // ❌ No hay usuario (no pasó authMiddleware)
+            // No hay usuario (no pasó authMiddleware)
             if (!user) {
                 return res.status(401).json({
                     success: false,
@@ -11,7 +11,7 @@ const roleMiddleware = (...rolesPermitidos) => {
                 });
             }
 
-            // ❌ Rol no permitido
+            // Rol no permitido
             if (!rolesPermitidos.includes(user.rol)) {
                 return res.status(403).json({
                     success: false,

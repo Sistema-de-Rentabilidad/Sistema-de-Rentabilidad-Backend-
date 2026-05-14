@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
-const historialRepository = require('../historial_horas/historial.repository');
+const historialRepository = require('../historial_sueldo/historial.repository');
 
 // const getOwners = async () => {
 //   return await usuarioRepository.findAllOwners();

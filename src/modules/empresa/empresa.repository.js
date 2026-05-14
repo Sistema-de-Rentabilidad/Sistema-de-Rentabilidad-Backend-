@@ -56,20 +56,10 @@ const update = async (id, nombre) => {
   return result.rows[0];
 };
 
-const deleteById = async (id) => {
-  const result = await pool.query(
-    `DELETE FROM empresa WHERE id_empresa = $1 RETURNING id_empresa, nombre`,
-    [id]
-  );
-
-  return result.rows[0];
-};
-
 module.exports = {
   findAll,
   findById,
   findByName,
   create,
-  update,
-  deleteById
+  update
 };
