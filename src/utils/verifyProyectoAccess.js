@@ -1,9 +1,7 @@
-const verifyProyectoAccess = async ({
-  proyectoId,
-  empresaId,
-  repository,
-}) => {
-  const proyecto = await repository.findProyectoById(proyectoId);
+const proyectoRepository = require("../modules/proyecto/proyecto.repository");
+
+const verifyProyectoAccess = async (proyectoId, empresaId) => {
+  const proyecto = await proyectoRepository.findBasicById(proyectoId);
 
   if (!proyecto) {
     throw Object.assign(
@@ -21,5 +19,3 @@ const verifyProyectoAccess = async ({
 
   return proyecto;
 };
-
-module.exports = verifyProyectoAccess;
