@@ -74,6 +74,7 @@ const findById = async (proyectoId) => {
         p.id_proyecto,
         p.id_empresa,
         p.nombre,
+        p.is_active,
         p.descripcion,
         p.presupuesto,
         p.fecha_inicio,
