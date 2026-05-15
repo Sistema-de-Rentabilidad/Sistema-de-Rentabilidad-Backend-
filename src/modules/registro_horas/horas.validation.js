@@ -33,9 +33,17 @@ const registroHorasIdParamValidation = [
 ];
 
 const updateHorasValidation = [
+    body('id_proyecto')
+        .optional({ checkFalsy: true })
+        .isInt({ min: 1 }).withMessage('ID de proyecto inválido'),
+
+    body('id_fase')
+        .optional({ checkFalsy: true })
+        .isInt({ min: 1 }).withMessage('ID de fase inválido'),
+
     body('horas')
-        .notEmpty()
-        .withMessage('Las horas son obligatorias')
+        .optional({ checkFalsy: true })
+        .isNumeric().withMessage('Las horas deben ser números')
         .isFloat({ min: 0.5, max: 12 })
         .withMessage('Las horas deben estar entre 0.5 y 12'),
 

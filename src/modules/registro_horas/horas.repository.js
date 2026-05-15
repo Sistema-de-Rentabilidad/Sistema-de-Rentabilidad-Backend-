@@ -144,15 +144,17 @@ const getTotalHorasSinRegistro = async (idEmpleado, fecha, id) => {
   return result.rows[0].total;
 };
 
-const update = async ({ id, horas, descripcion }) => {
+const update = async ({ id, id_proyecto, id_fase, horas, descripcion }) => {
   const result = await pool.query(
     `UPDATE registro_horas
     SET
-      horas = $1,
-      descripcion = $2
-    WHERE id_registro = $3
+      id_proyecto = $1,
+      id_fase = $2,
+      horas = $3,
+      descripcion = $4
+    WHERE id_registro = $5
     RETURNING *`,
-    [horas, descripcion, id]
+    [id_proyecto, id_fase, horas, descripcion, id]
   );
 
   return result.rows[0];

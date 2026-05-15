@@ -28,12 +28,18 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
     );
   }
 
+  // PROYECTO FINALIZADO
+  if (proyecto.fecha_fin_real) {
+    const error = new Error('No se pueden registrar horas en un proyecto finalizado');
+    error.status = 400;
+    throw error;
+  }
+
   // VALIDAR ASIGNACION EMPLEADO
   const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, id_proyecto);
 
   if (!perteneceProyecto) {
     const error = new Error('No estás asignado a este proyecto');
-
     error.status = 403;
     throw error;
   }
@@ -51,12 +57,18 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
     );
   }
 
+  const fases = await faseRepository.findByProyecto(id_proyecto);
+
+  const faseValida = fases.some(fase => fase.id_fase === id_fase);
+
+  if (!faseValida) {
+    const error = new Error('La fase no pertenece al proyecto');
+    error.status = 400;
+    throw error;
+  }
+
   // VALIDAR LIMITE DIARIO
-  const horasActuales =
-    await registroHorasRepository.getTotalHorasByEmpleadoYFecha(
-      user.id_usuario,
-      fecha
-    );
+  const horasActuales = await registroHorasRepository.getTotalHorasByEmpleadoYFecha(user.id_usuario, fecha);
 
   const total = Number(horasActuales) + Number(horas);
 
@@ -103,7 +115,7 @@ const getRegistroHorasById = async ({ id, user }) => {
   return registro;
 };
 
-const updateRegistroHoras = async ({ id, horas, descripcion, user }) => {
+const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcion, user, empresaId }) => {
   const registro = await registroHorasRepository.findById(id);
 
   if (!registro) {
@@ -126,6 +138,60 @@ const updateRegistroHoras = async ({ id, horas, descripcion, user }) => {
 
   if (fechaRegistro !== hoy) {
     const error = new Error('Solo puedes editar registros del mismo día');
+    error.status = 400;
+    throw error;
+  }
+
+  // VALIDAR PROYECTO
+  const proyecto = await proyectoRepository.findBasicById(id_proyecto);
+
+  if (!proyecto) {
+    throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
+  }
+
+  if (proyecto.id_empresa !== empresaId) {
+    throw Object.assign(
+      new Error("No tienes permisos para escoger este proyecto"),
+      { status: 403 }
+    );
+  }
+
+  // PROYECTO FINALIZADO
+  if (proyecto.fecha_fin_real) {
+    const error = new Error('No puedes registrar horas en un proyecto finalizado');
+    error.status = 400;
+    throw error;
+  }
+
+  // VALIDAR ASIGNACION EMPLEADO
+  const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, id_proyecto);
+
+  if (!perteneceProyecto) {
+    const error = new Error('No estás asignado a este proyecto');
+    error.status = 403;
+    throw error;
+  }
+
+  // VALIDAR FASE
+  const fase = await faseRepository.findById(id_fase);
+
+  if (!fase) {
+    throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
+  }
+
+  if (fase.id_empresa !== empresaId) {
+    throw Object.assign(
+      new Error("No tienes permisos para escoger esta fase"),
+      { status: 403 }
+    );
+  }
+
+  const fases = await faseRepository.findByProyecto(id_proyecto);
+
+  const faseValida = fases.some(fase => fase.id_fase === id_fase);
+
+  if (!faseValida) {
+    const error = new Error('La fase no pertenece al proyecto');
     error.status = 400;
     throw error;
   }

@@ -29,18 +29,18 @@ const create = async (data) => {
   return res.rows[0];
 };
 
-const findById = async (faseId) => {
+const findById = async (id) => {
   const res = await pool.query(
     `SELECT f.id_fase, f.id_proyecto, f.nombre, f.horas_estimadas, p.id_empresa
      FROM fase f
      INNER JOIN proyecto p ON p.id_proyecto = f.id_proyecto
      WHERE f.id_fase = $1 AND f.is_active = true`,
-    [faseId]
+    [id]
   );
   return res.rows[0] || null;
 };
 
-const update = async (faseId, data) => {
+const update = async (id, data) => {
   const res = await pool.query(
     `UPDATE fase
      SET nombre          = COALESCE($2, nombre),
@@ -48,7 +48,7 @@ const update = async (faseId, data) => {
      WHERE id_fase = $1
      RETURNING *`,
     [
-      faseId,
+      id,
       data.nombre ?? null,
       data.horas_estimadas !== undefined ? data.horas_estimadas : null,
     ]
