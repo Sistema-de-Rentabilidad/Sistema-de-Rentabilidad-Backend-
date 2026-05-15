@@ -37,7 +37,7 @@ const createEmpresa = async (req, res, next) => {
 const getEmpresaById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const empresa = await empresaService.getEmpresaById({ id, user: req.user });
+    const empresa = await empresaService.getEmpresaById({ id, user: req.user, empresaId: req.empresaId });
 
     res.status(200).json({ success: true, data: empresa });
   } catch (error) {
@@ -50,7 +50,7 @@ const updateEmpresa = async (req, res, next) => {
     const { id } = req.params;
     const { nombre } = req.body;
 
-    const empresaActualizada = await empresaService.updateEmpresa({ id, nombre, user: req.user});
+    const empresaActualizada = await empresaService.updateEmpresa({ id, nombre, user: req.user, empresaId: req.empresaId });
 
     res.status(200).json({
       success: true,

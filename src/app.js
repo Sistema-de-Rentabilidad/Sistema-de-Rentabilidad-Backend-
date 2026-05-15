@@ -8,7 +8,7 @@ const servicioRoutes = require("./modules/servicio/servicio.routes");
 const usuarioRoutes = require("./modules/usuario/usuario.routes");
 const historialRoutes = require("./modules/historial_sueldo/historial.routes");
 const proyectoRoutes = require("./modules/proyecto/proyecto.routes");
-const horasRoutes = require("./modules/horas/horas.routes");
+const horasRoutes = require("./modules/registro_horas/horas.routes");
 const faseRoutes = require("./modules/fase/fase.routes");
 const notasRoutes = require("./modules/notas/notas.routes");
 

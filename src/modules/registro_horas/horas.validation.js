@@ -1,0 +1,56 @@
+const { body, param } = require('express-validator');
+const { handleValidationErrors } = require('../../modules/middlewares/validationMiddleware');
+
+const createHorasValidation = [
+    body('id_proyecto')
+        .notEmpty().withMessage('El proyecto es obligatorio')
+        .isInt({ min: 1 }).withMessage('ID de proyecto inválido'),
+
+    body('id_fase')
+        .notEmpty().withMessage('La fase es obligatoria')
+        .isInt({ min: 1 }).withMessage('ID de fase inválido'),
+
+    body('horas')
+        .notEmpty().withMessage('Las horas son obligatorias')
+        .isNumeric().withMessage('Las horas deben ser números')
+        .isFloat({ min: 0.5, max: 12 }).withMessage('Las horas deben estar entre 0.5 y 12'),
+
+    body('descripcion')
+        .optional({ checkFalsy: true })
+        .trim()
+        .isLength({ min: 3, max: 100 }).withMessage("La descripción debe tener entre 3 y 100 caracteres")
+        .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()-]+$/)
+        .withMessage('La descripción contiene caracteres inválidos')
+        .trim(),
+
+    handleValidationErrors
+];
+
+const registroHorasIdParamValidation = [
+    param('id').isInt({ min: 1 }).withMessage('ID de registro inválido'),
+
+    handleValidationErrors
+];
+
+const updateHorasValidation = [
+    body('horas')
+        .notEmpty()
+        .withMessage('Las horas son obligatorias')
+        .isFloat({ min: 0.5, max: 12 })
+        .withMessage('Las horas deben estar entre 0.5 y 12'),
+
+    body('descripcion')
+        .optional({ checkFalsy: true })
+        .trim()
+        .isLength({ min: 3, max: 100 }).withMessage('La descripción debe tener entre 3 y 100 caracteres')
+        .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()-]+$/)
+        .withMessage('La descripción contiene caracteres inválidos'),
+
+    handleValidationErrors
+];
+
+module.exports = {
+    createHorasValidation,
+    registroHorasIdParamValidation,
+    updateHorasValidation
+};

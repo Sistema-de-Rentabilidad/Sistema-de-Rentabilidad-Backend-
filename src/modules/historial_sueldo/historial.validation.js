@@ -2,6 +2,7 @@ const { body, validationResult } = require('express-validator');
 
 const createHistorialValidation = [
     body('id_usuario')
+        .notEmpty().withMessage('El usuario es obligatorio')
         .isInt().withMessage('Usuario inválido'),
 
     body('tipo_pago')
@@ -11,7 +12,7 @@ const createHistorialValidation = [
     body('monto')
         .notEmpty().withMessage('El monto es obligatorio')
         .isNumeric().withMessage('El monto debe ser numérico')
-        .isFloat({ min: 1 }).withMessage('El monto debe ser mayor a 0'),
+        .isFloat({ min: 0.5 }).withMessage('El monto debe ser mayor a 0.5'),
 
     body('horas_mensuales')
         .if(body('tipo_pago').equals('mensual'))

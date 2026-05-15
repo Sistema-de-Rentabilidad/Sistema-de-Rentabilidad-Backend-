@@ -2,8 +2,7 @@ const empresaRepository = require('./empresa.repository');
 
 const getEmpresas = async () => {
   const empresas = await empresaRepository.findAll();
-
-  // aquí podrías aplicar reglas si quieres
+  
   return empresas;
 };
 
@@ -22,7 +21,7 @@ const createEmpresa = async ({ nombre }) => {
   return empresa;
 };
 
-const getEmpresaById = async ({ id, user }) => {
+const getEmpresaById = async ({ id, user, empresaId }) => {
   const empresa = await empresaRepository.findById(id);
 
   if (!empresa) {
@@ -32,7 +31,7 @@ const getEmpresaById = async ({ id, user }) => {
   }
 
   // REGLA: owner solo ve su empresa
-  if (user.rol === 'propietario' && empresa.id_empresa !== user.id_empresa) {
+  if (user.rol !== 'admin' && empresa.id_empresa !== empresaId) {
     const error = new Error('No tienes acceso a esta empresa');
     error.status = 403;
     throw error;
@@ -41,7 +40,7 @@ const getEmpresaById = async ({ id, user }) => {
   return empresa;
 };
 
-const updateEmpresa = async ({ id, nombre, user }) => {
+const updateEmpresa = async ({ id, nombre, user, empresaId }) => {
   // verificar si existe
   const empresa = await empresaRepository.findById(id);
 
@@ -52,7 +51,7 @@ const updateEmpresa = async ({ id, nombre, user }) => {
   }
 
   // VALIDACIÓN DE PROPIEDAD
-  if (user.rol === 'propietario' && empresa.id_empresa !== user.id_empresa) {
+  if (user.rol === 'propietario' && empresa.id_empresa !== empresaId) {
     const error = new Error('No puedes modificar esta empresa');
     error.status = 403;
     throw error;
