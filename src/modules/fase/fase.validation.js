@@ -16,9 +16,9 @@ const createFaseValidation = [
     .trim(),
 
   body("horas_estimadas")
-    .optional()
-    .isNumeric().withMessage('El monto debe ser numérico')
-    .isFloat({ min: 1 }).withMessage("Las horas estimadas deben ser un número mayor a 0"),
+    .notEmpty().withMessage("Las horas estimadas son obligatorias")
+    .isNumeric().withMessage('Las horas estimadas deben ser números')
+    .isFloat({ min: 1 }).withMessage("Las horas estimadas deben ser mayor a 0"),
 
   handleValidationErrors
 ];

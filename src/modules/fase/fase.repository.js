@@ -1,6 +1,6 @@
 const pool = require("../../config/db");
 
-const findFasesByProyecto = async (proyectoId) => {
+const findByProyecto = async (proyectoId) => {
   const res = await pool.query(
     `SELECT id_fase, nombre, horas_estimadas
      FROM fase
@@ -10,7 +10,7 @@ const findFasesByProyecto = async (proyectoId) => {
   return res.rows;
 };
 
-const findFaseByNombreAndProyecto = async (nombre, proyectoId) => {
+const findByNombreAndProyecto = async (nombre, proyectoId) => {
   const res = await pool.query(
     `SELECT id_fase FROM fase
      WHERE LOWER(nombre) = LOWER($1) AND id_proyecto = $2 AND is_active = true`,
@@ -19,7 +19,7 @@ const findFaseByNombreAndProyecto = async (nombre, proyectoId) => {
   return res.rows[0] || null;
 };
 
-const createFase = async (data) => {
+const create = async (data) => {
   const res = await pool.query(
     `INSERT INTO fase (id_proyecto, nombre, horas_estimadas, is_active)
      VALUES ($1, $2, $3, true)
@@ -29,7 +29,7 @@ const createFase = async (data) => {
   return res.rows[0];
 };
 
-const findFaseById = async (faseId) => {
+const findById = async (faseId) => {
   const res = await pool.query(
     `SELECT f.id_fase, f.id_proyecto, f.nombre, f.horas_estimadas, p.id_empresa
      FROM fase f
@@ -40,7 +40,7 @@ const findFaseById = async (faseId) => {
   return res.rows[0] || null;
 };
 
-const updateFase = async (faseId, data) => {
+const update = async (faseId, data) => {
   const res = await pool.query(
     `UPDATE fase
      SET nombre          = COALESCE($2, nombre),
@@ -57,9 +57,9 @@ const updateFase = async (faseId, data) => {
 };
 
 module.exports = {
-  findFasesByProyecto,
-  findFaseByNombreAndProyecto,
-  findFaseById,
-  createFase,
-  updateFase
+  findByProyecto,
+  findByNombreAndProyecto,
+  findById,
+  create,
+  update
 };
