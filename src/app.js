@@ -10,7 +10,7 @@ const historialRoutes = require("./modules/historial_sueldo/historial.routes");
 const proyectoRoutes = require("./modules/proyecto/proyecto.routes");
 const horasRoutes = require("./modules/registro_horas/horas.routes");
 const faseRoutes = require("./modules/fase/fase.routes");
-const notasRoutes = require("./modules/notas/notas.routes");
+const notasRoutes = require("./modules/nota/nota.routes");
 
 const errorHandler = require("./modules/middlewares/errorHandler");
 

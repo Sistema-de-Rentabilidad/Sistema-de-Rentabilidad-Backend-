@@ -9,6 +9,17 @@ const findById = async (usuarioId) => {
   return result.rows[0] || null;
 };
 
+const findByIds = async (ids) => {
+  const res = await pool.query(
+    `SELECT id_usuario, id_empresa, rol
+     FROM usuario 
+     WHERE id_usuario = ANY($1)`,
+    [ids]
+  );
+
+  return res.rows;
+};
+
 // const findAllOwners = async () => {
 //   const result = await pool.query(`
 //     SELECT
@@ -140,6 +151,7 @@ const hardDelete = async (id) => {
 
 module.exports = {
   findById,
+  findByIds,
   // findAllOwners,
   findOnlypropietario,
   findByEmpresa,

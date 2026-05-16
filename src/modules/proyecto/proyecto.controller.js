@@ -35,33 +35,6 @@ const getProyectos = async (req, res, next) => {
   }
 };
 
-const getMisProyectos = async (req, res, next) => {
-  try {
-    if (!req.user?.id_usuario) {
-      return res.status(401).json({ success: false, message: "Usuario no autenticado" });
-    }
-    const proyectos = await proyectoService.getMisProyectos(req.user);
-    return res.status(200).json({ success: true, data: proyectos });
-  } catch (err) {
-    next(err);
-  }
-};
-
-const getProyectosDisponibles = async (req, res, next) => {
-  try {
-    if (!req.user?.id_usuario) {
-      return res.status(401).json({ success: false, message: "Usuario no autenticado" });
-    }
-    const userDB = await usuarioRepository.findById(req.user.id_usuario);
-    if (!userDB) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
-    const proyectos = await proyectoService.getProyectosDisponibles(userDB);
-    return res.status(200).json({ success: true, data: proyectos });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-    next(err);
-  }
-};
-
 const createProyecto = async (req, res, next) => {
   try {
     const empresaId = req.empresaId;
@@ -159,18 +132,6 @@ const finalizarProyecto = async (req, res, next) => {
   }
 };
 
-const getEmpleadosProyecto = async (req, res, next) => {
-  try {
-    const userDB = await resolveEmpresa(req, res);
-    if (!userDB) return;
-    const empleados = await proyectoService.getEmpleadosProyecto(parseInt(req.params.id, 10), userDB.id_empresa);
-    return res.status(200).json({ success: true, data: empleados });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-    next(err);
-  }
-};
-
 const getHorasResumenProyecto = async (req, res, next) => {
   try {
     const userDB = await resolveEmpresa(req, res);
@@ -185,13 +146,10 @@ const getHorasResumenProyecto = async (req, res, next) => {
 
 module.exports = {
   getProyectos,
-  getMisProyectos,
-  getProyectosDisponibles,
-  getProyectoById,
   createProyecto,
+  getProyectoById,
   updateProyecto,
   desactivarProyecto,
   finalizarProyecto,
   getHorasResumenProyecto,
-  getEmpleadosProyecto,
 };

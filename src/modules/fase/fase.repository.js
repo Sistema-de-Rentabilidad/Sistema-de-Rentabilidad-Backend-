@@ -2,11 +2,17 @@ const pool = require("../../config/db");
 
 const findByProyecto = async (proyectoId) => {
   const res = await pool.query(
-    `SELECT id_fase, nombre, horas_estimadas
-     FROM fase
-     WHERE id_proyecto = $1 AND is_active = true`,
+    `SELECT f.id_fase, f.nombre, f.horas_estimadas, COALESCE(SUM(h.horas), 0) AS horas_trabajadas
+     FROM fase f
+     LEFT JOIN registro_horas h
+       ON h.id_fase = f.id_fase
+     WHERE f.id_proyecto = $1
+       AND f.is_active = true
+     GROUP BY f.id_fase, f.nombre, f.horas_estimadas
+     ORDER BY f.id_fase`,
     [proyectoId]
   );
+
   return res.rows;
 };
 
@@ -34,7 +40,7 @@ const findById = async (id) => {
     `SELECT f.id_fase, f.id_proyecto, f.nombre, f.horas_estimadas, p.id_empresa
      FROM fase f
      INNER JOIN proyecto p ON p.id_proyecto = f.id_proyecto
-     WHERE f.id_fase = $1 AND f.is_active = true`,
+     WHERE f.id_fase = $1 AND f.is_active = true AND p.is_active = true`,
     [id]
   );
   return res.rows[0] || null;
@@ -59,7 +65,7 @@ const update = async (id, data) => {
 module.exports = {
   findByProyecto,
   findByNombreAndProyecto,
-  findById,
   create,
+  findById,
   update
 };

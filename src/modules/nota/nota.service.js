@@ -1,26 +1,14 @@
-const notasRepository = require("./notas.repository");
+const notaRepository = require("./nota.repository");
+const verifyProyectoAccess = require("../../utils/verifyProyectoAccess")
 
-const verifyProyectoAccess = async (proyectoId, empresaId) => {
-  const proyecto = await notasRepository.findProyectoById(proyectoId);
-  if (!proyecto) {
-    throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
-  }
-  if (proyecto.id_empresa !== empresaId) {
-    throw Object.assign(
-      new Error("No tienes permisos para acceder a este proyecto"),
-      { status: 403 }
-    );
-  }
-  return proyecto;
+const getNotasByProyecto = async (proyectoId, empresaId) => {
+  await verifyProyectoAccess(proyectoId, empresaId);
+
+  return await notaRepository.findByProyecto(proyectoId);
 };
 
-const getNotasByProyecto = async (proyectoId, user) => {
-  await verifyProyectoAccess(proyectoId, user.id_empresa);
-  return await notasRepository.findNotasByProyecto(proyectoId);
-};
-
-const createNota = async (proyectoId, data, user) => {
-  const proyecto = await verifyProyectoAccess(proyectoId, user.id_empresa);
+const createNota = async (proyectoId, data, user, empresaId) => {
+  const proyecto = await verifyProyectoAccess(proyectoId, empresaId);;
 
   if (proyecto.id_lider !== user.id_usuario) {
     throw Object.assign(
@@ -29,35 +17,55 @@ const createNota = async (proyectoId, data, user) => {
     );
   }
 
-  return await notasRepository.insertNota({
+  return await notaRepository.create({
     id_proyecto: proyectoId,
     id_lider: user.id_usuario,
     descripcion: data.descripcion,
   });
 };
 
-const updateNota = async (notaId, data, user) => {
-  const nota = await notasRepository.findNotaById(notaId);
+const getNotaById = async (notaId, empresaId) => {
+  const nota = await notaRepository.findById(notaId);
+
   if (!nota) {
     throw Object.assign(new Error("Nota no encontrada"), { status: 404 });
   }
-  if (nota.id_empresa !== user.id_empresa) {
+
+  if (nota.id_empresa !== empresaId) {
+    throw Object.assign(
+      new Error("No tienes permisos para acceder a esta nota"),
+      { status: 403 }
+    );
+  }
+  return nota;
+};
+
+const updateNota = async (notaId, data, user, empresaId) => {
+  const nota = await notaRepository.findById(notaId);
+
+  if (!nota) {
+    throw Object.assign(new Error("Nota no encontrada"), { status: 404 });
+  }
+
+  if (nota.id_empresa !== empresaId) {
     throw Object.assign(
       new Error("No tienes permisos para editar esta nota"),
       { status: 403 }
     );
   }
+
   if (nota.id_lider !== user.id_usuario) {
     throw Object.assign(
       new Error("Solo puedes editar tus propias notas"),
       { status: 403 }
     );
   }
-  return await notasRepository.updateNota(notaId, data.descripcion);
+
+  return await notaRepository.update(notaId, data.descripcion);
 };
 
 const desactivarNota = async (notaId, user) => {
-  const nota = await notasRepository.findNotaById(notaId);
+  const nota = await notaRepository.findById(notaId);
   if (!nota) {
     throw Object.assign(new Error("Nota no encontrada"), { status: 404 });
   }
@@ -73,12 +81,13 @@ const desactivarNota = async (notaId, user) => {
       { status: 403 }
     );
   }
-  return await notasRepository.desactivarNota(notaId);
+  return await notaRepository.desactivarNota(notaId);
 };
 
 module.exports = {
   getNotasByProyecto,
   createNota,
+  getNotaById,
   updateNota,
   desactivarNota,
 };

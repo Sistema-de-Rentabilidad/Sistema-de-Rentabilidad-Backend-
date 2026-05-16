@@ -1,4 +1,6 @@
 const proyectoRepository = require("./proyecto.repository");
+const servicioRepository = require("../servicio/servicio.repository");
+const usuarioRepository = require("../usuario/usuario.repository");
 const pool = require("../../config/db");
 
 const getProyectos = async ({ empresaId, liderId = null }) => {
@@ -6,25 +8,6 @@ const getProyectos = async ({ empresaId, liderId = null }) => {
     empresaId,
     liderId
   });
-};
-
-const getMisProyectos = async (usuario) => {
-  if (usuario.rol === "lider") {
-    return await proyectoRepository.findByLider(usuario.id_usuario);
-  }
-  return await proyectoRepository.findAssignedByEmpleado(usuario.id_usuario);
-};
-
-const getProyectosDisponibles = async (usuario) => {
-  if (!usuario.id_empresa) {
-    const err = new Error("Usuario sin empresa asociada");
-    err.status = 400;
-    throw err;
-  }
-  if (usuario.rol === "empleado") {
-    return await proyectoRepository.findAssignedByEmpleado(usuario.id_usuario);
-  }
-  return await proyectoRepository.findActiveByEmpresa(usuario.id_empresa);
 };
 
 const createProyecto = async (empresaId, data) => {
@@ -52,13 +35,13 @@ const createProyecto = async (empresaId, data) => {
   }
 
   // Validar servicio pertenece a empresa
-  const servicio = await proyectoRepository.findServicioById(id_servicio);
+  const servicio = await servicioRepository.findById(id_servicio);
   if (!servicio || servicio.id_empresa !== empresaId) {
     throw Object.assign(new Error('Servicio no válido'), { status: 400 });
   }
 
   // Validar líder pertenece a empresa
-  const lider = await proyectoRepository.findUsuarioById(id_lider);
+  const lider = await usuarioRepository.findById(id_lider);
   if (!lider || lider.id_empresa !== empresaId || lider.rol !== 'lider') {
     throw Object.assign(new Error('Líder no válido'), { status: 400 });
   }
@@ -70,7 +53,7 @@ const createProyecto = async (empresaId, data) => {
       throw Object.assign(new Error('Empleados duplicados'), { status: 400 });
     }
 
-    const empleadosDB = await proyectoRepository.findUsuariosByIds(empleados);
+    const empleadosDB = await usuarioRepository.findByIds(empleados);
 
     if (empleadosDB.length !== empleados.length) {
       throw Object.assign(new Error('Empleado no válido'), { status: 400 });
@@ -161,7 +144,7 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
 
   // validar servicio
   if (id_servicio) {
-    const servicio = await proyectoRepository.findServicioById(id_servicio);
+    const servicio = await servicioRepository.findById(id_servicio);
     if (!servicio || servicio.id_empresa !== empresaId) {
       throw Object.assign(new Error('Servicio no válido'), { status: 400 });
     }
@@ -169,7 +152,7 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
 
   // validar líder
   if (id_lider) {
-    const lider = await proyectoRepository.findUsuarioById(id_lider);
+    const lider = await usuarioRepository.findById(id_lider);
 
     if (!lider || lider.id_empresa !== empresaId || lider.rol !== 'lider') {
       throw Object.assign(new Error('Líder no válido'), { status: 400 });
@@ -183,7 +166,7 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
       throw Object.assign(new Error('Empleados duplicados'), { status: 400 });
     }
 
-    const empleadosDB = await proyectoRepository.findUsuariosByIds(empleados);
+    const empleadosDB = await usuarioRepository.findByIds(empleados);
 
     if (empleadosDB.length !== empleados.length) {
       throw Object.assign(new Error('Empleado no válido'), { status: 400 });
@@ -267,22 +250,7 @@ const finalizarProyecto = async ({
     );
   }
 
-  return await proyectoRepository.finalizarProyecto(proyectoId);
-};
-
-const getEmpleadosProyecto = async (proyectoId, empresaId) => {
-  const proyecto = await proyectoRepository.findById(proyectoId);
-  if (!proyecto) {
-    const err = new Error("Proyecto no encontrado");
-    err.status = 404;
-    throw err;
-  }
-  if (proyecto.id_empresa !== empresaId) {
-    const err = new Error("No autorizado");
-    err.status = 403;
-    throw err;
-  }
-  return await proyectoRepository.findEmpleadosByProyecto(proyectoId);
+  return await proyectoRepository.finalizar(proyectoId);
 };
 
 const getHorasResumenByProyecto = async (proyectoId, empresaId) => {
@@ -297,13 +265,10 @@ const getHorasResumenByProyecto = async (proyectoId, empresaId) => {
 
 module.exports = {
   getProyectos,
-  getMisProyectos,
-  getProyectosDisponibles,
-  getProyectoById,
   createProyecto,
+  getProyectoById,
   updateProyecto,
   desactivarProyecto,
   finalizarProyecto,
   getHorasResumenByProyecto,
-  getEmpleadosProyecto,
 };

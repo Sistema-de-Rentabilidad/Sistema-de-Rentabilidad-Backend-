@@ -2,7 +2,29 @@ const pool = require("../../config/db");
 
 const findAll = async ({ empresaId, liderId = null }) => {
   let query = `
-    SELECT 
+    WITH costo_proyecto AS (
+      SELECT
+          rh.id_proyecto,
+          SUM(
+            CASE
+              WHEN hs.tipo_pago = 'por_hora'
+                THEN hs.monto * rh.horas
+              WHEN hs.tipo_pago = 'mensual'
+                THEN (hs.monto / NULLIF(hs.horas_mensuales, 0)) * rh.horas
+              ELSE 0
+            END) AS costo_total
+      FROM registro_horas rh
+      INNER JOIN historial_sueldo hs
+        ON hs.id_usuario = rh.id_empleado
+      INNER JOIN proyecto p2
+        ON p2.id_proyecto = rh.id_proyecto
+      WHERE (rh.fecha BETWEEN hs.fecha_inicio
+          AND COALESCE(hs.fecha_fin, CURRENT_DATE))
+      AND rh.fecha >= p2.fecha_inicio
+      AND rh.fecha <= CURRENT_DATE
+      GROUP BY rh.id_proyecto
+    )
+    SELECT
         p.id_proyecto,
         p.nombre,
         p.descripcion,
@@ -13,6 +35,10 @@ const findAll = async ({ empresaId, liderId = null }) => {
         s.nombre AS nombre_servicio,
         p.id_lider,
         u.nombre AS nombre_lider,
+        COALESCE(cp.costo_total, 0)
+          AS costo_real,
+        (p.presupuesto - COALESCE(cp.costo_total, 0)) AS rentabilidad,
+
         COALESCE(
           JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -23,17 +49,17 @@ const findAll = async ({ empresaId, liderId = null }) => {
           '[]'
         ) AS empleados
      FROM proyecto p
-     LEFT JOIN usuario u 
+     LEFT JOIN costo_proyecto cp
+       ON cp.id_proyecto = p.id_proyecto
+     LEFT JOIN usuario u
        ON p.id_lider = u.id_usuario
-     LEFT JOIN servicio s 
+     LEFT JOIN servicio s
        ON p.id_servicio = s.id_servicio
-     LEFT JOIN proyecto_empleado pe 
+     LEFT JOIN proyecto_empleado pe
        ON pe.id_proyecto = p.id_proyecto
-     LEFT JOIN usuario ue 
+     LEFT JOIN usuario ue
        ON pe.id_empleado = ue.id_usuario
      WHERE p.id_empresa = $1
-       AND u.id_empresa = $1
-       AND s.id_empresa = $1
        AND p.is_active = true
   `;
   const params = [empresaId];
@@ -48,154 +74,13 @@ const findAll = async ({ empresaId, liderId = null }) => {
      GROUP BY 
        p.id_proyecto,
        u.nombre,
-       s.nombre
+       s.nombre,
+       cp.costo_total
      ORDER BY p.fecha_inicio DESC
   `;
 
   const result = await pool.query(query, params);
 
-  return result.rows;
-};
-
-const findBasicById = async (id) => {
-  const res = await pool.query(
-    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real
-     FROM proyecto
-     WHERE id_proyecto = $1 AND is_active = true`,
-    [id]
-  );
-
-  return res.rows[0];
-};
-  
-const findById = async (proyectoId) => {
-  const result = await pool.query(
-    `SELECT
-        p.id_proyecto,
-        p.id_empresa,
-        p.nombre,
-        p.is_active,
-        p.descripcion,
-        p.presupuesto,
-        p.fecha_inicio,
-        p.fecha_fin_estimada,
-        p.fecha_fin_real,
-        p.id_servicio,
-        s.nombre AS servicio_nombre,
-        p.id_lider,
-        u.nombre AS lider_nombre,
-        COALESCE(
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id_usuario', ue.id_usuario,
-              'nombre', ue.nombre
-            )
-          ) FILTER (WHERE ue.id_usuario IS NOT NULL),
-          '[]'
-        ) AS empleados
-     FROM proyecto p
-     LEFT JOIN servicio s ON s.id_servicio = p.id_servicio
-     LEFT JOIN usuario u ON u.id_usuario = p.id_lider
-     LEFT JOIN proyecto_empleado pe 
-       ON pe.id_proyecto = p.id_proyecto
-     LEFT JOIN usuario ue 
-       ON ue.id_usuario = pe.id_empleado
-     WHERE p.id_proyecto = $1
-       AND p.is_active = true
-     GROUP BY 
-       p.id_proyecto,
-       s.nombre,
-       u.nombre`,
-    [proyectoId]
-  );
-
-  return result.rows[0] || null;
-};
-
-/* ─── findByLider ───────────────────────────────────────────────────────── */
-const findByLider = async (liderId) => {
-  try {
-    const result = await pool.query(
-      `SELECT DISTINCT
-          p.id_proyecto,
-          p.nombre,
-          p.descripcion,
-          p.presupuesto,
-          p.fecha_inicio,
-          p.fecha_fin_estimada,
-          p.is_active,
-          s.nombre AS servicio_nombre
-       FROM proyecto p
-       INNER JOIN proyecto_lider pl ON pl.id_proyecto = p.id_proyecto
-       LEFT JOIN  servicio s        ON s.id_servicio  = p.id_servicio
-       WHERE pl.id_lider = $1 AND p.is_active = true
-       ORDER BY p.id_proyecto DESC`,
-      [liderId]
-    );
-    return result.rows;
-  } catch {
-    // Fallback cuando proyecto_lider aún no existe
-    const result = await pool.query(
-      `SELECT
-          p.id_proyecto, p.nombre, p.descripcion, p.presupuesto,
-          p.horas_estimadas, p.fecha_inicio, p.fecha_fin_estimada,
-          p.is_active, s.nombre AS servicio_nombre
-       FROM proyecto p
-       LEFT JOIN servicio s ON s.id_servicio = p.id_servicio
-       WHERE p.id_lider = $1 AND p.is_active = true
-       ORDER BY p.id_proyecto DESC`,
-      [liderId]
-    );
-    return result.rows;
-  }
-};
-
-/* ─── findByEmpleado (via horas registradas — legacy) ───────────────────── */
-const findByEmpleado = async (empleadoId) => {
-  const result = await pool.query(
-    `SELECT DISTINCT
-        p.id_proyecto,
-        p.nombre,
-        p.descripcion,
-        p.presupuesto,
-        p.horas_estimadas,
-        p.fecha_inicio,
-        p.fecha_fin_estimada,
-        p.is_active,
-        s.nombre AS servicio_nombre,
-        u.nombre AS lider_nombre
-     FROM proyecto p
-     INNER JOIN registro_horas rh ON rh.id_proyecto = p.id_proyecto
-     LEFT JOIN  servicio s        ON s.id_servicio  = p.id_servicio
-     LEFT JOIN  usuario  u        ON u.id_usuario   = p.id_lider
-     WHERE rh.id_empleado = $1 AND p.is_active = true
-     ORDER BY p.id_proyecto DESC`,
-    [empleadoId]
-  );
-  return result.rows;
-};
-
-/* ─── findAssignedByEmpleado — sin fallback (solo proyecto_empleado) ────── */
-const findAssignedByEmpleado = async (empleadoId) => {
-  const result = await pool.query(
-    `SELECT DISTINCT
-        p.id_proyecto,
-        p.nombre,
-        p.descripcion,
-        p.horas_estimadas,
-        p.fecha_inicio,
-        p.fecha_fin_estimada,
-        p.is_active,
-        s.nombre AS servicio_nombre,
-        u.nombre AS lider_nombre
-     FROM proyecto p
-     INNER JOIN proyecto_empleado pe ON pe.id_proyecto = p.id_proyecto
-     LEFT JOIN  servicio s           ON s.id_servicio  = p.id_servicio
-     LEFT JOIN  usuario  u           ON u.id_usuario   = p.id_lider
-     WHERE pe.id_empleado = $1 AND p.is_active = true
-     ORDER BY p.id_proyecto DESC`,
-    [empleadoId]
-  );
   return result.rows;
 };
 
@@ -210,37 +95,6 @@ const findByNombreAndEmpresa = async (nombre, empresaId) => {
   );
 
   return res.rows[0];
-};
-
-const findServicioById = async (id) => {
-  const res = await pool.query(
-    'SELECT id_servicio, id_empresa FROM servicio WHERE id_servicio = $1',
-    [id]
-  );
-
-  return res.rows[0];
-};
-
-const findUsuarioById = async (id) => {
-  const res = await pool.query(
-    `SELECT id_usuario, id_empresa, rol 
-     FROM usuario 
-     WHERE id_usuario = $1`,
-    [id]
-  );
-
-  return res.rows[0];
-};
-
-const findUsuariosByIds = async (ids) => {
-  const res = await pool.query(
-    `SELECT id_usuario, id_empresa, rol
-     FROM usuario 
-     WHERE id_usuario = ANY($1)`,
-    [ids]
-  );
-
-  return res.rows;
 };
 
 const create = async (data) => {
@@ -300,6 +154,61 @@ const create = async (data) => {
   } finally {
     client.release();
   }
+};
+
+const findBasicById = async (id) => {
+  const res = await pool.query(
+    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real
+     FROM proyecto
+     WHERE id_proyecto = $1 AND is_active = true`,
+    [id]
+  );
+
+  return res.rows[0];
+};
+
+const findById = async (proyectoId) => {
+  const result = await pool.query(
+    `SELECT
+        p.id_proyecto,
+        p.id_empresa,
+        p.nombre,
+        p.is_active,
+        p.descripcion,
+        p.presupuesto,
+        p.fecha_inicio,
+        p.fecha_fin_estimada,
+        p.fecha_fin_real,
+        p.id_servicio,
+        s.nombre AS servicio_nombre,
+        p.id_lider,
+        u.nombre AS lider_nombre,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id_usuario', ue.id_usuario,
+              'nombre', ue.nombre
+            )
+          ) FILTER (WHERE ue.id_usuario IS NOT NULL),
+          '[]'
+        ) AS empleados
+     FROM proyecto p
+     LEFT JOIN servicio s ON s.id_servicio = p.id_servicio
+     LEFT JOIN usuario u ON u.id_usuario = p.id_lider
+     LEFT JOIN proyecto_empleado pe 
+       ON pe.id_proyecto = p.id_proyecto
+     LEFT JOIN usuario ue 
+       ON ue.id_usuario = pe.id_empleado
+     WHERE p.id_proyecto = $1
+       AND p.is_active = true
+     GROUP BY 
+       p.id_proyecto,
+       s.nombre,
+       u.nombre`,
+    [proyectoId]
+  );
+
+  return result.rows[0] || null;
 };
 
 const update = async (proyectoId, data) => {
@@ -379,7 +288,7 @@ const desactivar = async (proyectoId) => {
   return result.rows[0];
 };
 
-const finalizarProyecto = async (proyectoId) => {
+const finalizar = async (proyectoId) => {
   const result = await pool.query(
     `
     UPDATE proyecto
@@ -391,39 +300,6 @@ const finalizarProyecto = async (proyectoId) => {
   );
 
   return result.rows[0];
-};
-
-/* ─── proyecto_empleado helpers ─────────────────────────────────────────── */
-const findEmpleadosByProyecto = async (proyectoId) => {
-  try {
-    const result = await pool.query(
-      `SELECT pe.id_empleado, u.nombre, u.email
-       FROM proyecto_empleado pe
-       INNER JOIN usuario u ON u.id_usuario = pe.id_empleado
-       WHERE pe.id_proyecto = $1`,
-      [proyectoId]
-    );
-    return result.rows;
-  } catch {
-    return [];
-  }
-};
-
-/* ─── proyecto_lider helpers ────────────────────────────────────────────── */
-const findLideresByProyecto = async (proyectoId) => {
-  try {
-    const result = await pool.query(
-      `SELECT pl.id_lider, u.nombre, u.email
-       FROM proyecto_lider pl
-       INNER JOIN usuario u ON u.id_usuario = pl.id_lider
-       WHERE pl.id_proyecto = $1
-       ORDER BY pl.id_lider ASC`,
-      [proyectoId]
-    );
-    return result.rows;
-  } catch {
-    return [];
-  }
 };
 
 /* ─── Resumen de horas por empleado ─────────────────────────────────────── */
@@ -447,20 +323,12 @@ const findHorasResumenByProyecto = async (proyectoId) => {
 
 module.exports = {
   findAll,
+  findByNombreAndEmpresa,
+  create,
   findBasicById,
   findById,
-  findByLider,
-  findByEmpleado,
-  findAssignedByEmpleado,
-  findByNombreAndEmpresa,
-  findServicioById,
-  findUsuarioById,
-  findUsuariosByIds,
-  create,
   update,
   desactivar,
-  finalizarProyecto,
-  findEmpleadosByProyecto,
-  findLideresByProyecto,
+  finalizar,
   findHorasResumenByProyecto,
 };
