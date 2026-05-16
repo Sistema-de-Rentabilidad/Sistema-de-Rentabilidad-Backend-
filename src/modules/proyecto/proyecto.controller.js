@@ -3,26 +3,31 @@ const usuarioRepository = require("../usuario/usuario.repository");
 
 const getProyectos = async (req, res, next) => {
   try {
-    const empresaId = req.empresaId; // viene del middleware
-
+    const empresaId = req.empresaId;
     const usuario = req.user;
 
-    let filtros = {
-      empresaId
-    };
+    let proyectos = [];
 
-    // si es líder → filtrar sus proyectos
+    // líder
     if (usuario.rol === 'lider') {
-      filtros.liderId = usuario.id_usuario;
+      proyectos = await proyectoService.getProyectosLider({ empresaId, liderId: usuario.id_usuario });
     }
 
-    const proyectos = await proyectoService.getProyectos(filtros);
+    // empleado
+    else if (usuario.rol === 'empleado') {
+      proyectos = await proyectoService.getProyectosEmpleado({ empresaId, empleadoId: usuario.id_usuario });
+    }
+
+    // propietario
+    else {
+      proyectos = await proyectoService.getProyectos(empresaId);
+    }
 
     if (proyectos.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No hay proyectos disponibles",
-        data: [],
+        message: 'No hay proyectos disponibles',
+        data: []
       });
     }
 
@@ -30,6 +35,7 @@ const getProyectos = async (req, res, next) => {
       success: true,
       data: proyectos
     });
+
   } catch (error) {
     next(error);
   }

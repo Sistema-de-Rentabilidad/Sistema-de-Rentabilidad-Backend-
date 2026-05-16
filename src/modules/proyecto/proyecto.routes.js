@@ -9,7 +9,7 @@ const role = require('../middlewares/roleMiddleware');
 const empresa = require('../middlewares/empresaMiddleware');
 
 // GET /proyectos
-router.get("/", auth, role("propietario", "lider"), empresa, proyectoController.getProyectos);
+router.get("/", auth, role("propietario", "lider", "empleado"), empresa, proyectoController.getProyectos);
 
 // POST /proyectos
 router.post("/", auth, role("propietario"), empresa, createProyectoValidation, proyectoController.createProyecto);

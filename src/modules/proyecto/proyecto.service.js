@@ -3,24 +3,34 @@ const servicioRepository = require("../servicio/servicio.repository");
 const usuarioRepository = require("../usuario/usuario.repository");
 const pool = require("../../config/db");
 
-const getProyectos = async ({ empresaId, liderId = null }) => {
-  return await proyectoRepository.findAll({
-    empresaId,
-    liderId
-  });
+const getProyectos = async (empresaId) => {
+  return await proyectoRepository.findAll(empresaId);
+};
+
+const getProyectosLider = async ({ empresaId, liderId }) => {
+  if (!empresaId || !liderId) {
+    throw Object.assign(
+      new Error('Empresa y líder son requeridos'),
+      { status: 400 }
+    );
+  }
+
+  return await proyectoRepository.findAllByLider({ empresaId, liderId });
+};
+
+const getProyectosEmpleado = async ({ empresaId, empleadoId }) => {
+  if (!empresaId || !empleadoId) {
+    throw Object.assign(
+      new Error('Empresa y empleado son requeridos'),
+      { status: 400 }
+    );
+  }
+
+  return await proyectoRepository.findAllByEmpleado({ empresaId, empleadoId });
 };
 
 const createProyecto = async (empresaId, data) => {
-  const {
-    nombre,
-    descripcion,
-    presupuesto,
-    fecha_inicio,
-    fecha_fin_estimada,
-    id_servicio,
-    id_lider,
-    empleados = []
-  } = data;
+  const { nombre, descripcion, presupuesto, fecha_inicio, fecha_fin_estimada, id_servicio, id_lider, empleados = [] } = data;
 
   const duplicado = await proyectoRepository.findByNombreAndEmpresa(
     nombre.trim(),
@@ -104,7 +114,7 @@ const getProyectoById = async (proyectoId, empresaId) => {
 };
 
 const updateProyecto = async (proyectoId, empresaId, data) => {
-  const proyecto = await proyectoRepository.findBasicById(proyectoId);
+  const proyecto = await proyectoRepository.findById(proyectoId);
 
   if (!proyecto) {
     throw Object.assign(new Error('Proyecto no encontrado'), { status: 404 });
@@ -188,7 +198,7 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
 };
 
 const desactivarProyecto = async (proyectoId, empresaId) => {
-  const proyecto = await proyectoRepository.findById(proyectoId);
+  const proyecto = await proyectoRepository.findBasicById(proyectoId);
 
   if (!proyecto) {
     throw Object.assign(new Error('Proyecto no encontrado'), { status: 404 });
@@ -211,13 +221,9 @@ const desactivarProyecto = async (proyectoId, empresaId) => {
   return await proyectoRepository.desactivar(proyectoId);
 };
 
-const finalizarProyecto = async ({
-  proyectoId,
-  empresaId,
-  liderId
-}) => {
+const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
   // validar existencia
-  const proyecto = await proyectoRepository.findBasicById(proyectoId);
+  const proyecto = await proyectoRepository.findById(proyectoId);
 
   if (!proyecto) {
     throw Object.assign(
@@ -265,6 +271,8 @@ const getHorasResumenByProyecto = async (proyectoId, empresaId) => {
 
 module.exports = {
   getProyectos,
+  getProyectosLider,
+  getProyectosEmpleado,
   createProyecto,
   getProyectoById,
   updateProyecto,

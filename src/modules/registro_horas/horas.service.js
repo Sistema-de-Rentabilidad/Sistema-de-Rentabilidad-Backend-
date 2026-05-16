@@ -15,7 +15,7 @@ const getRegistrosHoras = async ({ user, empresaId }) => {
 const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, user, empresaId }) => {
   const fecha = new Date().toISOString().split('T')[0]; // FECHA AUTOMÁTICA
 
-  const proyecto = await proyectoRepository.findBasicById(id_proyecto);
+  const proyecto = await proyectoRepository.findById(id_proyecto);
 
   if (!proyecto) {
     throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
@@ -143,7 +143,7 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   }
 
   // VALIDAR PROYECTO
-  const proyecto = await proyectoRepository.findBasicById(id_proyecto);
+  const proyecto = await proyectoRepository.findById(id_proyecto);
 
   if (!proyecto) {
     throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });

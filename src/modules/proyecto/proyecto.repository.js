@@ -1,8 +1,8 @@
 const pool = require("../../config/db");
 
-const findAll = async ({ empresaId, liderId = null }) => {
+const findAll = async (empresaId) => {
   let query = `
-    WITH costo_proyecto AS (
+  WITH costo_proyecto AS (
       SELECT
           rh.id_proyecto,
           SUM(
@@ -31,10 +31,12 @@ const findAll = async ({ empresaId, liderId = null }) => {
         p.presupuesto,
         p.fecha_inicio,
         p.fecha_fin_estimada,
+        p.fecha_fin_real,
         p.id_servicio,
         s.nombre AS nombre_servicio,
         p.id_lider,
         u.nombre AS nombre_lider,
+
         COALESCE(cp.costo_total, 0)
           AS costo_real,
         (p.presupuesto - COALESCE(cp.costo_total, 0)) AS rentabilidad,
@@ -61,25 +63,83 @@ const findAll = async ({ empresaId, liderId = null }) => {
        ON pe.id_empleado = ue.id_usuario
      WHERE p.id_empresa = $1
        AND p.is_active = true
-  `;
-  const params = [empresaId];
+     GROUP BY p.id_proyecto, u.nombre, s.nombre, cp.costo_total
+     ORDER BY p.fecha_inicio DESC`;
 
-  // filtro opcional por líder
-  if (liderId) {
-    query += ` AND p.id_lider = $2`;
-    params.push(liderId);
-  }
+  const result = await pool.query(query, [empresaId]);
 
-  query += `
-     GROUP BY 
-       p.id_proyecto,
-       u.nombre,
-       s.nombre,
-       cp.costo_total
-     ORDER BY p.fecha_inicio DESC
-  `;
+  return result.rows;
+};
 
-  const result = await pool.query(query, params);
+const findAllByLider = async ({ empresaId, liderId }) => {
+  const result = await pool.query(
+    `SELECT
+        p.id_proyecto,
+        p.nombre,
+        p.descripcion,
+        p.fecha_inicio,
+        p.fecha_fin_estimada,
+        p.fecha_fin_real,
+        p.id_servicio,
+        s.nombre AS nombre_servicio,
+        p.id_lider,
+        u.nombre AS nombre_lider,
+
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id_usuario', ue.id_usuario,
+              'nombre', ue.nombre
+            )
+          ) FILTER (WHERE ue.id_usuario IS NOT NULL),
+          '[]'
+        ) AS empleados
+    FROM proyecto p
+    LEFT JOIN usuario u
+       ON p.id_lider = u.id_usuario
+    LEFT JOIN servicio s
+       ON p.id_servicio = s.id_servicio
+     LEFT JOIN proyecto_empleado pe
+       ON pe.id_proyecto = p.id_proyecto
+     LEFT JOIN usuario ue
+       ON pe.id_empleado = ue.id_usuario
+    WHERE p.id_empresa = $1
+      AND p.id_lider = $2
+      AND p.is_active = true
+    GROUP BY p.id_proyecto, u.nombre, s.nombre
+    ORDER BY p.fecha_inicio DESC`,
+    [empresaId, liderId]
+  );
+
+  return result.rows;
+};
+
+const findAllByEmpleado = async ({ empresaId, empleadoId }) => {
+  const result = await pool.query(
+    `SELECT
+        p.id_proyecto,
+        p.nombre,
+        p.descripcion,
+        p.fecha_inicio,
+        p.fecha_fin_estimada,
+        p.fecha_fin_real,
+        p.id_servicio,
+        s.nombre AS nombre_servicio,
+        p.id_lider,
+        u.nombre AS nombre_lider
+     FROM proyecto p
+     INNER JOIN proyecto_empleado pe
+       ON pe.id_proyecto = p.id_proyecto
+     LEFT JOIN servicio s
+       ON s.id_servicio = p.id_servicio
+     LEFT JOIN usuario u
+       ON u.id_usuario = p.id_lider
+     WHERE p.id_empresa = $1
+       AND pe.id_empleado = $2
+       AND p.is_active = true
+     ORDER BY p.fecha_inicio DESC`,
+    [empresaId, empleadoId]
+  );
 
   return result.rows;
 };
@@ -158,22 +218,20 @@ const create = async (data) => {
 
 const findBasicById = async (id) => {
   const res = await pool.query(
-    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real
+    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real, is_active
      FROM proyecto
-     WHERE id_proyecto = $1 AND is_active = true`,
+     WHERE id_proyecto = $1`,
     [id]
   );
 
-  return res.rows[0];
+  return res.rows[0] || null;
 };
 
 const findById = async (proyectoId) => {
   const result = await pool.query(
     `SELECT
         p.id_proyecto,
-        p.id_empresa,
         p.nombre,
-        p.is_active,
         p.descripcion,
         p.presupuesto,
         p.fecha_inicio,
@@ -323,6 +381,8 @@ const findHorasResumenByProyecto = async (proyectoId) => {
 
 module.exports = {
   findAll,
+  findAllByLider,
+  findAllByEmpleado,
   findByNombreAndEmpresa,
   create,
   findBasicById,
