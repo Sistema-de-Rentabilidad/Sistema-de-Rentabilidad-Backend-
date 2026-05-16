@@ -9,6 +9,7 @@ const usuarioRoutes = require("./modules/usuario/usuario.routes");
 const historialRoutes = require("./modules/historial_sueldo/historial.routes");
 const proyectoRoutes = require("./modules/proyecto/proyecto.routes");
 const horasRoutes = require("./modules/registro_horas/horas.routes");
+const marcajeRoutes = require("./modules/marcaje/marcaje.routes");
 const faseRoutes = require("./modules/fase/fase.routes");
 const notasRoutes = require("./modules/nota/nota.routes");
 
@@ -25,6 +26,7 @@ app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/historiales", historialRoutes);
 app.use("/api/proyectos", proyectoRoutes);
 app.use("/api/horas", horasRoutes);
+app.use("/api/marcajes", marcajeRoutes);
 app.use("/api", faseRoutes);
 app.use("/api", notasRoutes);
 

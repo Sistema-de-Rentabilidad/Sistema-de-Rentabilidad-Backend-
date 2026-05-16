@@ -44,3 +44,7 @@ coverage/
 # Optional
 # =========================
 *.local
+
+
+.agents/
+skills-lock.json
