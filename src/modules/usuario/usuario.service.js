@@ -2,31 +2,25 @@ const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
 const historialRepository = require('../historial_sueldo/historial.repository');
 
-// const getOwners = async () => {
-//   return await usuarioRepository.findAllOwners();
-// };
-
 const getUsuarios = async (user) => {
-  // 👑 admin ve todo
+  // admin ve todo
   if (user.rol === 'admin') {
     return await usuarioRepository.findOnlypropietario(user.id_usuario);
   }
-  // 🏢 propietario solo su empresa
+  // propietario solo su empresa
   if (user.rol === "propietario") {
     return await usuarioRepository.findByEmpresa(user.id_empresa, user.id_usuario);
   }
-  // if (user.rol === "lider") {
-  //   return await usuarioRepository.findByEmpresa(user.id_empresa, user.id_usuario);
-  // }
+
   const error = new Error("No autorizado");
   error.status = 403;
   throw error;
 };
 
 const createUsuario = async (data, currentUser) => {
-  const { nombre, email, password, rol, monto, tipo_pago, id_empresa } = data;
+  const { nombre, email, password, rol, monto, tipo_pago, horas_mensuales, id_empresa } = data;
 
-  // 📧 validar email único
+  // validar email único
   const existe = await usuarioRepository.findByEmail(email);
   if (existe) {
     const error = new Error('El email ya está registrado');
@@ -38,7 +32,7 @@ const createUsuario = async (data, currentUser) => {
 
   let rolFinal;
 
-  // 👑 rol por defecto si no viene (admin → propietario)
+  // rol por defecto si no viene (admin → propietario)
   if (currentUser.rol === 'admin') {
     rolFinal = 'propietario';
   } else {
@@ -48,7 +42,7 @@ const createUsuario = async (data, currentUser) => {
     rolFinal = rol;
   }
 
-  // 🔐 lógica por rol
+  // lógica por rol
   if (currentUser.rol === 'admin') {
     // admin debe indicar empresa
     if (!id_empresa) {
@@ -63,7 +57,7 @@ const createUsuario = async (data, currentUser) => {
     empresaFinal = id_empresa;
   }
 
-  // 🚨 validar único propietario por empresa
+  // validar único propietario por empresa
   if (rolFinal === 'propietario') {
     const existePropietario = await usuarioRepository.findPropietarioByEmpresa(empresaFinal);
 
@@ -84,21 +78,25 @@ const createUsuario = async (data, currentUser) => {
     empresaFinal = currentUser.id_empresa;
   }
 
-  // 🔐 reglas de sueldo
+  // reglas de sueldo
   if (rolFinal === 'empleado') {
     if (!monto || !tipo_pago) {
       throw new Error('Empleado requiere monto y tipo de pago');
     }
+
+    if (tipo_pago === 'mensual' && (!horas_mensuales || horas_mensuales <= 0)) {
+      throw new Error('Empleado mensual requiere horas mensuales');
+    }
   } else {
-    if (monto || tipo_pago) {
-      throw new Error('Solo empleados pueden tener sueldo');
+    if (monto || tipo_pago || horas_mensuales) {
+      throw new Error('Solo empleados pueden tener información salarial');
     }
   }
 
-  // 🔒 encriptar contraseña
+  // encriptar contraseña
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // 👤 crear usuario
+  // crear usuario
   const usuario = await usuarioRepository.create({
     nombre,
     email,
@@ -107,14 +105,17 @@ const createUsuario = async (data, currentUser) => {
     id_empresa: empresaFinal
   });
 
-  // 💰 historial si empleado
+  // historial si empleado
   if (rolFinal === 'empleado') {
     await historialRepository.create({
       id_usuario: usuario.id_usuario,
       tipo_pago,
       monto,
       fecha_inicio: new Date(),
-      horas_mensuales: null
+      horas_mensuales:
+        tipo_pago === 'mensual'
+          ? horas_mensuales
+          : null
     });
   }
 
@@ -227,45 +228,9 @@ const deleteUsuario = async (id, currentUser) => {
   return await usuarioRepository.deactivate(id);
 };
 
-const hardDeleteUsuario = async (id, currentUser) => {
-  const target = await usuarioRepository.findById(id);
-  if (!target) {
-    const error = new Error("Usuario no encontrado");
-    error.status = 404;
-    throw error;
-  }
-
-  if (currentUser.rol === "admin") {
-    if (target.rol !== "propietario") {
-      const error = new Error("El admin solo puede eliminar propietarios");
-      error.status = 403;
-      throw error;
-    }
-  } else if (currentUser.rol === "propietario") {
-    if (target.id_empresa !== currentUser.id_empresa) {
-      const error = new Error("No autorizado");
-      error.status = 403;
-      throw error;
-    }
-    if (!["lider", "empleado"].includes(target.rol)) {
-      const error = new Error("Solo puedes eliminar líderes y empleados");
-      error.status = 403;
-      throw error;
-    }
-  } else {
-    const error = new Error("No autorizado");
-    error.status = 403;
-    throw error;
-  }
-
-  return await usuarioRepository.hardDelete(id);
-};
-
 module.exports = {
-  // getOwners,
   getUsuarios,
   createUsuario,
   updateUsuario,
-  deleteUsuario,
-  hardDeleteUsuario,
+  deleteUsuario
 };

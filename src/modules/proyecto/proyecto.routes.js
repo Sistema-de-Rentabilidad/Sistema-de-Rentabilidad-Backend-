@@ -26,6 +26,6 @@ router.put("/:id", auth, role("propietario"), empresa, proyectoIdParamValidation
 // PUT /proyectos/:id/finalizar
 router.put("/:id/finalizar", auth, role("lider"), empresa, proyectoIdParamValidation, proyectoController.finalizarProyecto);
 
-// router.get("/:id/horas-resumen", auth, role("propietario", "lider"), proyectoController.getHorasResumenProyecto);
+router.get("/:id/horas-resumen", auth, role("propietario", "lider"), proyectoController.getHorasResumenProyecto);
 
 module.exports = router;

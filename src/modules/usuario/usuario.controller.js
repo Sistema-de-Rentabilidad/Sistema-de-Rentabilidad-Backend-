@@ -1,14 +1,5 @@
 const usuarioService = require("./usuario.service");
 
-const getOwners = async (req, res, next) => {
-  try {
-    const owners = await usuarioService.getOwners();
-    res.status(200).json({ success: true, data: owners });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const getUsuarios = async (req, res, next) => {
   try {
     if (!req.user?.id_usuario) {
@@ -78,27 +69,9 @@ const deleteUsuario = async (req, res, next) => {
   }
 };
 
-const hardDeleteUsuario = async (req, res, next) => {
-  try {
-    if (!req.user?.id_usuario) {
-      return res.status(401).json({ success: false, message: "Usuario no autenticado" });
-    }
-    const result = await usuarioService.hardDeleteUsuario(
-      parseInt(req.params.id, 10),
-      req.user
-    );
-    res.status(200).json({ success: true, message: "Usuario eliminado permanentemente", data: result });
-  } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
-    next(error);
-  }
-};
-
 module.exports = {
-  getOwners,
   getUsuarios,
   createUsuario,
   updateUsuario,
-  deleteUsuario,
-  hardDeleteUsuario,
+  deleteUsuario
 };
