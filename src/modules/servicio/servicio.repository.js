@@ -6,7 +6,6 @@ const findByEmpresaId = async (empresaId) => {
         s.id_servicio,
         s.nombre,
         s.descripcion,
-        s.is_active,
         e.nombre AS empresa
      FROM servicio s
      INNER JOIN empresa e
@@ -18,41 +17,6 @@ const findByEmpresaId = async (empresaId) => {
   );
 
   return result.rows;
-};
-
-const findById = async (servicioId) => {
-  const result = await pool.query(
-    `SELECT
-        s.id_servicio,
-        s.id_empresa,
-        s.nombre,
-        s.descripcion,
-        e.nombre AS empresa
-     FROM servicio s
-     INNER JOIN empresa e
-        ON e.id_empresa = s.id_empresa
-     WHERE s.id_servicio = $1
-       AND s.is_active = true`,
-    [servicioId]
-  );
-
-  return result.rows[0];
-};
-
-const findByIdFull = async (servicioId) => {
-  const result = await pool.query(
-    `SELECT
-        id_servicio,
-        id_empresa,
-        nombre,
-        descripcion,
-        is_active
-     FROM servicio
-     WHERE id_servicio = $1`,
-    [servicioId]
-  );
-
-  return result.rows[0];
 };
 
 const findByNombreAndEmpresa = async (nombre, empresaId, servicioId = null) => {
@@ -94,6 +58,36 @@ const create = async ({ nombre, descripcion, empresaId }) => {
   return result.rows[0];
 };
 
+const findById = async (servicioId) => {
+  const result = await pool.query(
+    `SELECT
+        s.id_servicio,
+        s.id_empresa,
+        s.nombre,
+        s.descripcion,
+        e.nombre AS empresa
+     FROM servicio s
+     INNER JOIN empresa e
+        ON e.id_empresa = s.id_empresa
+     WHERE s.id_servicio = $1
+       AND s.is_active = true`,
+    [servicioId]
+  );
+
+  return result.rows[0];
+};
+
+const findByIdFull = async (servicioId) => {
+  const result = await pool.query(
+    `SELECT *
+     FROM servicio
+     WHERE id_servicio = $1`,
+    [servicioId]
+  );
+
+  return result.rows[0];
+};
+
 const update = async (servicioId, { nombre, descripcion }) => {
   const result = await pool.query(
     `UPDATE servicio
@@ -107,7 +101,7 @@ const update = async (servicioId, { nombre, descripcion }) => {
   return result.rows[0];
 };
 
-const deactivate = async (servicioId) => {
+const desactivar = async (servicioId) => {
   const result = await pool.query(
     `UPDATE servicio
      SET is_active = false
@@ -116,14 +110,6 @@ const deactivate = async (servicioId) => {
     [servicioId]
   );
 
-  return result.rows[0];
-};
-
-const hardDelete = async (servicioId) => {
-  const result = await pool.query(
-    `DELETE FROM servicio WHERE id_servicio = $1 RETURNING id_servicio, nombre`,
-    [servicioId]
-  );
   return result.rows[0];
 };
 
@@ -142,7 +128,6 @@ module.exports = {
   findByNombreAndEmpresa,
   create,
   update,
-  deactivate,
-  hardDelete,
-  countProyectosByServicio,
+  desactivar,
+  countProyectosByServicio
 };

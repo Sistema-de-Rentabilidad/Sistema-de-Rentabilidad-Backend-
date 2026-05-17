@@ -19,6 +19,13 @@ const createServicioValidation = [
   handleValidationErrors
 ];
 
+const servicioIdParamValidation = [
+  param('id')
+    .isInt({ min: 1 }).withMessage('ID de servicio inválido'),
+
+  handleValidationErrors
+];
+
 const updateServicioValidation = [
   body('nombre')
     .optional({ checkFalsy: true })
@@ -48,15 +55,8 @@ const updateServicioValidation = [
   handleValidationErrors
 ];
 
-const servicioIdParamValidation = [
-  param('id')
-    .isInt({ min: 1 }).withMessage('ID de servicio inválido'),
-
-  handleValidationErrors
-];
-
 module.exports = {
   createServicioValidation,
-  updateServicioValidation,
-  servicioIdParamValidation
+  servicioIdParamValidation,
+  updateServicioValidation
 };

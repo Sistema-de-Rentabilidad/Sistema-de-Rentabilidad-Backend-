@@ -21,14 +21,20 @@ const cerrarHistorial = async (id_historial, fecha_fin) => {
     );
 };
 
+const findCambioHoy = async (id_usuario, fecha) => {
+    const result = await pool.query(
+        `SELECT id_historial
+         FROM historial_sueldo
+         WHERE id_usuario = $1
+           AND fecha_inicio = $2`,
+        [id_usuario, fecha]
+    );
+
+    return result.rows[0];
+};
+
 // crear nuevo
-const create = async ({
-    id_usuario,
-    tipo_pago,
-    monto,
-    fecha_inicio,
-    horas_mensuales
-}) => {
+const create = async ({ id_usuario, tipo_pago, monto, fecha_inicio, horas_mensuales }) => {
     const result = await pool.query(
         `INSERT INTO historial_sueldo 
      (id_usuario, tipo_pago, monto, fecha_inicio, horas_mensuales)
@@ -43,5 +49,6 @@ const create = async ({
 module.exports = {
     findActivo,
     cerrarHistorial,
+    findCambioHoy,
     create
 };

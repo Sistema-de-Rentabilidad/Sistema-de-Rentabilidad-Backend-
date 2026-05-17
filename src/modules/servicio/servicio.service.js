@@ -101,31 +101,8 @@ const desactivarServicio = async (servicioId, empresaId) => {
     throw error;
   }
 
-  const result = await servicioRepository.deactivate(servicioId);
+  const result = await servicioRepository.desactivar(servicioId);
   return result;
-};
-
-const eliminarServicio = async (servicioId, empresaId) => {
-  const servicio = await servicioRepository.findByIdFull(servicioId);
-  if (!servicio) {
-    const error = new Error('Servicio no encontrado');
-    error.status = 404;
-    throw error;
-  }
-  if (servicio.id_empresa !== empresaId) {
-    const error = new Error('No tienes permisos para eliminar este servicio');
-    error.status = 403;
-    throw error;
-  }
-  const proyectosCount = await servicioRepository.countProyectosByServicio(servicioId);
-  if (proyectosCount > 0) {
-    const error = new Error(
-      `No se puede eliminar el servicio porque tiene ${proyectosCount} proyecto(s) asociado(s). Primero elimina o reasigna esos proyectos.`
-    );
-    error.status = 409;
-    throw error;
-  }
-  return await servicioRepository.hardDelete(servicioId);
 };
 
 module.exports = {
@@ -133,6 +110,5 @@ module.exports = {
   createServicio,
   getServicioById,
   updateServicio,
-  desactivarServicio,
-  eliminarServicio,
+  desactivarServicio
 };

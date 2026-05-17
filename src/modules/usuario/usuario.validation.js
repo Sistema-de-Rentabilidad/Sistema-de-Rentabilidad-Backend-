@@ -5,7 +5,7 @@ const { handleValidationErrors } = require('../../modules/middlewares/validation
 const createUsuarioValidation = [
     body('nombre')
         .notEmpty().withMessage('El nombre es obligatorio')
-        .isLength({ min: 3 }).withMessage('Mínimo 3 caracteres')
+        .isLength({ min: 3, max: 100 }).withMessage('El nombre debe tener entre 3 y 100 caracteres')
         .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
         .withMessage('El nombre solo debe contener letras y espacios')
         .trim(),
@@ -17,7 +17,7 @@ const createUsuarioValidation = [
 
     body('password')
         .notEmpty().withMessage('La contraseña es obligatoria')
-        .isLength({ min: 8 }).withMessage('Mínimo 8 caracteres')
+        .isLength({ min: 8, max: 100 }).withMessage('El nombre debe tener entre 8 y 100 caracteres')
         .matches(/[A-Z]/).withMessage('Debe contener al menos una mayúscula')
         .matches(/[a-z]/).withMessage('Debe contener al menos una minúscula')
         .matches(/[0-9]/).withMessage('Debe contener al menos un número')
@@ -25,7 +25,7 @@ const createUsuarioValidation = [
         .trim(),
 
     body('id_empresa')
-        .optional()
+        .optional({ checkFalsy: true })
         .isInt().withMessage('Empresa inválida')
         .custom(async (value, { req }) => {
             // solo validar si viene (caso admin)
@@ -63,14 +63,22 @@ const createUsuarioValidation = [
             return true;
         }),
 
-    body('monto')
-        .optional()
-        .isNumeric().withMessage('Monto inválido'),
-
     body('tipo_pago')
-        .optional()
+        .optional({ checkFalsy: true })
         .isIn(['mensual', 'por_hora'])
         .withMessage('Tipo de pago inválido o vacío'),
+
+    body('monto')
+        .optional({ checkFalsy: true })
+        .isNumeric().withMessage('El monto debe ser un número')
+        .isFloat({ min: 0.01, max: 999999.99 })
+        .withMessage('El monto deben estar entre 0.01 y 999999.99'),
+
+    body('horas_mensuales')
+        .optional({ checkFalsy: true })
+        .isNumeric().withMessage('Las horas mensuales deben ser números')
+        .isFloat({ min: 1, max: 320 })
+        .withMessage('Las horas mensuales deben estar entre 1 y 320'),
 
     handleValidationErrors
 ];

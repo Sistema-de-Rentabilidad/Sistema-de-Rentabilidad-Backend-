@@ -5,10 +5,8 @@ const getServicios = async (req, res, next) => {
     try {
         const empresaId = req.user.id_empresa;
 
-        // 🔍 Obtener servicios filtrados por empresa
         const servicios = await servicioService.getServiciosByEmpresa(empresaId);
 
-        // ✅ Caso: no hay servicios registrados
         if (servicios.length === 0) {
             return res.status(200).json({
                 success: true,
@@ -17,7 +15,6 @@ const getServicios = async (req, res, next) => {
             });
         }
 
-        // ✅ Caso: hay servicios
         return res.status(200).json({
             success: true,
             data: servicios,
@@ -32,11 +29,7 @@ const createServicio = async (req, res, next) => {
         const { nombre, descripcion } = req.body;
         const empresaId = req.empresaId;
 
-        const nuevoServicio = await servicioService.createServicio({
-            nombre,
-            descripcion,
-            empresaId: empresaId,
-        });
+        const nuevoServicio = await servicioService.createServicio({ nombre, descripcion, empresaId: empresaId });
 
         return res.status(201).json({
             success: true,
@@ -52,10 +45,7 @@ const getServicioById = async (req, res, next) => {
         const servicioId = parseInt(req.params.id, 10);
         const empresaId = req.user.id_empresa;
 
-        const servicio = await servicioService.getServicioById(
-            servicioId,
-            empresaId
-        );
+        const servicio = await servicioService.getServicioById(servicioId, empresaId);
 
         return res.status(200).json({
             success: true,
@@ -72,11 +62,7 @@ const updateServicio = async (req, res, next) => {
         const { nombre, descripcion } = req.body;
         const empresaId = req.empresaId;
 
-        const servicio = await servicioService.updateServicio(
-            servicioId,
-            empresaId,
-            { nombre, descripcion }
-        );
+        const servicio = await servicioService.updateServicio(servicioId, empresaId, { nombre, descripcion });
 
         return res.status(200).json({
             success: true,
@@ -92,10 +78,7 @@ const desactivarServicio = async (req, res, next) => {
         const servicioId = parseInt(req.params.id, 10);
         const empresaId = req.empresaId;
 
-        const result = await servicioService.desactivarServicio(
-            servicioId,
-            empresaId
-        );
+        const result = await servicioService.desactivarServicio(servicioId, empresaId);
 
         return res.status(200).json({
             success: true,
@@ -107,29 +90,10 @@ const desactivarServicio = async (req, res, next) => {
     }
 };
 
-const eliminarServicio = async (req, res, next) => {
-    try {
-        if (!req.user || !req.user.id_usuario) {
-            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
-        }
-        const { id_usuario } = req.user;
-        const servicioId = parseInt(req.params.id, 10);
-        const userDB = await usuarioRepository.findById(id_usuario);
-        if (!userDB || !userDB.id_empresa) {
-            return res.status(400).json({ success: false, message: 'El usuario no tiene una empresa asociada' });
-        }
-        const result = await servicioService.eliminarServicio(servicioId, userDB.id_empresa);
-        return res.status(200).json({ success: true, message: 'Servicio eliminado correctamente', data: result });
-    } catch (error) {
-        next(error);
-    }
-};
-
 module.exports = {
     getServicios,
     createServicio,
     getServicioById,
     updateServicio,
-    desactivarServicio,
-    eliminarServicio,
+    desactivarServicio
 };

@@ -27,9 +27,29 @@ const createHistorial = async (data, empresaId) => {
 
     // cerrar anterior si existe
     if (activo) {
+        const fecha_fin = new Date(fecha_inicio);
+
+        // restar 1 día
+        fecha_fin.setDate(fecha_fin.getDate() - 1);
+
         await historialRepository.cerrarHistorial(
             activo.id_historial,
-            fecha_inicio
+            fecha_fin
+        );
+    }
+
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const cambioHoy =
+        await historialRepository.findCambioHoy(
+            id_usuario,
+            hoy
+        );
+
+    if (cambioHoy) {
+        throw Object.assign(
+            new Error('Ya existe un cambio de sueldo para este empleado hoy'),
+            { status: 400 }
         );
     }
 
