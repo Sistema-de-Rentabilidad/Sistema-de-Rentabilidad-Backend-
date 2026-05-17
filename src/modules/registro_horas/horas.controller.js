@@ -6,7 +6,7 @@ const getHorasByLider = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Usuario no autenticado" });
     }
 
-    const horas = await horasService.getHorasByLider(req.user.id_usuario);
+    const horas = await registroHorasService.getHorasByLider(req.user.id_usuario);
 
     res.status(200).json({ success: true, data: horas });
   } catch (err) {
@@ -18,7 +18,7 @@ const getHorasByLider = async (req, res, next) => {
 
 const getRegistrosHoras = async (req, res, next) => {
   try {
-    const registros = await registrosHorasService.getRegistrosHoras({ user: req.user, empresaId: req.empresaId });
+    const registros = await registroHorasService.getRegistrosHoras({ user: req.user, empresaId: req.empresaId });
 
     // no hay horas registradas
     if (registros.length === 0) {
