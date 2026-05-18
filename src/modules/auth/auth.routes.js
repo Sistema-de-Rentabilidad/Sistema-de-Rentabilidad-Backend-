@@ -2,11 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 const { login } = require("../auth/auth.controller");
-const authMiddleware = require("../middlewares/authMiddleware");
-const roleMiddleware = require("../middlewares/roleMiddleware");
-const authController = require("./auth.controller");
+const loginRateLimit = require("../middlewares/loginRateLimitMiddleware");
 
 // POST /auth/login
-router.post("/login", login);
+router.post("/login", loginRateLimit, login);
 
 module.exports = router;

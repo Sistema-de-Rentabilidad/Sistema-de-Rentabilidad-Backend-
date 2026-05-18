@@ -20,11 +20,24 @@ const login = async (req, res) => {
         });
     } catch (error) {
         if (error.message === "CREDENCIALES_INVALIDAS") {
-            return res.status(401).json({ message: "Credenciales incorrectas" });
+            return res.status(401).json({
+                message: "Credenciales incorrectas",
+                failedAttempts: error.failedAttempts,
+                maxFailedAttempts: error.maxFailedAttempts,
+                remainingAttempts: error.remainingAttempts,
+            });
         }
 
         if (error.message === "USUARIO_INACTIVO") {
             return res.status(403).json({ message: "Usuario inactivo" });
+        }
+
+        if (error.message === "USUARIO_BLOQUEADO") {
+            return res.status(423).json({
+                message: "Demasiados intentos fallidos. Intenta nuevamente más tarde.",
+                lockedUntil: error.lockedUntil,
+                retryAfterSeconds: error.retryAfterSeconds,
+            });
         }
 
         console.error(error);
