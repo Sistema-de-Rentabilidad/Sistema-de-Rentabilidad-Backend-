@@ -34,21 +34,21 @@ const registroHorasIdParamValidation = [
 
 const updateHorasValidation = [
     body('id_proyecto')
-        .optional({ checkFalsy: true })
+        .optional()
         .isInt({ min: 1 }).withMessage('ID de proyecto inválido'),
 
     body('id_fase')
-        .optional({ checkFalsy: true })
+        .optional()
         .isInt({ min: 1 }).withMessage('ID de fase inválido'),
 
     body('horas')
-        .optional({ checkFalsy: true })
+        .optional()
         .isNumeric().withMessage('Las horas deben ser números')
         .isFloat({ min: 0.5, max: 12 })
         .withMessage('Las horas deben estar entre 0.5 y 12'),
 
     body('descripcion')
-        .optional({ checkFalsy: true })
+        .optional()
         .trim()
         .isLength({ min: 3, max: 100 }).withMessage('La descripción debe tener entre 3 y 100 caracteres')
         .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()-]+$/)

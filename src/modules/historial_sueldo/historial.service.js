@@ -4,9 +4,6 @@ const usuarioRepository = require('../usuario/usuario.repository.js');
 const createHistorial = async (data, empresaId) => {
     const { id_usuario, tipo_pago, monto, horas_mensuales } = data;
 
-    // fecha automática
-    const fecha_inicio = new Date();
-
     // validar usuario
     const usuario = await usuarioRepository.findById(id_usuario);
     if (!usuario) {
@@ -25,26 +22,7 @@ const createHistorial = async (data, empresaId) => {
     // buscar sueldo activo
     const activo = await historialRepository.findActivo(id_usuario);
 
-    // cerrar anterior si existe
-    if (activo) {
-        const fecha_fin = new Date(fecha_inicio);
-
-        // restar 1 día
-        fecha_fin.setDate(fecha_fin.getDate() - 1);
-
-        await historialRepository.cerrarHistorial(
-            activo.id_historial,
-            fecha_fin
-        );
-    }
-
-    const hoy = new Date().toISOString().split('T')[0];
-
-    const cambioHoy =
-        await historialRepository.findCambioHoy(
-            id_usuario,
-            hoy
-        );
+    const cambioHoy = await historialRepository.findCambioHoy(id_usuario);
 
     if (cambioHoy) {
         throw Object.assign(
@@ -53,19 +31,18 @@ const createHistorial = async (data, empresaId) => {
         );
     }
 
+    // cerrar anterior si existe
+    if (activo) {
+        await historialRepository.cerrarHistorial(activo.id_historial);
+    }
+
     // validar horas mensuales
     if (tipo_pago === "mensual" && (!horas_mensuales || horas_mensuales <= 0)) {
         throw Object.assign(new Error("Las horas mensuales son obligatorias para sueldo mensual"), { status: 400 });
     }
 
     // crear nuevo historial
-    const nuevo = await historialRepository.create({
-        id_usuario,
-        tipo_pago,
-        monto,
-        fecha_inicio,
-        horas_mensuales
-    });
+    const nuevo = await historialRepository.create({ id_usuario, tipo_pago, monto, horas_mensuales });
 
     return nuevo;
 };

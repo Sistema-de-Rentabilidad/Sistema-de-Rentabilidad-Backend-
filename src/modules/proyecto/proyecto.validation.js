@@ -86,7 +86,7 @@ const proyectoIdParamValidation = [
 const updateProyectoValidation = [
   // nombre (obligatorio en create, pero opcional en update)
   body('nombre')
-    .optional({ checkFalsy: true })
+    .optional()
     .isLength({ min: 3, max: 100 })
     .withMessage('El nombre debe tener entre 3 y 100 caracteres')
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
@@ -95,7 +95,7 @@ const updateProyectoValidation = [
 
   // descripción
   body('descripcion')
-    .optional({ checkFalsy: true })
+    .optional()
     .isLength({ min: 3, max: 500 })
     .withMessage('La descripción debe tener entre 3 y 500 caracteres')
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
@@ -104,18 +104,18 @@ const updateProyectoValidation = [
 
   // presupuesto (obligatorio en create, pero opcional en update)
   body('presupuesto')
-    .optional({ checkFalsy: true })
+    .optional()
     .isFloat({ min: 0 })
     .withMessage('El presupuesto debe ser mayor o igual a 0'),
 
   // fechas (obligatorias en create, pero opcional en update)
   body('fecha_inicio')
-    .optional({ checkFalsy: true })
+    .optional()
     .isISO8601()
     .withMessage('Fecha de inicio inválida'),
 
   body('fecha_fin_estimada')
-    .optional({ checkFalsy: true })
+    .optional()
     .isISO8601()
     .withMessage('Fecha fin estimada inválida'),
 
@@ -137,24 +137,24 @@ const updateProyectoValidation = [
 
   // servicio
   body('id_servicio')
-    .optional({ checkFalsy: true })
+    .optional()
     .isInt({ min: 1 })
     .withMessage('ID de servicio inválido'),
 
   // líder
   body('id_lider')
-    .optional({ checkFalsy: true })
+    .optional()
     .isInt({ min: 1 })
     .withMessage('ID de líder inválido'),
 
   // empleados
   body('empleados')
-    .optional({ checkFalsy: true })
+    .optional()
     .isArray()
     .withMessage('Empleados debe ser un arreglo'),
 
   body('empleados.*')
-    .optional({ checkFalsy: true })
+    .optional()
     .isInt({ min: 1 })
     .withMessage('ID de empleado inválido'),
 

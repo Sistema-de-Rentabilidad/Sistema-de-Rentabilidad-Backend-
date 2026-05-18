@@ -12,35 +12,35 @@ const findActivo = async (id_usuario) => {
 };
 
 // cerrar historial
-const cerrarHistorial = async (id_historial, fecha_fin) => {
+const cerrarHistorial = async (id_historial) => {
     await pool.query(
         `UPDATE historial_sueldo
-     SET fecha_fin = $1
-     WHERE id_historial = $2`,
-        [fecha_fin, id_historial]
+         SET fecha_fin = CURRENT_DATE - INTERVAL '1 day'
+         WHERE id_historial = $1`,
+        [id_historial]
     );
 };
 
-const findCambioHoy = async (id_usuario, fecha) => {
+const findCambioHoy = async (id_usuario) => {
     const result = await pool.query(
         `SELECT id_historial
          FROM historial_sueldo
          WHERE id_usuario = $1
-           AND fecha_inicio = $2`,
-        [id_usuario, fecha]
+           AND DATE(fecha_inicio) = CURRENT_DATE`,
+        [id_usuario]
     );
 
     return result.rows[0];
 };
 
 // crear nuevo
-const create = async ({ id_usuario, tipo_pago, monto, fecha_inicio, horas_mensuales }) => {
+const create = async ({ id_usuario, tipo_pago, monto, horas_mensuales }) => {
     const result = await pool.query(
         `INSERT INTO historial_sueldo 
-     (id_usuario, tipo_pago, monto, fecha_inicio, horas_mensuales)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-        [id_usuario, tipo_pago, monto, fecha_inicio, horas_mensuales]
+        (id_usuario, tipo_pago, monto, fecha_inicio, horas_mensuales)
+        VALUES ($1, $2, $3, CURRENT_DATE, $4)
+        RETURNING *`,
+        [id_usuario, tipo_pago, monto, horas_mensuales]
     );
 
     return result.rows[0];
