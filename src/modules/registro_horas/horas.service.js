@@ -3,17 +3,46 @@ const proyectoRepository = require("../proyecto/proyecto.repository");
 const proyectoEmpleadoRepository = require("../proyecto_empleado/proyecto_empleado.repository")
 const faseRepository = require("../fase/fase.repository");
 const faseEmpleadoRepository = require("../fase_empleado/fase_empleado.repository")
+const { getFechaActual, toFechaString } = require("../../utils/dateTime");
 
 const getHorasByLider = async (liderId) => {
-  return await horasRepository.findByLider(liderId);
+  return await registroHorasRepository.findByLider(liderId);
 };
 
 const getRegistrosHoras = async ({ user, empresaId }) => {
   return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
 };
 
+const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, idRegistroExcluir = null }) => {
+  const horasActuales = idRegistroExcluir
+    ? await registroHorasRepository.getTotalHorasSinRegistro(idEmpleado, fecha, idRegistroExcluir)
+    : await registroHorasRepository.getTotalHorasByEmpleadoYFecha(idEmpleado, fecha);
+
+  const total = Number(horasActuales) + Number(horasARegistrar);
+
+  if (total > 12) {
+    const error = new Error('No puedes registrar más de 12 horas diarias');
+    error.status = 400;
+    throw error;
+  }
+
+  const horasTrabajadas = await registroHorasRepository.getHorasTrabajadasByEmpleadoYFecha(idEmpleado, fecha);
+
+  if (horasTrabajadas === null) {
+    const error = new Error('Debes registrar tu entrada antes de registrar horas');
+    error.status = 400;
+    throw error;
+  }
+
+  if (total > Number(horasTrabajadas)) {
+    const error = new Error('Las horas registradas exceden el tiempo trabajado del dia');
+    error.status = 400;
+    throw error;
+  }
+};
+
 const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, user, empresaId }) => {
-  const fecha = new Date().toISOString().split('T')[0]; // FECHA AUTOMÁTICA
+  const fecha = getFechaActual(); // FECHA AUTOMÁTICA EN HORA DE PERÚ
 
   const proyecto = await proyectoRepository.findById(id_proyecto);
 
@@ -67,16 +96,12 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
     throw error;
   }
 
-  // VALIDAR LIMITE DIARIO
-  const horasActuales = await registroHorasRepository.getTotalHorasByEmpleadoYFecha(user.id_usuario, fecha);
-
-  const total = Number(horasActuales) + Number(horas);
-
-  if (total > 12) {
-    const error = new Error('No puedes registrar más de 12 horas diarias');
-    error.status = 400;
-    throw error;
-  }
+  // VALIDAR LIMITE DIARIO Y TIEMPO TRABAJADO SEGUN MARCAJE
+  await validarHorasContraMarcaje({
+    idEmpleado: user.id_usuario,
+    fecha,
+    horasARegistrar: horas
+  });
 
   // CREAR FASE_EMPLEADO
   const existeFaseEmpleado = await faseEmpleadoRepository.exists(user.id_usuario, id_fase);
@@ -132,9 +157,9 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   }
 
   // SOLO EL MISMO DÍA
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = getFechaActual();
 
-  const fechaRegistro = new Date(registro.fecha).toISOString().split('T')[0];
+  const fechaRegistro = toFechaString(registro.fecha);
 
   if (fechaRegistro !== hoy) {
     const error = new Error('Solo puedes editar registros del mismo día');
@@ -142,8 +167,13 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     throw error;
   }
 
+  const proyectoId = id_proyecto ?? registro.id_proyecto;
+  const faseId = id_fase ?? registro.id_fase;
+  const horasRegistro = horas ?? registro.horas;
+  const descripcionRegistro = descripcion ?? registro.descripcion;
+
   // VALIDAR PROYECTO
-  const proyecto = await proyectoRepository.findById(id_proyecto);
+  const proyecto = await proyectoRepository.findById(proyectoId);
 
   if (!proyecto) {
     throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
@@ -164,7 +194,7 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   }
 
   // VALIDAR ASIGNACION EMPLEADO
-  const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, id_proyecto);
+  const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, proyectoId);
 
   if (!perteneceProyecto) {
     const error = new Error('No estás asignado a este proyecto');
@@ -173,7 +203,7 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   }
 
   // VALIDAR FASE
-  const fase = await faseRepository.findById(id_fase);
+  const fase = await faseRepository.findById(faseId);
 
   if (!fase) {
     throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
@@ -186,9 +216,9 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     );
   }
 
-  const fases = await faseRepository.findByProyecto(id_proyecto);
+  const fases = await faseRepository.findByProyecto(proyectoId);
 
-  const faseValida = fases.some(fase => fase.id_fase === id_fase);
+  const faseValida = fases.some(fase => fase.id_fase === faseId);
 
   if (!faseValida) {
     const error = new Error('La fase no pertenece al proyecto');
@@ -196,18 +226,21 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     throw error;
   }
 
-  // VALIDAR LIMITE DIARIO
-  const horasActuales = await registroHorasRepository.getTotalHorasSinRegistro(user.id_usuario, registro.fecha, id);
+  // VALIDAR LIMITE DIARIO Y TIEMPO TRABAJADO SEGUN MARCAJE
+  await validarHorasContraMarcaje({
+    idEmpleado: user.id_usuario,
+    fecha: registro.fecha,
+    horasARegistrar: horasRegistro,
+    idRegistroExcluir: id
+  });
 
-  const total = Number(horasActuales) + Number(horas);
-
-  if (total > 12) {
-    const error = new Error('No puedes registrar más de 12 horas diarias');
-    error.status = 400;
-    throw error;
-  }
-
-  return await registroHorasRepository.update({ id, horas, descripcion });
+  return await registroHorasRepository.update({
+    id,
+    id_proyecto: proyectoId,
+    id_fase: faseId,
+    horas: horasRegistro,
+    descripcion: descripcionRegistro
+  });
 };
 
 module.exports = {

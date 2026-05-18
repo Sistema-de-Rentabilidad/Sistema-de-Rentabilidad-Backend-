@@ -1,5 +1,7 @@
 const pool = require("../../config/db");
 
+const ahoraLimaSql = "timezone('America/Lima', now())";
+
 const findByLider = async (liderId) => {
   try {
     const result = await pool.query(
@@ -108,6 +110,26 @@ const getTotalHorasByEmpleadoYFecha = async (idEmpleado, fecha) => {
   return result.rows[0].total;
 };
 
+const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
+  const result = await pool.query(
+    `SELECT
+        CASE
+          WHEN hora_entrada IS NULL THEN 0
+          ELSE GREATEST(
+            EXTRACT(EPOCH FROM (COALESCE(hora_salida, ${ahoraLimaSql})::timestamp - hora_entrada::timestamp)) / 3600,
+            0
+          )
+        END AS horas_trabajadas
+     FROM marcaje
+     WHERE id_empleado = $1
+       AND fecha = $2
+     LIMIT 1`,
+    [idEmpleado, fecha]
+  );
+
+  return result.rows[0]?.horas_trabajadas ?? null;
+};
+
 const create = async ({ id_empleado, id_proyecto, id_fase, fecha, horas, descripcion }) => {
   const result = await pool.query(
     `INSERT INTO registro_horas
@@ -165,6 +187,7 @@ module.exports = {
   findByEmpleado,
   findByProyecto,
   getTotalHorasByEmpleadoYFecha,
+  getHorasTrabajadasByEmpleadoYFecha,
   create,
   findById,
   getTotalHorasSinRegistro,

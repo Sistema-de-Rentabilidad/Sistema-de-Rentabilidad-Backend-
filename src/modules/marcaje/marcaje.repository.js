@@ -1,5 +1,18 @@
 const pool = require("../../config/db");
 
+const ahoraLimaSql = "timezone('America/Lima', now())";
+
+const marcajeSelectSql = `
+  id_marcaje,
+  id_empleado,
+  fecha::text AS fecha,
+  to_char(hora_entrada, 'HH24:MI:SS') AS hora_entrada,
+  CASE
+    WHEN hora_salida IS NULL THEN NULL
+    ELSE to_char(hora_salida, 'HH24:MI:SS')
+  END AS hora_salida
+`;
+
 const findEmpleadoActivo = async (idEmpleado) => {
   const result = await pool.query(
     `SELECT id_usuario, nombre, email, rol, id_empresa, is_active
@@ -41,8 +54,8 @@ const registrarEntrada = async ({ id_empleado, fecha }) => {
 
     const result = await client.query(
       `INSERT INTO marcaje (id_empleado, fecha, hora_entrada)
-       VALUES ($1, $2, NOW())
-       RETURNING *`,
+       VALUES ($1, $2, ${ahoraLimaSql})
+       RETURNING ${marcajeSelectSql}`,
       [id_empleado, fecha]
     );
 
@@ -92,7 +105,7 @@ const registrarSalida = async ({ id_empleado, fecha }) => {
     const horasResult = await client.query(
       `SELECT
           COALESCE(SUM(horas), 0)::numeric AS total_horas,
-          (EXTRACT(EPOCH FROM (NOW()::timestamp - $3::timestamp)) / 3600)::numeric AS horas_trabajadas
+          (EXTRACT(EPOCH FROM (${ahoraLimaSql}::timestamp - $3::timestamp)) / 3600)::numeric AS horas_trabajadas
        FROM registro_horas
        WHERE id_empleado = $1
          AND fecha = $2`,
@@ -113,9 +126,9 @@ const registrarSalida = async ({ id_empleado, fecha }) => {
 
     const result = await client.query(
       `UPDATE marcaje
-       SET hora_salida = NOW()
+       SET hora_salida = ${ahoraLimaSql}
        WHERE id_marcaje = $1
-       RETURNING *`,
+       RETURNING ${marcajeSelectSql}`,
       [marcaje.id_marcaje]
     );
 
@@ -137,11 +150,7 @@ const registrarSalida = async ({ id_empleado, fecha }) => {
 const findByEmpleado = async (idEmpleado) => {
   const result = await pool.query(
     `SELECT
-        id_marcaje,
-        id_empleado,
-        fecha,
-        hora_entrada,
-        hora_salida
+        ${marcajeSelectSql}
      FROM marcaje
      WHERE id_empleado = $1
      ORDER BY fecha DESC, id_marcaje DESC`,

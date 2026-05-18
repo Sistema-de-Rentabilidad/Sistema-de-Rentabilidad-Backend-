@@ -1,6 +1,5 @@
 const marcajeRepository = require("./marcaje.repository");
-
-const getFechaActual = () => new Date().toISOString().split("T")[0];
+const { getFechaActual } = require("../../utils/dateTime");
 
 const validarEmpleadoActivo = async (user, empresaId) => {
   const empleado = await marcajeRepository.findEmpleadoActivo(user.id_usuario);
