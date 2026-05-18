@@ -373,7 +373,9 @@ const findHorasResumenByProyecto = async (proyectoId) => {
         COUNT(rh.id_registro) AS total_registros
      FROM registro_horas rh
      INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
-     LEFT JOIN fase f ON f.id_fase = rh.id_fase
+     LEFT JOIN fase f
+       ON f.id_fase = rh.id_fase
+      AND f.id_proyecto = rh.id_proyecto
      WHERE rh.id_proyecto = $1
      GROUP BY p.id_proyecto, p.nombre, f.id_fase, f.nombre
      ORDER BY f.nombre NULLS LAST`,

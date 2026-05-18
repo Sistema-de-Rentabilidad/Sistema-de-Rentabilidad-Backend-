@@ -5,7 +5,7 @@ const getFasesByProyecto = async (req, res, next) => {
     const proyectoId = parseInt(req.params.id, 10);
     const empresaId = req.empresaId; // viene del middleware
 
-    const fases = await faseService.getFasesByProyecto(proyectoId, empresaId);
+    const fases = await faseService.getFasesByProyecto(proyectoId, empresaId, req.user);
 
     // no hay fases registradas
     if (fases.length === 0) {
