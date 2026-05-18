@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
 const historialRepository = require('../historial_sueldo/historial.repository');
+const historialService = require('../historial_sueldo/historial.service');
 
 const getUsuarios = async (user) => {
   // admin ve todo
@@ -12,7 +13,7 @@ const getUsuarios = async (user) => {
     return await usuarioRepository.findByEmpresa(user.id_empresa, user.id_usuario);
   }
 
-  const error = new Error("No autorizado");
+  const error = new Error("No tienes permisos para ver usuarios");
   error.status = 403;
   throw error;
 };
@@ -71,7 +72,7 @@ const createUsuario = async (data, currentUser) => {
   if (currentUser.rol === 'propietario') {
     // propietario NO puede crear propietario
     if (rol === 'propietario') {
-      throw new Error('propietario no puede crear otro propietario');
+      throw new Error('Propietario no puede crear otro propietario');
     }
 
     // empresa viene del token
@@ -107,130 +108,158 @@ const createUsuario = async (data, currentUser) => {
 
   // historial si empleado
   if (rolFinal === 'empleado') {
-    await historialRepository.create({
+    await historialService.createHistorial({
       id_usuario: usuario.id_usuario,
       tipo_pago,
       monto,
-      fecha_inicio: new Date(),
       horas_mensuales:
         tipo_pago === 'mensual'
           ? horas_mensuales
           : null
-    });
+    }, empresaFinal);
+  }
+
+  return usuario;
+};
+
+const getUsuarioById = async (id, currentUser) => {
+  const usuario = await usuarioRepository.findById(id);
+
+  // validar existencia
+  if (!usuario) {
+    const error = new Error('Usuario no encontrado');
+    error.status = 404;
+    throw error;
+  }
+
+  // admin puede ver todo
+  if (currentUser.rol === 'admin') {
+    return usuario;
+  }
+
+  // propietario solo ve usuarios de su empresa
+  if (currentUser.rol === 'propietario' && currentUser.id_empresa !== usuario.id_empresa) {
+    const error = new Error('No tienes permisos para acceder a este usuario');
+    error.status = 403;
+    throw error;
+  }
+
+  // empleado y lider solo a sí mismos
+  if (['empleado', 'lider'].includes(currentUser.rol)) {
+    if (currentUser.id_usuario !== usuario.id_usuario) {
+      const error = new Error('No tienes permisos para acceder a este usuario');
+      error.status = 403;
+      throw error;
+    }
+
+    return usuario;
   }
 
   return usuario;
 };
 
 const updateUsuario = async (id, data, currentUser) => {
-  const target = await usuarioRepository.findById(id);
-  if (!target) {
-    const error = new Error("Usuario no encontrado");
+  const usuario = await usuarioRepository.findById(id);
+
+  if (!usuario) {
+    const error = new Error('Usuario no encontrado');
     error.status = 404;
     throw error;
   }
 
-  // Un usuario puede actualizar su propio perfil (solo nombre, email, password)
-  if (currentUser.id_usuario === id) {
-    // self-update allowed for any role
-  } else if (currentUser.rol === "admin") {
-    if (target.rol !== "propietario") {
-      const error = new Error("El admin solo puede editar propietarios");
-      error.status = 403;
-      throw error;
-    }
-  } else if (currentUser.rol === "propietario") {
-    if (target.id_empresa !== currentUser.id_empresa) {
-      const error = new Error("No autorizado");
-      error.status = 403;
-      throw error;
-    }
-    if (target.rol === "propietario") {
-      const error = new Error("No puedes editar propietarios");
-      error.status = 403;
-      throw error;
-    }
-  } else {
-    const error = new Error("No autorizado");
-    error.status = 403;
-    throw error;
-  }
+  // admin solo propietarios
+  if (currentUser.rol === 'admin') {
+    const puedeEditar = usuario.rol === 'propietario' || currentUser.id_usuario === usuario.id_usuario;
 
-  const { nombre, email, password, id_empresa, is_active, rol } = data;
-
-  if (email && email !== target.email) {
-    const existe = await usuarioRepository.findByEmail(email);
-    if (existe) {
-      const error = new Error("El email ya está en uso");
-      error.status = 409;
-      throw error;
+    if (!puedeEditar) {
+      throw Object.assign(
+        new Error('No tienes permisos para editar a este usuario'),
+        { status: 403 }
+      );
     }
   }
 
-  // Validar cambio de rol: propietario solo puede cambiar lider <-> empleado
-  if (rol !== undefined && currentUser.rol === "propietario") {
-    if (!["lider", "empleado"].includes(rol)) {
-      const error = new Error("Rol inválido");
+  // propietario
+  if (currentUser.rol === 'propietario') {
+    const esMismoUsuario = currentUser.id_usuario === usuario.id_usuario;
+
+    const esDeSuEmpresa = usuario.id_empresa === currentUser.id_empresa;
+
+    const esRolEditable = ['empleado', 'lider'].includes(usuario.rol);
+
+    if (!esMismoUsuario && (!esDeSuEmpresa || !esRolEditable)) {
+      throw Object.assign(
+        new Error('No tienes permisos para editar a este usuario'),
+        { status: 403 }
+      );
+    }
+  }
+
+  // empleado/lider
+  if (['empleado', 'lider'].includes(currentUser.rol)) {
+    if (currentUser.id_usuario !== usuario.id_usuario) {
+      throw Object.assign(
+        new Error('No tienes permisos para editar a este usuario'),
+        { status: 403 }
+      );
+    }
+
+    // no pueden cambiar sueldo
+    if (data.monto || data.tipo_pago || data.horas_mensuales) {
+      throw Object.assign(
+        new Error('No tienes permisos para editar sueldo'),
+        { status: 403 }
+      );
+    }
+  }
+
+  // validar email único
+  if (data.email) {
+    const existente =
+      await usuarioRepository.findByEmail(data.email);
+
+    if (existente && existente.id_usuario !== usuario.id_usuario) {
+      const error = new Error('El email ya está registrado');
       error.status = 400;
       throw error;
     }
   }
 
-  // Solo admin puede cambiar id_empresa e is_active de propietarios
-  const updateData = {
-    nombre: nombre || null,
-    email: email || null,
-    password: password ? await bcrypt.hash(password, 10) : null,
-  };
-
-  if (currentUser.rol === "admin") {
-    if (id_empresa !== undefined) updateData.id_empresa = Number(id_empresa) || null;
-    if (is_active !== undefined) updateData.is_active = Boolean(is_active);
-  }
-  if (currentUser.rol === "propietario" && rol !== undefined) {
-    updateData.rol = rol;
+  // hash password
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10);
   }
 
-  return await usuarioRepository.update(id, updateData);
-};
+  // update usuario
+  await usuarioRepository.update(id, { nombre: data.nombre, email: data.email, password: data.password });
 
-const deleteUsuario = async (id, currentUser) => {
-  const target = await usuarioRepository.findById(id);
-  if (!target) {
-    const error = new Error("Usuario no encontrado");
-    error.status = 404;
-    throw error;
-  }
+  const quiereActualizarSueldo = usuario.rol === 'empleado' && (data.monto || data.tipo_pago || data.horas_mensuales);
 
-  if (currentUser.rol === "admin") {
-    if (target.rol !== "propietario") {
-      const error = new Error("El admin solo puede eliminar propietarios");
-      error.status = 403;
-      throw error;
+  if (quiereActualizarSueldo) {
+    const sueldoActual = await historialRepository.findActivo(usuario.id_usuario);
+
+    if (!sueldoActual) {
+      throw Object.assign(
+        new Error('No existe historial salarial activo'),
+        { status: 400 }
+      );
     }
-  } else if (currentUser.rol === "propietario") {
-    if (target.id_empresa !== currentUser.id_empresa) {
-      const error = new Error("No autorizado");
-      error.status = 403;
-      throw error;
-    }
-    if (target.rol === "propietario") {
-      const error = new Error("No puedes eliminar propietarios");
-      error.status = 403;
-      throw error;
-    }
-  } else {
-    const error = new Error("No autorizado");
-    error.status = 403;
-    throw error;
+
+    await historialService.createHistorial({
+      id_usuario: usuario.id_usuario,
+      tipo_pago: data.tipo_pago ?? sueldoActual.tipo_pago,
+      monto: data.monto ?? sueldoActual.monto,
+      fecha_inicio: new Date(),
+      horas_mensuales: data.horas_mensuales ?? sueldoActual.horas_mensuales
+    }, currentUser.id_empresa);
   }
 
-  return await usuarioRepository.deactivate(id);
+  return await usuarioRepository.findById(id);
 };
 
 module.exports = {
   getUsuarios,
   createUsuario,
-  updateUsuario,
-  deleteUsuario
+  getUsuarioById,
+  updateUsuario
 };

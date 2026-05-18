@@ -62,12 +62,26 @@ const create = async ({ nombre, email, password, rol, id_empresa }) => {
   return result.rows[0];
 };
 
-const findById = async (usuarioId) => {
+const findById = async (id) => {
   const result = await pool.query(
-    `SELECT id_usuario, nombre, email, rol, id_empresa
-     FROM usuario WHERE id_usuario = $1 AND is_active= true LIMIT 1`,
-    [usuarioId]
+    `SELECT
+      u.id_usuario,
+      u.nombre,
+      u.email,
+      u.rol,
+      u.id_empresa,
+      hs.tipo_pago,
+      hs.monto,
+      hs.horas_mensuales
+    FROM usuario u
+    LEFT JOIN historial_sueldo hs
+      ON hs.id_usuario = u.id_usuario
+      AND hs.fecha_fin IS NULL
+    WHERE u.id_usuario = $1
+      AND u.is_active = true`,
+    [id]
   );
+
   return result.rows[0] || null;
 };
 
@@ -82,31 +96,18 @@ const findByIds = async (ids) => {
   return res.rows;
 };
 
-const update = async (id, { nombre, email, password, id_empresa, is_active, rol }) => {
+const update = async (id_usuario, { nombre, email, password }) => {
   const result = await pool.query(
     `UPDATE usuario
-     SET nombre      = COALESCE($2, nombre),
-         email       = COALESCE($3, email),
-         password    = COALESCE($4, password),
-         id_empresa  = COALESCE($5, id_empresa),
-         is_active   = COALESCE($6, is_active),
-         rol         = COALESCE($7, rol)
-     WHERE id_usuario = $1
-     RETURNING id_usuario, nombre, email, rol, id_empresa, is_active`,
-    [id, nombre || null, email || null, password || null,
-      id_empresa !== undefined ? id_empresa : null,
-      is_active !== undefined ? is_active : null,
-      rol !== undefined ? rol : null]
+     SET
+       nombre = COALESCE($1, nombre),
+       email = COALESCE($2, email),
+       password = COALESCE($3, password)
+     WHERE id_usuario = $4
+     RETURNING *`,
+    [nombre, email, password, id_usuario]
   );
-  return result.rows[0];
-};
 
-const deactivate = async (id) => {
-  const result = await pool.query(
-    `UPDATE usuario SET is_active = false WHERE id_usuario = $1
-     RETURNING id_usuario, nombre, is_active`,
-    [id]
-  );
   return result.rows[0];
 };
 
@@ -118,6 +119,5 @@ module.exports = {
   create,
   findById,
   findByIds,
-  update,
-  deactivate
+  update
 };

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const usuarioController = require("./usuario.controller");
-const { createUsuarioValidation } = require("./usuario.validation");
+const { createUsuarioValidation, usuarioIdParamValidation, updateUsuarioValidation } = require("./usuario.validation");
 
 const auth = require("../../modules/middlewares/authMiddleware");
 const role = require("../../modules/middlewares/roleMiddleware");
@@ -13,10 +13,10 @@ router.get('/', auth, role('admin', 'propietario'), usuarioController.getUsuario
 // POST /usuarios (admin crea propietario y propietario crea empleado/lider)
 router.post('/', auth, role('admin', 'propietario'), createUsuarioValidation, usuarioController.createUsuario);
 
-// PUT /usuarios/:id — admin y propietario (y self-update para cualquier rol)
-router.put("/:id", auth, role("admin", "propietario", "lider", "empleado"), usuarioController.updateUsuario);
+// GET /usuarios/:id
+router.get('/:id', auth, role('admin', 'propietario', "lider", "empleado"), usuarioIdParamValidation, usuarioController.getUsuarioById);
 
-// DELETE /usuarios/:id — desactivar (soft delete)
-router.delete("/:id", auth, role("admin", "propietario"), usuarioController.deleteUsuario);
+// PUT /usuarios/:id — admin y propietario (y self-update para cualquier rol)
+router.put("/:id", auth, role("admin", "propietario", "lider", "empleado"), usuarioIdParamValidation, updateUsuarioValidation, usuarioController.updateUsuario);
 
 module.exports = router;

@@ -28,14 +28,14 @@ const servicioIdParamValidation = [
 
 const updateServicioValidation = [
   body('nombre')
-    .optional({ checkFalsy: true })
+    .optional()
     .isLength({ min: 3, max: 100 }).withMessage('El nombre debe tener entre 3 y 100 caracteres')
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
     .withMessage('El nombre solo debe contener letras y espacios')
     .trim(),
 
   body('descripcion')
-    .optional({ checkFalsy: true })
+    .optional()
     .isLength({ min: 3, max: 500 }).withMessage('La descripción debe tener entre 3 y 500 caracteres')
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
     .withMessage('La descripción solo debe contener letras y espacios')

@@ -52,6 +52,7 @@ const getServicioById = async (req, res, next) => {
             data: servicio
         });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
 };
@@ -62,13 +63,14 @@ const updateServicio = async (req, res, next) => {
         const { nombre, descripcion } = req.body;
         const empresaId = req.empresaId;
 
-        const servicio = await servicioService.updateServicio(servicioId, empresaId, { nombre, descripcion });
+        const servicioActualizado = await servicioService.updateServicio(servicioId, empresaId, { nombre, descripcion });
 
         return res.status(200).json({
             success: true,
-            data: servicio
+            data: servicioActualizado
         });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
 };
@@ -86,6 +88,7 @@ const desactivarServicio = async (req, res, next) => {
             data: result,
         });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
 };
