@@ -1,24 +1,19 @@
-const jwt = require("jsonwebtoken");
+const { verifyToken } = require("../../utils/jwt");
+const { ACCESS_TOKEN_COOKIE } = require("../../config/authCookie");
 
 const authMiddleware = (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
+        const token = req.cookies?.[ACCESS_TOKEN_COOKIE];
 
-        // ❌ No hay token
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        if (!token) {
             return res.status(401).json({
                 success: false,
                 message: "Token no proporcionado",
             });
         }
 
-        // 🔑 Extraer token
-        const token = authHeader.split(" ")[1];
+        const decoded = verifyToken(token);
 
-        // 🔍 Verificar token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // 💾 Guardar usuario en request
         req.user = decoded;
 
         next();

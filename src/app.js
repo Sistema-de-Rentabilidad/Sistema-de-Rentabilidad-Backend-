@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const app = express();
 
 const authRoutes = require("./modules/auth/auth.routes");
@@ -15,8 +16,12 @@ const notasRoutes = require("./modules/nota/nota.routes");
 
 const errorHandler = require("./modules/middlewares/errorHandler");
 
-app.use(cors({ origin: "http://localhost:3001" }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3001",
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // prefijos API
 app.use("/api/auth", authRoutes);

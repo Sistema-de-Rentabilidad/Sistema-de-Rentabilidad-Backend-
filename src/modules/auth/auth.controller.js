@@ -1,4 +1,5 @@
-const { loginService } = require("../auth/auth.service");
+const { loginService, getCurrentUserService } = require("../auth/auth.service");
+const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOptions, } = require("../../config/authCookie");
 
 const login = async (req, res) => {
     try {
@@ -13,9 +14,10 @@ const login = async (req, res) => {
 
         const result = await loginService(email, password);
 
+        res.cookie(ACCESS_TOKEN_COOKIE, result.token, accessTokenCookieOptions);
+
         return res.status(200).json({
             message: "Login exitoso",
-            token: result.token,
             user: result.user,
         });
     } catch (error) {
@@ -45,6 +47,34 @@ const login = async (req, res) => {
     }
 };
 
+const me = async (req, res) => {
+    try {
+        const user = await getCurrentUserService(req.user.id_usuario);
+
+        return res.status(200).json({
+            success: true,
+            user,
+        });
+    } catch (error) {
+        const status = error.status || 401;
+        return res.status(status).json({
+            success: false,
+            message: "Sesión inválida o expirada",
+        });
+    }
+};
+
+const logout = async (req, res) => {
+    res.clearCookie(ACCESS_TOKEN_COOKIE, clearAccessTokenCookieOptions);
+
+    return res.status(200).json({
+        success: true,
+        message: "Sesión cerrada correctamente",
+    });
+};
+
 module.exports = {
-    login
+    login,
+    me,
+    logout
 };

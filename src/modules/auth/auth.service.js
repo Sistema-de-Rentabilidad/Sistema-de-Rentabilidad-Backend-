@@ -83,6 +83,25 @@ const loginService = async (email, password) => {
     };
 };
 
+const getCurrentUserService = async (idUsuario) => {
+    const user = await authRepository.findActiveUserById(idUsuario);
+
+    if (!user) {
+        const error = new Error("USUARIO_NO_ENCONTRADO");
+        error.status = 401;
+        throw error;
+    }
+
+    return {
+        id_usuario: user.id_usuario,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        id_empresa: user.id_empresa,
+    };
+};
+
 module.exports = {
-    loginService
+    loginService,
+    getCurrentUserService
 };

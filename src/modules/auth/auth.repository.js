@@ -40,8 +40,22 @@ const clearFailedLoginState = async (idUsuario) => {
     );
 };
 
+const findActiveUserById = async (idUsuario) => {
+    const result = await pool.query(
+        `SELECT id_usuario, id_empresa, nombre, email, rol, is_active
+         FROM usuario
+         WHERE id_usuario = $1
+           AND is_active = true
+         LIMIT 1`,
+        [idUsuario]
+    );
+
+    return result.rows[0] || null;
+};
+
 module.exports = {
     findUserByEmail,
     setFailedLoginState,
-    clearFailedLoginState
+    clearFailedLoginState,
+    findActiveUserById
 };
