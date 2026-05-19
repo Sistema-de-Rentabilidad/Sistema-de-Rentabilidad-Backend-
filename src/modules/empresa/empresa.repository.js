@@ -5,6 +5,7 @@ const findAll = async () => {
     SELECT 
       e.id_empresa,
       e.nombre AS empresa_nombre,
+      u.id_usuario AS propietario_id,
       u.nombre AS propietario_nombre
     FROM empresa e
     LEFT JOIN usuario u 
