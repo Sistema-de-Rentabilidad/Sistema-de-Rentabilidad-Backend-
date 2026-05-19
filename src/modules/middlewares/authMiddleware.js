@@ -1,7 +1,8 @@
 const { verifyToken } = require("../../utils/jwt");
 const { ACCESS_TOKEN_COOKIE } = require("../../config/authCookie");
+const authRepository = require("../auth/auth.repository");
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     try {
         const token = req.cookies?.[ACCESS_TOKEN_COOKIE];
 
@@ -14,7 +15,16 @@ const authMiddleware = (req, res, next) => {
 
         const decoded = verifyToken(token);
 
-        req.user = decoded;
+        const user = await authRepository.findActiveUserById(decoded.id_usuario);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario inactivo o no encontrado",
+            });
+        }
+
+        req.user = user;
 
         next();
     } catch (error) {

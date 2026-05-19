@@ -17,6 +17,9 @@ router.post("/proyectos/:id/fases", auth, role("propietario"), empresa, proyecto
 // GET /fases/:id
 router.get("/fases/:id", auth, role("propietario", "lider"), empresa, faseIdValidation, faseController.getFaseById);
 
+// PUT /fases/:id/desactivar
+router.put("/fases/:id/desactivar", auth, role("propietario"), empresa, faseIdValidation, faseController.desactivarFase);
+
 // PUT /fases/:id
 router.put("/fases/:id", auth, role("propietario"), empresa, faseIdValidation, updateFaseValidation, faseController.updateFase);
 

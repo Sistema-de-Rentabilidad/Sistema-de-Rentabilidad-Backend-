@@ -61,9 +61,27 @@ const updateFase = async (req, res, next) => {
   }
 };
 
+const desactivarFase = async (req, res, next) => {
+  try {
+    const faseId = parseInt(req.params.id, 10);
+    const empresaId = req.empresaId;
+
+    const faseDesactivada = await faseService.desactivarFase(faseId, empresaId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Fase desactivada correctamente",
+      data: faseDesactivada,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getFasesByProyecto,
   createFase,
   getFaseById,
   updateFase,
+  desactivarFase,
 };

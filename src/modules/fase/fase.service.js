@@ -93,9 +93,29 @@ const updateFase = async (faseId, data, empresaId) => {
   return await faseRepository.update(faseId, data);
 };
 
+const desactivarFase = async (faseId, empresaId) => {
+  const fase = await faseRepository.findByIdFull(faseId);
+
+  if (!fase) {
+    throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
+  }
+
+  await verifyProyectoAccess(fase.id_proyecto, empresaId);
+
+  if (!fase.is_active) {
+    throw Object.assign(
+      new Error("La fase ya esta desactivada"),
+      { status: 400 }
+    );
+  }
+
+  return await faseRepository.desactivar(faseId);
+};
+
 module.exports = {
   getFasesByProyecto,
   createFase,
   getFaseById,
   updateFase,
+  desactivarFase,
 };

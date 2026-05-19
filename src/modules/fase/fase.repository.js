@@ -46,6 +46,17 @@ const findById = async (id) => {
   return res.rows[0] || null;
 };
 
+const findByIdFull = async (id) => {
+  const res = await pool.query(
+    `SELECT *
+     FROM fase
+     WHERE id_fase = $1`,
+    [id]
+  );
+
+  return res.rows[0] || null;
+};
+
 const update = async (id, data) => {
   const res = await pool.query(
     `UPDATE fase
@@ -62,10 +73,24 @@ const update = async (id, data) => {
   return res.rows[0];
 };
 
+const desactivar = async (id) => {
+  const res = await pool.query(
+    `UPDATE fase
+     SET is_active = false
+     WHERE id_fase = $1
+     RETURNING id_fase, id_proyecto, nombre, horas_estimadas, is_active`,
+    [id]
+  );
+
+  return res.rows[0];
+};
+
 module.exports = {
   findByProyecto,
   findByNombreAndProyecto,
   create,
   findById,
-  update
+  findByIdFull,
+  update,
+  desactivar
 };

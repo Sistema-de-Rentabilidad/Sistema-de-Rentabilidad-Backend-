@@ -85,6 +85,17 @@ const findById = async (id) => {
   return result.rows[0] || null;
 };
 
+const findByIdFull = async (id) => {
+  const result = await pool.query(
+    `SELECT *
+     FROM usuario
+     WHERE id_usuario = $1`,
+    [id]
+  );
+
+  return result.rows[0] || null;
+};
+
 const findByIds = async (ids) => {
   const res = await pool.query(
     `SELECT id_usuario, id_empresa, rol
@@ -111,6 +122,18 @@ const update = async (id_usuario, { nombre, email, password }) => {
   return result.rows[0];
 };
 
+const desactivar = async (id_usuario) => {
+  const result = await pool.query(
+    `UPDATE usuario
+     SET is_active = false
+     WHERE id_usuario = $1
+     RETURNING id_usuario, nombre, email, rol, id_empresa, is_active`,
+    [id_usuario]
+  );
+
+  return result.rows[0];
+};
+
 module.exports = {
   findOnlypropietario,
   findByEmpresa,
@@ -118,6 +141,8 @@ module.exports = {
   findPropietarioByEmpresa,
   create,
   findById,
+  findByIdFull,
   findByIds,
-  update
+  update,
+  desactivar
 };
