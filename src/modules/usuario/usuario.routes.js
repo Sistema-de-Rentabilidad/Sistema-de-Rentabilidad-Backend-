@@ -19,9 +19,6 @@ router.get('/:id', auth, role('admin', 'propietario', "lider", "empleado"), usua
 // PUT /usuarios/:id/desactivar
 router.put("/:id/desactivar", auth, role("admin", "propietario"), usuarioIdParamValidation, usuarioController.desactivarUsuario);
 
-// PUT /usuarios/:id/revocar-empresa
-router.put("/:id/revocar-empresa", auth, role("admin"), usuarioIdParamValidation, usuarioController.revocarEmpresaPropietario);
-
 // PUT /usuarios/:id
 router.put("/:id", auth, role("admin", "propietario", "lider", "empleado"), usuarioIdParamValidation, updateUsuarioValidation, usuarioController.updateUsuario);
 

@@ -225,26 +225,6 @@ const updateUsuario = async (id, data, currentUser) => {
     }
   }
 
-  const nuevoIdEmpresa = data.id_empresa ? parseInt(data.id_empresa, 10) : null;
-
-  if (currentUser.rol === 'admin' && nuevoIdEmpresa && usuario.rol === 'propietario') {
-
-    if (nuevoIdEmpresa !== usuario.id_empresa) {
-      const propietarioActual = await usuarioRepository.findPropietarioByEmpresa(nuevoIdEmpresa);
-
-      if (propietarioActual && propietarioActual.id_usuario !== usuario.id_usuario) {
-        const error = new Error('La empresa ya tiene un propietario');
-        error.status = 400;
-        throw error;
-      }
-    }
-  } else if (nuevoIdEmpresa && nuevoIdEmpresa !== usuario.id_empresa) {
-    throw Object.assign(
-      new Error('No tienes permisos para cambiar la empresa del usuario'),
-      { status: 403 }
-    );
-  }
-
   // hash password
   if (data.password) {
     data.password = await bcrypt.hash(data.password, 10);
@@ -254,8 +234,7 @@ const updateUsuario = async (id, data, currentUser) => {
   await usuarioRepository.update(id, {
     nombre: data.nombre,
     email: data.email,
-    password: data.password,
-    id_empresa: currentUser.rol === 'admin' && usuario.rol === 'propietario' ? nuevoIdEmpresa : undefined
+    password: data.password
   });
 
   const quiereActualizarSueldo = usuario.rol === 'empleado' && (data.monto || data.tipo_pago || data.horas_mensuales);
@@ -325,47 +304,10 @@ const desactivarUsuario = async (id, currentUser) => {
   return await usuarioRepository.desactivar(id);
 };
 
-const revocarEmpresaPropietario = async (id, currentUser) => {
-  if (currentUser.rol !== 'admin') {
-    const error = new Error('No tienes permisos para revocar propietario');
-    error.status = 403;
-    throw error;
-  }
-
-  const usuario = await usuarioRepository.findByIdFull(id);
-
-  if (!usuario) {
-    const error = new Error('Usuario no encontrado');
-    error.status = 404;
-    throw error;
-  }
-
-  if (usuario.rol !== 'propietario') {
-    const error = new Error('Solo se puede revocar la empresa de un propietario');
-    error.status = 400;
-    throw error;
-  }
-
-  if (!usuario.is_active) {
-    const error = new Error('El propietario está inactivo');
-    error.status = 400;
-    throw error;
-  }
-
-  if (!usuario.id_empresa) {
-    const error = new Error('El propietario no tiene empresa asignada');
-    error.status = 400;
-    throw error;
-  }
-
-  return await usuarioRepository.revocarEmpresa(id);
-};
-
 module.exports = {
   getUsuarios,
   createUsuario,
   getUsuarioById,
   updateUsuario,
-  desactivarUsuario,
-  revocarEmpresaPropietario
+  desactivarUsuario
 };

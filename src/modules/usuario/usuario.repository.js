@@ -11,7 +11,7 @@ const findOnlypropietario = async (currentUserId) => {
       u.id_empresa,
       e.nombre AS empresa_nombre
     FROM usuario u
-    LEFT JOIN empresa e ON u.id_empresa = e.id_empresa
+    INNER JOIN empresa e ON u.id_empresa = e.id_empresa
     WHERE u.rol = 'propietario'
       AND u.is_active = true
       AND u.id_usuario != $1
@@ -108,17 +108,16 @@ const findByIds = async (ids) => {
   return res.rows;
 };
 
-const update = async (id_usuario, { nombre, email, password, id_empresa }) => {
+const update = async (id_usuario, { nombre, email, password }) => {
   const result = await pool.query(
     `UPDATE usuario
      SET
        nombre = COALESCE($1, nombre),
        email = COALESCE($2, email),
-       password = COALESCE($3, password),
-       id_empresa = COALESCE($4, id_empresa)
-     WHERE id_usuario = $5
+       password = COALESCE($3, password)
+     WHERE id_usuario = $4
      RETURNING *`,
-    [nombre, email, password, id_empresa, id_usuario]
+    [nombre, email, password, id_usuario]
   );
 
   return result.rows[0];
@@ -128,18 +127,6 @@ const desactivar = async (id_usuario) => {
   const result = await pool.query(
     `UPDATE usuario
      SET is_active = false
-     WHERE id_usuario = $1
-     RETURNING id_usuario, nombre, email, rol, id_empresa, is_active`,
-    [id_usuario]
-  );
-
-  return result.rows[0];
-};
-
-const revocarEmpresa = async (id_usuario) => {
-  const result = await pool.query(
-    `UPDATE usuario
-     SET id_empresa = NULL
      WHERE id_usuario = $1
      RETURNING id_usuario, nombre, email, rol, id_empresa, is_active`,
     [id_usuario]
@@ -158,6 +145,5 @@ module.exports = {
   findByIdFull,
   findByIds,
   update,
-  desactivar,
-  revocarEmpresa
+  desactivar
 };

@@ -68,26 +68,10 @@ const desactivarUsuario = async (req, res, next) => {
   }
 };
 
-const revocarEmpresaPropietario = async (req, res, next) => {
-  try {
-    const propietario = await usuarioService.revocarEmpresaPropietario(parseInt(req.params.id, 10), req.user);
-
-    res.status(200).json({
-      success: true,
-      message: "Propietario revocado correctamente",
-      data: propietario
-    });
-  } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
-    next(error);
-  }
-};
-
 module.exports = {
   getUsuarios,
   createUsuario,
   getUsuarioById,
   updateUsuario,
-  desactivarUsuario,
-  revocarEmpresaPropietario
+  desactivarUsuario
 };

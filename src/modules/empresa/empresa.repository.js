@@ -5,13 +5,16 @@ const findAll = async () => {
     SELECT 
       e.id_empresa,
       e.nombre AS empresa_nombre,
-      u.id_usuario AS propietario_id,
       u.nombre AS propietario_nombre
     FROM empresa e
-    LEFT JOIN usuario u 
-      ON u.id_empresa = e.id_empresa 
-      AND u.rol = 'propietario'
-      AND u.is_active = true
+    LEFT JOIN LATERAL (
+      SELECT nombre
+      FROM usuario
+      WHERE id_empresa = e.id_empresa
+        AND rol = 'propietario'
+      ORDER BY is_active DESC NULLS LAST, id_usuario DESC
+      LIMIT 1
+    ) u ON true
     ORDER BY e.id_empresa DESC
   `);
 

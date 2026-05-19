@@ -112,19 +112,6 @@ const updateUsuarioValidation = [
         .matches(/[^A-Za-z0-9]/).withMessage('Debe contener un carácter especial')
         .trim(),
 
-    body('id_empresa')
-        .optional({ checkFalsy: true })
-        .isInt().withMessage('Empresa inválida')
-        .custom(async (value) => {
-            if (value) {
-                const empresa = await empresaRepository.findById(value);
-                if (!empresa) {
-                    throw new Error('La empresa no existe');
-                }
-            }
-            return true;
-        }),
-
     body('tipo_pago')
         .optional()
         .isIn(['mensual', 'por_hora'])
@@ -143,8 +130,8 @@ const updateUsuarioValidation = [
         .withMessage('Las horas mensuales deben estar entre 1 y 320'),
 
     (req, res, next) => {
-        const { nombre, email, password, id_empresa, tipo_pago, monto, horas_mensuales} = req.body;
-        if (!nombre && !email && !password && !id_empresa && !tipo_pago && !monto && !horas_mensuales) {
+        const { nombre, email, password, tipo_pago, monto, horas_mensuales} = req.body;
+        if (!nombre && !email && !password && !tipo_pago && !monto && !horas_mensuales) {
             return res.status(400).json({
                 success: false,
                 message: 'Debes enviar al menos un campo para actualizar'
