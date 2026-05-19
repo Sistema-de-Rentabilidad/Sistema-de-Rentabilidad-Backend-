@@ -10,6 +10,7 @@ const findAll = async () => {
     LEFT JOIN usuario u 
       ON u.id_empresa = e.id_empresa 
       AND u.rol = 'propietario'
+      AND u.is_active = true
     ORDER BY e.id_empresa DESC
   `);
 

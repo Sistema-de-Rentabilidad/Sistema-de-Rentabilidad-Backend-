@@ -7,6 +7,7 @@ const findOnlypropietario = async (currentUserId) => {
       u.id_usuario,
       u.nombre,
       u.email,
+      u.is_active,
       u.id_empresa,
       e.nombre AS empresa_nombre
     FROM usuario u
