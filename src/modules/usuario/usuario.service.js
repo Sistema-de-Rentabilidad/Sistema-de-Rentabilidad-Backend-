@@ -257,9 +257,53 @@ const updateUsuario = async (id, data, currentUser) => {
   return await usuarioRepository.findById(id);
 };
 
+const desactivarUsuario = async (id, currentUser) => {
+  const usuario = await usuarioRepository.findByIdFull(id);
+
+  if (!usuario) {
+    const error = new Error('Usuario no encontrado');
+    error.status = 404;
+    throw error;
+  }
+
+  if (currentUser.id_usuario === usuario.id_usuario) {
+    const error = new Error('No puedes desactivar tu propio usuario');
+    error.status = 400;
+    throw error;
+  }
+
+  if (currentUser.rol === 'admin') {
+    if (usuario.rol !== 'propietario') {
+      const error = new Error('No tienes permisos para desactivar a este usuario');
+      error.status = 403;
+      throw error;
+    }
+  }
+
+  if (currentUser.rol === 'propietario') {
+    const esDeSuEmpresa = usuario.id_empresa === currentUser.id_empresa;
+    const esRolEditable = ['empleado', 'lider'].includes(usuario.rol);
+
+    if (!esDeSuEmpresa || !esRolEditable) {
+      const error = new Error('No tienes permisos para desactivar a este usuario');
+      error.status = 403;
+      throw error;
+    }
+  }
+
+  if (!usuario.is_active) {
+    const error = new Error('El usuario ya esta desactivado');
+    error.status = 400;
+    throw error;
+  }
+
+  return await usuarioRepository.desactivar(id);
+};
+
 module.exports = {
   getUsuarios,
   createUsuario,
   getUsuarioById,
-  updateUsuario
+  updateUsuario,
+  desactivarUsuario
 };

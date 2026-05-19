@@ -53,9 +53,25 @@ const updateUsuario = async (req, res, next) => {
   }
 };
 
+const desactivarUsuario = async (req, res, next) => {
+  try {
+    const usuarioDesactivado = await usuarioService.desactivarUsuario(parseInt(req.params.id, 10), req.user);
+
+    res.status(200).json({
+      success: true,
+      message: "Usuario desactivado correctamente",
+      data: usuarioDesactivado
+    });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+    next(error);
+  }
+};
+
 module.exports = {
   getUsuarios,
   createUsuario,
   getUsuarioById,
-  updateUsuario
+  updateUsuario,
+  desactivarUsuario
 };

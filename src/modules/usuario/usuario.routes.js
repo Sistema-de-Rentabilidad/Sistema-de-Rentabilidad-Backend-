@@ -16,7 +16,10 @@ router.post('/', auth, role('admin', 'propietario'), createUsuarioValidation, us
 // GET /usuarios/:id
 router.get('/:id', auth, role('admin', 'propietario', "lider", "empleado"), usuarioIdParamValidation, usuarioController.getUsuarioById);
 
-// PUT /usuarios/:id — admin y propietario (y self-update para cualquier rol)
+// PUT /usuarios/:id/desactivar
+router.put("/:id/desactivar", auth, role("admin", "propietario"), usuarioIdParamValidation, usuarioController.desactivarUsuario);
+
+// PUT /usuarios/:id
 router.put("/:id", auth, role("admin", "propietario", "lider", "empleado"), usuarioIdParamValidation, updateUsuarioValidation, usuarioController.updateUsuario);
 
 module.exports = router;
