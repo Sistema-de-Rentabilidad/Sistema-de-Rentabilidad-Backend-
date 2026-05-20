@@ -1,4 +1,4 @@
-const notaService = require("./nota.service");
+const notaService = require('./nota.service');
 
 const getNotasByProyecto = async (req, res, next) => {
   try {
@@ -11,7 +11,7 @@ const getNotasByProyecto = async (req, res, next) => {
     if (notas.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No hay notas disponibles",
+        message: 'No hay notas disponibles',
         data: [],
       });
     }
@@ -73,8 +73,8 @@ const desactivarNota = async (req, res, next) => {
       message: 'Nota desactivada correctamente',
       data: result,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 

@@ -1,6 +1,6 @@
 const empresaMiddleware = (req, res, next) => {
   // admin no necesita empresa
-  if (req.user.rol === "admin") {
+  if (req.user.rol === 'admin') {
     req.empresaId = null;
     return next();
   }
@@ -8,7 +8,7 @@ const empresaMiddleware = (req, res, next) => {
   if (!req.user.id_empresa) {
     return res.status(400).json({
       success: false,
-      message: "Usuario sin empresa",
+      message: 'Usuario sin empresa',
     });
   }
 

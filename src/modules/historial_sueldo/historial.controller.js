@@ -8,8 +8,8 @@ const createHistorial = async (req, res, next) => {
         const historial = await historialService.createHistorial(data, empresaId);
 
         res.status(201).json({ success: true, data: historial });
-    } catch (error) {
-        next(error);
+    } catch (err) {
+        next(err);
     }
 };
 

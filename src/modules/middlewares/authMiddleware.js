@@ -1,6 +1,6 @@
-const { verifyToken } = require("../../utils/jwt");
-const { ACCESS_TOKEN_COOKIE } = require("../../config/authCookie");
-const authRepository = require("../auth/auth.repository");
+const { verifyToken } = require('../../utils/jwt');
+const { ACCESS_TOKEN_COOKIE } = require('../../config/authCookie');
+const authRepository = require('../auth/auth.repository');
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -9,7 +9,7 @@ const authMiddleware = async (req, res, next) => {
         if (!token) {
             return res.status(401).json({
                 success: false,
-                message: "Token no proporcionado",
+                message: 'Token no proporcionado',
             });
         }
 
@@ -20,7 +20,7 @@ const authMiddleware = async (req, res, next) => {
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: "Usuario no encontrado",
+                message: 'Usuario no encontrado',
             });
         }
 
@@ -28,10 +28,10 @@ const authMiddleware = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error("❌ Error en authMiddleware:", error.message);
+        console.error('❌ Error en authMiddleware:', error.message);
         return res.status(401).json({
             success: false,
-            message: "Token inválido o expirado",
+            message: 'Token inválido o expirado',
         });
     }
 };

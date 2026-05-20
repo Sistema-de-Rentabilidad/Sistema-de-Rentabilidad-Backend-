@@ -1,4 +1,4 @@
-const pool = require("../../config/db");
+const pool = require('../../config/db');
 
 const findByProyecto = async (proyectoId) => {
   const res = await pool.query(
@@ -24,7 +24,7 @@ const create = async (data) => {
 
 const findById = async (id) => {
   const res = await pool.query(
-    `SELECT n.id_nota, n.id_lider, n.descripcion, n.fecha, p.id_empresa, u.nombre AS nombre_lider
+    `SELECT n.id_nota, n.id_proyecto, n.id_lider, n.descripcion, n.fecha, p.id_empresa, u.nombre AS nombre_lider
      FROM nota n
      INNER JOIN proyecto p
        ON p.id_proyecto = n.id_proyecto
