@@ -32,8 +32,6 @@ const getEmpresaById = async ({ id, user }) => {
     throw error;
   }
 
-  console.log('ROL:', user.rol);
-
   return empresa;
 };
 

@@ -1,7 +1,6 @@
 const { verifyToken } = require("../../utils/jwt");
 const { ACCESS_TOKEN_COOKIE } = require("../../config/authCookie");
 const authRepository = require("../auth/auth.repository");
-const usuarioRepository = require("../usuario/usuario.repository");
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -16,7 +15,7 @@ const authMiddleware = async (req, res, next) => {
 
         const decoded = verifyToken(token);
 
-        const user = await usuarioRepository.findById(decoded.id_usuario);
+        const user = await authRepository.findActiveUserById(decoded.id_usuario);
 
         if (!user) {
             return res.status(401).json({

@@ -1,13 +1,37 @@
 const jwt = require("jsonwebtoken");
+const {
+  JWT_SECRET,
+  JWT_EXPIRES,
+  JWT_ISSUER,
+  JWT_AUDIENCE,
+  JWT_REQUIRE_CLAIMS
+} = require("../config/env");
 
 const generateToken = (payload) => {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES || "1d",
+  const options = {
+    expiresIn: JWT_EXPIRES,
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
+  };
+
+  if (payload.id_usuario) {
+    options.subject = String(payload.id_usuario);
+  }
+
+  return jwt.sign(payload, JWT_SECRET, {
+    ...options,
   });
 };
 
 const verifyToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
+  if (JWT_REQUIRE_CLAIMS) {
+    return jwt.verify(token, JWT_SECRET, {
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    });
+  }
+
+  return jwt.verify(token, JWT_SECRET);
 };
 
 module.exports = { generateToken, verifyToken };

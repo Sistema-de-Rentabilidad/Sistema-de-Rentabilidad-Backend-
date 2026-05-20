@@ -1,7 +1,8 @@
 const ACCESS_TOKEN_COOKIE = "access_token";
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
+const { NODE_ENV } = require("./env");
 
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = NODE_ENV === "production";
 
 const accessTokenCookieOptions = {
   httpOnly: true,

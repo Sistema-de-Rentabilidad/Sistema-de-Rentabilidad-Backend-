@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const { hashPassword } = require("../../utils/hash");
 const usuarioRepository = require("./usuario.repository");
 const historialRepository = require('../historial_sueldo/historial.repository');
 const historialService = require('../historial_sueldo/historial.service');
@@ -19,7 +19,8 @@ const getUsuarios = async (user) => {
 };
 
 const createUsuario = async (data, currentUser) => {
-  const { nombre, email, password, rol, monto, tipo_pago, horas_mensuales, id_empresa } = data;
+  const { nombre, password, rol, monto, tipo_pago, horas_mensuales, id_empresa } = data;
+  const email = data.email.trim().toLowerCase();
 
   // validar email único
   const existe = await usuarioRepository.findByEmail(email);
@@ -71,8 +72,11 @@ const createUsuario = async (data, currentUser) => {
 
   if (currentUser.rol === 'propietario') {
     // propietario NO puede crear propietario
-    if (rol === 'propietario') {
-      throw new Error('Propietario no puede crear otro propietario');
+    if (!['empleado', 'lider'].includes(rol)) {
+      throw Object.assign(
+        new Error('Propietario solo puede crear empleado o lider'),
+        { status: 400 }
+      );
     }
 
     // empresa viene del token
@@ -95,7 +99,7 @@ const createUsuario = async (data, currentUser) => {
   }
 
   // encriptar contraseña
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await hashPassword(password);
 
   // crear usuario
   const usuario = await usuarioRepository.create({
@@ -215,6 +219,7 @@ const updateUsuario = async (id, data, currentUser) => {
 
   // validar email único
   if (data.email) {
+    data.email = data.email.trim().toLowerCase();
     const existente =
       await usuarioRepository.findByEmail(data.email);
 
@@ -227,7 +232,7 @@ const updateUsuario = async (id, data, currentUser) => {
 
   // hash password
   if (data.password) {
-    data.password = await bcrypt.hash(data.password, 10);
+    data.password = await hashPassword(data.password);
   }
 
   // update usuario

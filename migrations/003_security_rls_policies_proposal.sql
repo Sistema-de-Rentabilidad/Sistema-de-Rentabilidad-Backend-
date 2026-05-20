@@ -1,0 +1,86 @@
+-- PROPUESTA NO APLICADA AUTOMATICAMENTE.
+-- Parcialmente reemplazada por migrations/005_supabase_rls_policies.sql para
+-- el cierre real del Data API anon/authenticated. Esta propuesta queda como
+-- referencia para un futuro modelo RLS de negocio con contexto SQL.
+--
+-- Este backend usa JWT propio en Express y consultas directas con pg. Por eso,
+-- las policies basadas en auth.uid() no reciben automaticamente req.user.
+-- Estado verificado por MCP el 2026-05-20: RLS ya esta habilitado en las
+-- tablas sensibles revisadas, pero no existen policies especificas.
+-- Antes de ejecutar esta migracion hay que decidir una de estas rutas:
+-- 1. Deshabilitar/restringir la Data API de Supabase para el schema public si
+--    todo el acceso pasa por este backend.
+-- 2. Migrar a Supabase Auth o pasar claims al contexto SQL con SET LOCAL por
+--    transaccion y crear policies basadas en current_setting(...).
+-- 3. Usar un rol de base de datos sin BYPASSRLS para el backend y validar que
+--    todas las consultas existentes sigan funcionando bajo RLS.
+--
+-- Las tablas observadas en el codigo son: empresa, usuario, historial_sueldo,
+-- servicio, proyecto, proyecto_empleado, proyecto_lider, registro_horas, fase,
+-- fase_empleado, nota y marcaje.
+
+-- Guard rail: quitar esta excepcion solo cuando se haya definido el modelo de
+-- autenticacion/RLS y se haya probado en una rama o base de datos de staging.
+do $$
+begin
+  raise exception 'Proposal only: define Supabase Auth/custom JWT RLS model before applying';
+end $$;
+
+-- Habilitacion base de RLS en tablas del schema public:
+--
+-- alter table public.empresa enable row level security;
+-- alter table public.usuario enable row level security;
+-- alter table public.historial_sueldo enable row level security;
+-- alter table public.servicio enable row level security;
+-- alter table public.proyecto enable row level security;
+-- alter table public.proyecto_empleado enable row level security;
+-- alter table public.proyecto_lider enable row level security;
+-- alter table public.registro_horas enable row level security;
+-- alter table public.fase enable row level security;
+-- alter table public.fase_empleado enable row level security;
+-- alter table public.nota enable row level security;
+-- alter table public.marcaje enable row level security;
+--
+-- Endurecimiento minimo si la Data API no debe exponer estas tablas:
+--
+-- revoke all on all tables in schema public from anon, authenticated;
+-- revoke all on all sequences in schema public from anon, authenticated;
+--
+-- Plantilla para una alternativa con JWT propio + pg directo:
+-- El backend tendria que ejecutar SET LOCAL app.current_user_id,
+-- app.current_empresa_id y app.current_role en cada transaccion antes de
+-- consultar datos. Luego las policies podrian leer esos valores:
+--
+-- create schema if not exists private;
+--
+-- create or replace function private.current_empresa_id()
+-- returns integer
+-- language sql
+-- stable
+-- as $fn$
+--   select nullif(current_setting('app.current_empresa_id', true), '')::integer
+-- $fn$;
+--
+-- create or replace function private.current_role()
+-- returns text
+-- language sql
+-- stable
+-- as $fn$
+--   select nullif(current_setting('app.current_role', true), '')
+-- $fn$;
+--
+-- create policy empresa_select_by_scope
+-- on public.empresa
+-- for select
+-- using (
+--   private.current_role() = 'admin'
+--   or id_empresa = private.current_empresa_id()
+-- );
+--
+-- create policy proyecto_select_by_empresa
+-- on public.proyecto
+-- for select
+-- using (
+--   private.current_role() = 'admin'
+--   or id_empresa = private.current_empresa_id()
+-- );

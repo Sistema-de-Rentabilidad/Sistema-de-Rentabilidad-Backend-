@@ -54,6 +54,17 @@ const updateHorasValidation = [
         .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()-]+$/)
         .withMessage('La descripción contiene caracteres inválidos'),
 
+    (req, res, next) => {
+        const { id_proyecto, id_fase, horas, descripcion } = req.body;
+        if (!id_proyecto && !id_fase && !horas && !descripcion) {
+            return res.status(400).json({
+                success: false,
+                message: 'Debes enviar al menos un campo para actualizar'
+            });
+        }
+        next();
+    },
+
     handleValidationErrors
 ];
 
