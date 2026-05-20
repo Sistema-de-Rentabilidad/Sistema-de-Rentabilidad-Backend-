@@ -1,4 +1,13 @@
 {
+  "name": "sistema-de-rentabilidad-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.0",
     "bcrypt": "^6.0.0",
