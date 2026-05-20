@@ -27,10 +27,20 @@ const clearFailedLoginState = async (idUsuario) => {
 
 const findActiveUserById = async (idUsuario) => {
     const result = await pool.query(
-        `SELECT id_usuario, nombre, email, rol, id_empresa, is_active
-         FROM usuario
-         WHERE id_usuario = $1
-           AND is_active = true`,
+        `SELECT
+            u.id_usuario,
+            u.nombre,
+            u.email,
+            u.rol,
+            u.id_empresa,
+            u.is_active,
+            hs.tipo_pago
+         FROM usuario u
+         LEFT JOIN historial_sueldo hs
+           ON hs.id_usuario = u.id_usuario
+          AND hs.fecha_fin IS NULL
+         WHERE u.id_usuario = $1
+           AND u.is_active = true`,
         [idUsuario]
     );
 

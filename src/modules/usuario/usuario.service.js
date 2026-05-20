@@ -218,8 +218,30 @@ const updateUsuario = async (id, data, currentUser) => {
   }
 
   // validar email único
-  if (data.email) {
-    data.email = data.email.trim().toLowerCase();
+  const emailNormalizado = data.email?.trim().toLowerCase();
+  const quiereCambiarEmail = emailNormalizado && emailNormalizado !== usuario.email.toLowerCase();
+
+  if (quiereCambiarEmail) {
+    const esMismoUsuario = currentUser.id_usuario === usuario.id_usuario;
+    const usuarioObjetivoEsEmpleadoOLider = ['empleado', 'lider'].includes(usuario.rol);
+
+    if (esMismoUsuario && ['empleado', 'lider'].includes(currentUser.rol)) {
+      throw Object.assign(
+        new Error('No tienes permisos para cambiar tu correo electronico'),
+        { status: 403 }
+      );
+    }
+
+    if (!esMismoUsuario && usuarioObjetivoEsEmpleadoOLider && currentUser.rol !== 'propietario') {
+      throw Object.assign(
+        new Error('Solo un propietario puede cambiar el correo de empleados o lideres'),
+        { status: 403 }
+      );
+    }
+  }
+
+  if (emailNormalizado) {
+    data.email = emailNormalizado;
     const existente =
       await usuarioRepository.findByEmail(data.email);
 

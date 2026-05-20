@@ -26,7 +26,8 @@ const marcarSalida = async ({ user }) => {
   const fecha = getFechaActual();
   const result = await marcajeRepository.registrarSalida({
     id_usuario: user.id_usuario,
-    fecha
+    fecha,
+    validarRegistroHoras: user.rol !== 'lider'
   });
 
   if (result.error === 'ENTRADA_NO_REGISTRADA') {
@@ -37,6 +38,12 @@ const marcarSalida = async ({ user }) => {
 
   if (result.error === 'SALIDA_DUPLICADA') {
     const error = new Error('Ya registraste tu salida del dia');
+    error.status = 400;
+    throw error;
+  }
+
+  if (result.error === 'REGISTRO_HORAS_NO_REGISTRADO') {
+    const error = new Error('Debes registrar horas del dia antes de marcar salida');
     error.status = 400;
     throw error;
   }
@@ -53,8 +60,8 @@ const marcarSalida = async ({ user }) => {
 
   // SOLO empleados reciben estos campos
   if (user.rol !== 'lider') {
-    response.total_horas_registradas = result.total_horas;
-    response.horas_trabajadas = result.horas_trabajadas;
+    response.total_horas_registradas = result.resumenHoras?.total;
+    response.horas_trabajadas = result.resumenHoras?.trabajadas;
   }
 
   return response;

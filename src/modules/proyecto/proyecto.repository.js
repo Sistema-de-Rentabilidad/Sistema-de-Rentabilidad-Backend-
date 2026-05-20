@@ -29,6 +29,7 @@ const findAll = async (empresaId) => {
         p.nombre,
         p.descripcion,
         p.presupuesto,
+        p.margen,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
@@ -77,6 +78,7 @@ const findAllByLider = async ({ empresaId, liderId }) => {
         p.id_proyecto,
         p.nombre,
         p.descripcion,
+        p.margen,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
@@ -120,6 +122,7 @@ const findAllByEmpleado = async ({ empresaId, empleadoId }) => {
         p.id_proyecto,
         p.nombre,
         p.descripcion,
+        p.margen,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
@@ -168,6 +171,7 @@ const create = async (data) => {
         nombre, 
         descripcion, 
         presupuesto, 
+        margen,
         fecha_inicio, 
         fecha_fin_estimada, 
         id_servicio, 
@@ -175,12 +179,13 @@ const create = async (data) => {
         id_empresa, 
         is_active
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
       RETURNING *`,
       [
         data.nombre,
         data.descripcion ?? null,
         data.presupuesto,
+        data.margen ?? null,
         data.fecha_inicio,
         data.fecha_fin_estimada,
         data.id_servicio,
@@ -234,6 +239,7 @@ const findById = async (proyectoId) => {
         p.nombre,
         p.descripcion,
         p.presupuesto,
+        p.margen,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
@@ -282,10 +288,11 @@ const update = async (proyectoId, data) => {
        SET nombre = COALESCE($2, nombre),
            descripcion = COALESCE($3, descripcion),
            presupuesto = COALESCE($4, presupuesto),
-           fecha_inicio = COALESCE($5, fecha_inicio),
-           fecha_fin_estimada = COALESCE($6, fecha_fin_estimada),
-           id_servicio = COALESCE($7, id_servicio),
-           id_lider = COALESCE($8, id_lider)
+           margen = COALESCE($5, margen),
+           fecha_inicio = COALESCE($6, fecha_inicio),
+           fecha_fin_estimada = COALESCE($7, fecha_fin_estimada),
+           id_servicio = COALESCE($8, id_servicio),
+           id_lider = COALESCE($9, id_lider)
        WHERE id_proyecto = $1
        RETURNING *`,
       [
@@ -293,6 +300,7 @@ const update = async (proyectoId, data) => {
         data.nombre ?? null,
         data.descripcion ?? null,
         data.presupuesto ?? null,
+        data.margen ?? null,
         data.fecha_inicio ?? null,
         data.fecha_fin_estimada ?? null,
         data.id_servicio ?? null,

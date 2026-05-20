@@ -4,6 +4,7 @@ const MARCAJE_ERRORS = {
   ENTRADA_DUPLICADA: 'ENTRADA_DUPLICADA',
   ENTRADA_NO_REGISTRADA: 'ENTRADA_NO_REGISTRADA',
   SALIDA_DUPLICADA: 'SALIDA_DUPLICADA',
+  REGISTRO_HORAS_NO_REGISTRADO: 'REGISTRO_HORAS_NO_REGISTRADO',
   HORAS_EXCEDEN_MARCAJE: 'HORAS_EXCEDEN_MARCAJE'
 };
 
@@ -75,6 +76,7 @@ const findMarcajeDelDia = async (client, id_usuario, fecha) => {
 const calcularHorasTrabajadas = async (client, id_empleado, fecha, horaEntrada) => {
   const result = await client.query(
     `SELECT
+        COUNT(*)::int AS total_registros,
         COALESCE(SUM(horas), 0)::numeric AS total_horas,
         (
           EXTRACT(
@@ -87,7 +89,11 @@ const calcularHorasTrabajadas = async (client, id_empleado, fecha, horaEntrada) 
     [id_empleado, fecha, horaEntrada]
   );
 
-  return { total: Number(result.rows[0].total_horas), trabajadas: Number(result.rows[0].horas_trabajadas) };
+  return {
+    registros: Number(result.rows[0].total_registros),
+    total: Number(result.rows[0].total_horas),
+    trabajadas: Number(result.rows[0].horas_trabajadas)
+  };
 };
 
 const create = async (client, id_usuario, fecha) => {
@@ -132,7 +138,7 @@ const registrarEntrada = async ({ id_usuario, fecha }) => {
   });
 };
 
-const registrarSalida = async ({ id_usuario, fecha }) => {
+const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true }) => {
   return withTransaction(async (client) => {
     await lockMarcajeDia(client, id_usuario, fecha);
 
@@ -154,6 +160,14 @@ const registrarSalida = async ({ id_usuario, fecha }) => {
     }
 
     const resumenHoras = await calcularHorasTrabajadas(client, id_usuario, fecha, marcaje.hora_entrada);
+
+    if (validarRegistroHoras && resumenHoras.registros === 0) {
+      return {
+        error:
+          MARCAJE_ERRORS.REGISTRO_HORAS_NO_REGISTRADO,
+        resumenHoras
+      };
+    }
 
     if (resumenHoras.total > resumenHoras.trabajadas) {
       return {
