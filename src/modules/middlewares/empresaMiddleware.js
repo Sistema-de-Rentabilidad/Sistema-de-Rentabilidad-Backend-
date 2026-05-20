@@ -1,6 +1,7 @@
 const empresaMiddleware = (req, res, next) => {
   // admin no necesita empresa
   if (req.user.rol === "admin") {
+    req.empresaId = null;
     return next();
   }
 

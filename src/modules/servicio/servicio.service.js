@@ -90,7 +90,7 @@ const desactivarServicio = async (servicioId, empresaId) => {
   }
 
   if (servicio.id_empresa !== empresaId) {
-    const error = new Error('No tienes permisos para desactivar este servicio');
+    const error = new Error('No tienes permisos para eliminar este servicio');
     error.status = 403;
     throw error;
   }

@@ -1,8 +1,8 @@
 const pool = require('../../config/db');
 
 const findAll = async () => {
-  const result = await pool.query(`
-    SELECT 
+  const res = await pool.query(
+    `SELECT 
       e.id_empresa,
       e.nombre AS empresa_nombre,
       u.nombre AS propietario_nombre
@@ -15,56 +15,68 @@ const findAll = async () => {
       ORDER BY is_active DESC NULLS LAST, id_usuario DESC
       LIMIT 1
     ) u ON true
-    ORDER BY e.id_empresa DESC
-  `);
+    ORDER BY e.id_empresa DESC`);
 
-  return result.rows;
+  return res.rows || null;
 };
 
-const findByName = async (nombre) => {
-  const result = await pool.query(
+const findByNombre = async (nombre) => {
+  const res = await pool.query(
     'SELECT * FROM empresa WHERE nombre = $1',
     [nombre]
   );
 
-  return result.rows[0];
+  return res.rows[0] || null;
 };
 
 const create = async ({ nombre }) => {
-  const result = await pool.query(
+  const res = await pool.query(
     `INSERT INTO empresa (nombre)
      VALUES ($1)
-     RETURNING id_empresa, nombre`,
+     RETURNING *`,
     [nombre]
   );
 
-  return result.rows[0];
+  return res.rows[0] || null;
 };
 
 const findById = async (id) => {
-  const result = await pool.query(
-    'SELECT * FROM empresa WHERE id_empresa = $1',
+  const res = await pool.query(
+    `SELECT 
+      e.id_empresa,
+      e.nombre AS empresa_nombre,
+      u.nombre AS propietario_nombre
+    FROM empresa e
+    LEFT JOIN LATERAL (
+      SELECT nombre
+      FROM usuario
+      WHERE id_empresa = e.id_empresa
+        AND rol = 'propietario'
+      LIMIT 1
+    ) u ON true
+    WHERE e.id_empresa = $1`,
     [id]
   );
-  return result.rows[0];
+
+  return res.rows[0] || null;
 };
 
 const update = async (id, nombre) => {
-  const result = await pool.query(
+  const res = await pool.query(
     `UPDATE empresa
-     SET nombre = $1
-     WHERE id_empresa = $2
-     RETURNING id_empresa, nombre`,
-    [nombre, id]
+     SET nombre = $2
+     WHERE id_empresa = $1
+     RETURNING *`,
+    [id, nombre ?? null]
   );
 
-  return result.rows[0];
+  return res.rows[0] || null;
 };
 
 module.exports = {
   findAll,
   findById,
-  findByName,
+  findByNombre,
   create,
   update
 };

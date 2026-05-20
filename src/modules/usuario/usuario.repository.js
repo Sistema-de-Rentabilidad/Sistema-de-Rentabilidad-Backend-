@@ -29,7 +29,7 @@ const findByEmpresa = async (id_empresa, currentUserId) => {
      WHERE id_empresa = $1 AND is_active IS NOT FALSE AND id_usuario != $2`,
     [id_empresa, currentUserId]
   );
-  return result.rows;
+  return result.rows || null;
 };
 
 const findByEmail = async (email) => {
@@ -37,7 +37,7 @@ const findByEmail = async (email) => {
     "SELECT * FROM usuario WHERE email = $1",
     [email]
   );
-  return result.rows[0];
+  return result.rows[0] || null;
 };
 
 const findPropietarioByEmpresa = async (id_empresa) => {

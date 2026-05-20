@@ -17,10 +17,10 @@ router.post("/proyectos/:id/notas", auth, role("lider"), empresa, proyectoIdVali
 // GET /notas/:id
 router.get("/notas/:id", auth, role("propietario", "lider"), empresa, notaIdValidation, notaController.getNotaById);
 
+// PUT /notas/:id/desactivar (antes de PUT /:id para evitar ambigüedad)
+router.put("/notas/:id/desactivar", auth, role("lider"), empresa, notaIdValidation, notaController.desactivarNota);
+
 // PUT /notas/:id
 router.put("/notas/:id", auth, role("lider"), empresa, notaIdValidation, updateNotaValidation, notaController.updateNota);
-
-// PUT /notas/:id/desactivar
-router.put("/notas/:id/desactivar", auth, role("lider"), empresa, notaIdValidation, notaController.desactivarNota);
 
 module.exports = router;

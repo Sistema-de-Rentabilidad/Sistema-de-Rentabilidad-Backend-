@@ -6,7 +6,6 @@ const getUsuarios = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: usuarios });
   } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     next(error);
   }
 };
@@ -26,7 +25,6 @@ const createUsuario = async (req, res, next) => {
       },
     });
   } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     next(error);
   }
 };
@@ -37,7 +35,6 @@ const getUsuarioById = async (req, res, next) => {
 
     return res.status(200).json({ success: true, data: usuario });
   } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     next(error);
   }
 };
@@ -48,7 +45,6 @@ const updateUsuario = async (req, res, next) => {
 
     res.status(200).json({ success: true, data: usuarioActualizado });
   } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     next(error);
   }
 };
@@ -63,7 +59,6 @@ const desactivarUsuario = async (req, res, next) => {
       data: usuarioDesactivado
     });
   } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     next(error);
   }
 };

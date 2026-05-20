@@ -1,26 +1,26 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
-const faseController = require("./fase.controller");
-const { proyectoIdValidation, faseIdValidation, createFaseValidation, updateFaseValidation } = require("./fase.validation");
+const faseController = require('./fase.controller');
+const { proyectoIdValidation, faseIdValidation, createFaseValidation, updateFaseValidation } = require('./fase.validation');
 
-const auth = require("../middlewares/authMiddleware");
-const role = require("../middlewares/roleMiddleware");
+const auth = require('../middlewares/authMiddleware');
+const role = require('../middlewares/roleMiddleware');
 const empresa = require('../middlewares/empresaMiddleware');
 
 // GET /proyectos/:id/fases
-router.get("/proyectos/:id/fases", auth, role("propietario", "lider", "empleado"), empresa, proyectoIdValidation, faseController.getFasesByProyecto);
+router.get('/proyectos/:id/fases', auth, role('propietario', 'lider', 'empleado'), empresa, proyectoIdValidation, faseController.getFasesByProyecto);
 
 // POST /proyectos/:id/fases
-router.post("/proyectos/:id/fases", auth, role("propietario"), empresa, proyectoIdValidation, createFaseValidation, faseController.createFase);
+router.post('/proyectos/:id/fases', auth, role('propietario'), empresa, proyectoIdValidation, createFaseValidation, faseController.createFase);
 
 // GET /fases/:id
-router.get("/fases/:id", auth, role("propietario", "lider"), empresa, faseIdValidation, faseController.getFaseById);
+router.get('/fases/:id', auth, role('propietario', 'lider'), empresa, faseIdValidation, faseController.getFaseById);
 
 // PUT /fases/:id/desactivar
-router.put("/fases/:id/desactivar", auth, role("propietario"), empresa, faseIdValidation, faseController.desactivarFase);
+router.put('/fases/:id/desactivar', auth, role('propietario'), empresa, faseIdValidation, faseController.desactivarFase);
 
 // PUT /fases/:id
-router.put("/fases/:id", auth, role("propietario"), empresa, faseIdValidation, updateFaseValidation, faseController.updateFase);
+router.put('/fases/:id', auth, role('propietario'), empresa, faseIdValidation, updateFaseValidation, faseController.updateFase);
 
 module.exports = router;

@@ -29,10 +29,10 @@ const create = async (data) => {
   const res = await pool.query(
     `INSERT INTO fase (id_proyecto, nombre, horas_estimadas, is_active)
      VALUES ($1, $2, $3, true)
-     RETURNING *`,
+     RETURNING id_fase, id_proyecto, nombre, horas_estimadas`,
     [data.id_proyecto, data.nombre, data.horas_estimadas ?? 0]
   );
-  return res.rows[0];
+  return res.rows[0] || null;
 };
 
 const findById = async (id) => {
@@ -63,14 +63,14 @@ const update = async (id, data) => {
      SET nombre          = COALESCE($2, nombre),
          horas_estimadas = COALESCE($3, horas_estimadas)
      WHERE id_fase = $1
-     RETURNING *`,
+     RETURNING id_fase, id_proyecto, nombre, horas_estimadas`,
     [
       id,
       data.nombre ?? null,
       data.horas_estimadas !== undefined ? data.horas_estimadas : null,
     ]
   );
-  return res.rows[0];
+  return res.rows[0] || null;
 };
 
 const desactivar = async (id) => {

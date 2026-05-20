@@ -1,27 +1,22 @@
 const empresaRepository = require('./empresa.repository');
 
 const getEmpresas = async () => {
-  const empresas = await empresaRepository.findAll();
-  
-  return empresas;
+  return await empresaRepository.findAll();
 };
 
 const createEmpresa = async ({ nombre }) => {
-  // regla: no duplicados
-  const existe = await empresaRepository.findByName(nombre);
+  const duplicado = await empresaRepository.findByNombre(nombre);
 
-  if (existe) {
+  if (duplicado) {
     const error = new Error('Ya existe una empresa con ese nombre');
     error.status = 400;
     throw error;
   }
 
-  const empresa = await empresaRepository.create({ nombre });
-
-  return empresa;
+  return await empresaRepository.create({ nombre });
 };
 
-const getEmpresaById = async ({ id, user, empresaId }) => {
+const getEmpresaById = async ({ id, user }) => {
   const empresa = await empresaRepository.findById(id);
 
   if (!empresa) {
@@ -31,17 +26,18 @@ const getEmpresaById = async ({ id, user, empresaId }) => {
   }
 
   // REGLA: owner solo ve su empresa
-  if (user.rol !== 'admin' && empresa.id_empresa !== empresaId) {
-    const error = new Error('No tienes acceso a esta empresa');
+  if (user.rol !== 'admin' && empresa.id_empresa !== user.id_empresa) {
+    const error = new Error('No tienes permisos para acceder a esta empresa');
     error.status = 403;
     throw error;
   }
 
+  console.log('ROL:', user.rol);
+
   return empresa;
 };
 
-const updateEmpresa = async ({ id, nombre, user, empresaId }) => {
-  // verificar si existe
+const updateEmpresa = async ({ id, nombre, user }) => {
   const empresa = await empresaRepository.findById(id);
 
   if (!empresa) {
@@ -50,25 +46,23 @@ const updateEmpresa = async ({ id, nombre, user, empresaId }) => {
     throw error;
   }
 
-  // VALIDACIÓN DE PROPIEDAD
-  if (user.rol === 'propietario' && empresa.id_empresa !== empresaId) {
-    const error = new Error('No puedes modificar esta empresa');
+  if (user.rol === 'propietario' && empresa.id_empresa !== user.id_empresa) {
+    const error = new Error('No tienes permisos para editar esta empresa');
     error.status = 403;
     throw error;
   }
 
-  // evitar duplicados (excepto sí misma)
-  const empresaDuplicada = await empresaRepository.findByName(nombre);
+  if (nombre !== undefined) {
+    const duplicado = await empresaRepository.findByNombre(nombre);
 
-  if (empresaDuplicada && empresaDuplicada.id_empresa !== parseInt(id)) {
-    const error = new Error('Ya existe una empresa con ese nombre');
-    error.status = 400;
-    throw error;
+    if (duplicado && duplicado.id_empresa !== parseInt(id)) {
+      const error = new Error('Ya existe una empresa con ese nombre');
+      error.status = 400;
+      throw error;
+    }
   }
 
-  const updated = await empresaRepository.update(id, nombre);
-
-  return updated;
+  return await empresaRepository.update(id, nombre);
 };
 
 module.exports = {
