@@ -34,7 +34,7 @@ const findByEmpresa = async (id_empresa, currentUserId) => {
 
 const findByEmail = async (email) => {
   const result = await pool.query(
-    "SELECT * FROM usuario WHERE email = $1",
+    "SELECT * FROM usuario WHERE LOWER(email) = LOWER($1)",
     [email]
   );
   return result.rows[0] || null;

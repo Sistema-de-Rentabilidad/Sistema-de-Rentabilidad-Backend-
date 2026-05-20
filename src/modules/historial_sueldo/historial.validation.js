@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const createHistorialValidation = [
     body('id_usuario')
         .notEmpty().withMessage('El usuario es obligatorio')
-        .isInt().withMessage('Usuario inválido'),
+        .isInt({ min: 1 }).withMessage('Usuario inválido'),
 
     body('tipo_pago')
         .notEmpty().withMessage('El tipo de pago es obligatorio')

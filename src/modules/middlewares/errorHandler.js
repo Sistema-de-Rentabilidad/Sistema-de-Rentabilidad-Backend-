@@ -1,9 +1,18 @@
 const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err.message);
+  console.error("Error:", err.message);
 
-  res.status(err.status || 500).json({
+  const status = err.status || 500;
+  let message = err.message || "Error interno del servidor";
+
+  if (err.type === "entity.parse.failed") {
+    message = "JSON invalido";
+  } else if (status >= 500) {
+    message = "Error interno del servidor";
+  }
+
+  res.status(status).json({
     success: false,
-    message: err.message || 'Error interno del servidor'
+    message
   });
 };
 

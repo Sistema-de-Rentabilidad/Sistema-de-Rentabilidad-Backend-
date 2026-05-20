@@ -1,17 +1,9 @@
 const { loginService, getCurrentUserService } = require("../auth/auth.service");
-const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOptions, } = require("../../config/authCookie");
+const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOptions } = require("../../config/authCookie");
 
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        //Validación básica
-        if (!email || !password) {
-            return res.status(400).json({
-                message: "Email y contraseña son obligatorios",
-            });
-        }
-
         const result = await loginService(email, password);
 
         res.cookie(ACCESS_TOKEN_COOKIE, result.token, accessTokenCookieOptions);
@@ -36,13 +28,13 @@ const login = async (req, res) => {
 
         if (error.message === "USUARIO_BLOQUEADO") {
             return res.status(423).json({
-                message: "Demasiados intentos fallidos. Intenta nuevamente más tarde.",
+                message: "Demasiados intentos fallidos. Intenta nuevamente mas tarde.",
                 lockedUntil: error.lockedUntil,
                 retryAfterSeconds: error.retryAfterSeconds,
             });
         }
 
-        console.error(error);
+        console.error("Error en login:", error.message);
         return res.status(500).json({ message: "Error interno del servidor" });
     }
 };
@@ -59,17 +51,18 @@ const me = async (req, res) => {
         const status = error.status || 401;
         return res.status(status).json({
             success: false,
-            message: "Sesión inválida o expirada",
+            message: "Sesion invalida o expirada",
         });
     }
 };
 
 const logout = async (req, res) => {
+    // Logout solo elimina la cookie del navegador; no revoca JWT ya emitidos.
     res.clearCookie(ACCESS_TOKEN_COOKIE, clearAccessTokenCookieOptions);
 
     return res.status(200).json({
         success: true,
-        message: "Sesión cerrada correctamente",
+        message: "Sesion cerrada correctamente",
     });
 };
 

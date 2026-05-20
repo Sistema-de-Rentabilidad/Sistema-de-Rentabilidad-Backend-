@@ -14,7 +14,22 @@ CREATE TABLE IF NOT EXISTS proyecto_lider (
 CREATE INDEX IF NOT EXISTS idx_proyecto_lider_lider   ON proyecto_lider(id_lider);
 CREATE INDEX IF NOT EXISTS idx_proyecto_lider_proyecto ON proyecto_lider(id_proyecto);
 
--- 3. Migrate existing single-leader data into the new table
+-- 3. Security: keep the table closed to Supabase Data API roles.
+ALTER TABLE proyecto_lider ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS data_api_no_direct_access ON proyecto_lider;
+
+CREATE POLICY data_api_no_direct_access
+ON proyecto_lider
+AS RESTRICTIVE
+FOR ALL
+TO anon, authenticated
+USING (false)
+WITH CHECK (false);
+
+REVOKE ALL PRIVILEGES ON TABLE proyecto_lider FROM anon, authenticated, public;
+
+-- 4. Migrate existing single-leader data into the new table
 INSERT INTO proyecto_lider (id_proyecto, id_lider)
 SELECT id_proyecto, id_lider
 FROM proyecto

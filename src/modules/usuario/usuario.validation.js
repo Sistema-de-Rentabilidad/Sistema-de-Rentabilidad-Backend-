@@ -13,7 +13,7 @@ const createUsuarioValidation = [
     body('email')
         .notEmpty().withMessage('El email es obligatorio')
         .isEmail().withMessage('Email inválido')
-        .trim(),
+        .normalizeEmail(),
 
     body('password')
         .notEmpty().withMessage('La contraseña es obligatoria')
@@ -26,7 +26,7 @@ const createUsuarioValidation = [
 
     body('id_empresa')
         .optional({ checkFalsy: true })
-        .isInt().withMessage('Empresa inválida')
+        .isInt({ min: 1 }).withMessage('Empresa inválida')
         .custom(async (value, { req }) => {
             // solo validar si viene (caso admin)
             if (value) {
@@ -55,8 +55,8 @@ const createUsuarioValidation = [
                     throw new Error('Rol es obligatorio');
                 }
 
-                if (value === 'propietario') {
-                    throw new Error('No puede crear otro propietario');
+                if (!['empleado', 'lider'].includes(value)) {
+                    throw new Error('Propietario solo puede crear empleado o lider');
                 }
             }
 
@@ -101,7 +101,7 @@ const updateUsuarioValidation = [
     body('email')
         .optional()
         .isEmail().withMessage('Email inválido')
-        .trim(),
+        .normalizeEmail(),
 
     body('password')
         .optional()
