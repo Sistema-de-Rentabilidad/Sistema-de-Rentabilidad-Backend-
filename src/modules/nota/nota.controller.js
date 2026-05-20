@@ -41,7 +41,7 @@ const getNotaById = async (req, res, next) => {
     const empresaId = req.empresaId; // viene del middleware
 
     const nota = await notaService.getNotaById(notaId, empresaId);
-    
+
     return res.status(200).json({ success: true, data: nota });
   } catch (err) {
     next(err);
@@ -64,10 +64,17 @@ const updateNota = async (req, res, next) => {
 const desactivarNota = async (req, res, next) => {
   try {
     const notaId = parseInt(req.params.id, 10);
-    const nota = await notaService.desactivarNota(notaId, empresaId);
-    return res.status(200).json({ success: true, data: nota });
-  } catch (err) {
-    next(err);
+    const empresaId = req.empresaId; // viene del middleware
+
+    const result = await notaService.desactivarNota(notaId, req.user, empresaId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Nota desactivada correctamente',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
   }
 };
 

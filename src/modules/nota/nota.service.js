@@ -24,8 +24,8 @@ const createNota = async (proyectoId, data, user, empresaId) => {
   });
 };
 
-const getNotaById = async (notaId, empresaId) => {
-  const nota = await notaRepository.findById(notaId);
+const getNotaById = async (id, empresaId) => {
+  const nota = await notaRepository.findById(id);
 
   if (!nota) {
     throw Object.assign(new Error("Nota no encontrada"), { status: 404 });
@@ -40,8 +40,8 @@ const getNotaById = async (notaId, empresaId) => {
   return nota;
 };
 
-const updateNota = async (notaId, data, user, empresaId) => {
-  const nota = await notaRepository.findById(notaId);
+const updateNota = async (id, data, user, empresaId) => {
+  const nota = await notaRepository.findById(id);
 
   if (!nota) {
     throw Object.assign(new Error("Nota no encontrada"), { status: 404 });
@@ -61,27 +61,38 @@ const updateNota = async (notaId, data, user, empresaId) => {
     );
   }
 
-  return await notaRepository.update(notaId, data.descripcion);
+  return await notaRepository.update(id, data.descripcion);
 };
 
-const desactivarNota = async (notaId, user) => {
-  const nota = await notaRepository.findById(notaId);
+const desactivarNota = async (id, user, empresaId) => {
+  const nota = await notaRepository.findByIdFull(id);
+
   if (!nota) {
     throw Object.assign(new Error("Nota no encontrada"), { status: 404 });
   }
-  if (nota.id_empresa !== user.id_empresa) {
+
+  if (nota.id_empresa !== empresaId) {
     throw Object.assign(
       new Error("No tienes permisos para eliminar esta nota"),
       { status: 403 }
     );
   }
+
   if (nota.id_lider !== user.id_usuario) {
     throw Object.assign(
       new Error("Solo puedes eliminar tus propias notas"),
       { status: 403 }
     );
   }
-  return await notaRepository.desactivarNota(notaId);
+
+  if (!nota.is_active) {
+    throw Object.assign(
+      new Error('La nota ya está desactivada'),
+      { status: 400 }
+    );
+  }
+
+  return await notaRepository.desactivar(id);
 };
 
 module.exports = {

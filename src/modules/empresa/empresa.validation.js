@@ -6,12 +6,13 @@ const createEmpresaValidation = [
     .notEmpty().withMessage('El nombre es obligatorio')
     .isLength({ min: 3, max: 100 }).withMessage("El nombre debe tener entre 3 y 100 caracteres")
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('El nombre solo debe contener letras y espacios'),
+    .withMessage('El nombre solo debe contener letras y espacios')
+    .trim(),
 
   handleValidationErrors
 ];
 
-const empresaIdParamValidation = [
+const empresaIdValidation = [
   param('id').isInt({ min: 1 }).withMessage('ID de empresa inválido'),
 
   handleValidationErrors
@@ -22,13 +23,14 @@ const updateEmpresaValidation = [
     .notEmpty().withMessage('El nombre es obligatorio')
     .isLength({ min: 3, max: 100 }).withMessage("El nombre debe tener entre 3 y 100 caracteres")
     .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('El nombre solo debe contener letras y espacios'),
+    .withMessage('El nombre solo debe contener letras y espacios')
+    .trim(),
 
   handleValidationErrors
 ];
 
 module.exports = {
   createEmpresaValidation,
-  empresaIdParamValidation,
+  empresaIdValidation,
   updateEmpresaValidation
 };

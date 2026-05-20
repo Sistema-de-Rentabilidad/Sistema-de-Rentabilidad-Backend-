@@ -52,7 +52,6 @@ const getServicioById = async (req, res, next) => {
             data: servicio
         });
     } catch (error) {
-        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
 };
@@ -70,7 +69,6 @@ const updateServicio = async (req, res, next) => {
             data: servicioActualizado
         });
     } catch (error) {
-        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
 };
@@ -88,7 +86,6 @@ const desactivarServicio = async (req, res, next) => {
             data: result,
         });
     } catch (error) {
-        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
 };

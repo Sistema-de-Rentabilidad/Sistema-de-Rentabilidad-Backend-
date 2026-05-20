@@ -22,7 +22,7 @@ const create = async (data) => {
   return res.rows[0];
 };
 
-const findById = async (notaId) => {
+const findById = async (id) => {
   const res = await pool.query(
     `SELECT n.id_nota, n.id_lider, n.descripcion, n.fecha, p.id_empresa, u.nombre AS nombre_lider
      FROM nota n
@@ -32,26 +32,46 @@ const findById = async (notaId) => {
        ON u.id_usuario = n.id_lider
      WHERE n.id_nota = $1
        AND n.is_active = true`,
-    [notaId]
+    [id]
   );
   return res.rows[0] || null;
 };
 
-const update = async (notaId, descripcion) => {
+const findByIdFull = async (id) => {
+  const result = await pool.query(
+    `SELECT
+        n.id_nota,
+        n.id_proyecto,
+        n.id_lider,
+        n.descripcion,
+        n.fecha,
+        n.is_active,
+        p.id_empresa
+     FROM nota n
+     INNER JOIN proyecto p
+       ON n.id_proyecto = p.id_proyecto
+     WHERE n.id_nota = $1`,
+    [id]
+  );
+
+  return result.rows[0];
+};
+
+const update = async (id, descripcion) => {
   const res = await pool.query(
     `UPDATE nota
      SET descripcion = $2
      WHERE id_nota = $1
      RETURNING *`,
-    [notaId, descripcion]
+    [id, descripcion]
   );
   return res.rows[0];
 };
 
-const desactivarNota = async (notaId) => {
+const desactivar = async (id) => {
   const res = await pool.query(
     `UPDATE nota SET is_active = false WHERE id_nota = $1 RETURNING *`,
-    [notaId]
+    [id]
   );
   return res.rows[0];
 };
@@ -59,7 +79,8 @@ const desactivarNota = async (notaId) => {
 module.exports = {
   findByProyecto,
   findById,
+  findByIdFull,
   create,
   update,
-  desactivarNota,
+  desactivar,
 };

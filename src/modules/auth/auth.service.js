@@ -1,6 +1,7 @@
 const authRepository = require("../auth/auth.repository");
 const { comparePassword } = require("../../utils/hash");
 const { generateToken } = require("../../utils/jwt");
+const usuarioRepository = require("../usuario/usuario.repository");
 
 const MAX_FAILED_ATTEMPTS = 3;
 const LOCKOUT_MS = 5 * 60 * 1000;
@@ -29,7 +30,7 @@ const createInvalidCredentialsError = (failedAttempts = 0) => {
 
 const loginService = async (email, password) => {
     const normalizedEmail = normalizeEmail(email);
-    const user = await authRepository.findUserByEmail(normalizedEmail);
+    const user = await usuarioRepository.findByEmail(normalizedEmail);
 
     if (!user) {
         throw createInvalidCredentialsError();
