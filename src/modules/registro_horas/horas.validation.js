@@ -18,7 +18,7 @@ const createHorasValidation = [
     body('descripcion')
         .optional({ checkFalsy: true })
         .trim()
-        .isLength({ min: 3, max: 100 }).withMessage("La descripción debe tener entre 3 y 100 caracteres")
+        .isLength({ min: 3, max: 100 }).withMessage('La descripción debe tener entre 3 y 100 caracteres')
         .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()-]+$/)
         .withMessage('La descripción contiene caracteres inválidos')
         .trim(),

@@ -1,9 +1,9 @@
-const registroHorasRepository = require("./horas.repository");
-const proyectoRepository = require("../proyecto/proyecto.repository");
-const proyectoEmpleadoRepository = require("../proyecto_empleado/proyecto_empleado.repository")
-const faseRepository = require("../fase/fase.repository");
-const faseEmpleadoRepository = require("../fase_empleado/fase_empleado.repository")
-const { getFechaActual, toFechaString } = require("../../utils/dateTime");
+const registroHorasRepository = require('./horas.repository');
+const proyectoRepository = require('../proyecto/proyecto.repository');
+const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository')
+const faseRepository = require('../fase/fase.repository');
+const faseEmpleadoRepository = require('../fase_empleado/fase_empleado.repository')
+const { getFechaActual, toFechaString } = require('../../utils/dateTime');
 
 const getHorasByLider = async (liderId) => {
   return await registroHorasRepository.findByLider(liderId);
@@ -13,17 +13,24 @@ const getRegistrosHoras = async ({ user, empresaId }) => {
   return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
 };
 
-const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, idRegistroExcluir = null }) => {
+const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
+
   const horasActuales = idRegistroExcluir
     ? await registroHorasRepository.getTotalHorasSinRegistro(idEmpleado, fecha, idRegistroExcluir)
     : await registroHorasRepository.getTotalHorasByEmpleadoYFecha(idEmpleado, fecha);
 
   const total = Number(horasActuales) + Number(horasARegistrar);
 
+  // APLICA PARA TODOS
   if (total > 12) {
     const error = new Error('No puedes registrar más de 12 horas diarias');
     error.status = 400;
     throw error;
+  }
+
+  // SOLO EMPLEADOS MENSUALES
+  if (tipoPago !== 'mensual') {
+    return;
   }
 
   const horasTrabajadas = await registroHorasRepository.getHorasTrabajadasByEmpleadoYFecha(idEmpleado, fecha);
@@ -47,12 +54,12 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
   const proyecto = await proyectoRepository.findById(id_proyecto);
 
   if (!proyecto) {
-    throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
+    throw Object.assign(new Error('Proyecto no encontrado'), { status: 404 });
   }
 
   if (proyecto.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error("No tienes permisos para acceder a esta proyecto"),
+      new Error('No tienes permisos para acceder a esta proyecto'),
       { status: 403 }
     );
   }
@@ -76,12 +83,12 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
   const fase = await faseRepository.findById(id_fase);
 
   if (!fase) {
-    throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
+    throw Object.assign(new Error('Fase no encontrada'), { status: 404 });
   }
 
   if (fase.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error("No tienes permisos para acceder a esta fase"),
+      new Error('No tienes permisos para acceder a esta fase'),
       { status: 403 }
     );
   }
@@ -100,7 +107,8 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
   await validarHorasContraMarcaje({
     idEmpleado: user.id_usuario,
     fecha,
-    horasARegistrar: horas
+    horasARegistrar: horas,
+    tipoPago: user.tipo_pago
   });
 
   // CREAR FASE_EMPLEADO
@@ -111,14 +119,31 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
   }
 
   // CREAR REGISTRO
-  return await registroHorasRepository.create({
-    id_empleado: user.id_usuario,
-    id_proyecto,
-    id_fase,
-    fecha,
-    horas,
-    descripcion
-  });
+  try {
+    return await registroHorasRepository.create({
+      id_empleado: user.id_usuario,
+      id_proyecto,
+      id_fase,
+      fecha,
+      horas,
+      descripcion
+    });
+  } catch (error) {
+    if (
+      error.code === '23505' &&
+      error.constraint === 'unique_registro'
+    ) {
+      const customError = new Error(
+        'Ya registraste horas para esta fase en esta fecha'
+      );
+
+      customError.status = 400;
+
+      throw customError;
+    }
+
+    throw error;
+  }
 };
 
 const getRegistroHorasById = async ({ id, user }) => {
@@ -176,12 +201,12 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   const proyecto = await proyectoRepository.findById(proyectoId);
 
   if (!proyecto) {
-    throw Object.assign(new Error("Proyecto no encontrado"), { status: 404 });
+    throw Object.assign(new Error('Proyecto no encontrado'), { status: 404 });
   }
 
   if (proyecto.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error("No tienes permisos para escoger este proyecto"),
+      new Error('No tienes permisos para escoger este proyecto'),
       { status: 403 }
     );
   }
@@ -206,12 +231,12 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   const fase = await faseRepository.findById(faseId);
 
   if (!fase) {
-    throw Object.assign(new Error("Fase no encontrada"), { status: 404 });
+    throw Object.assign(new Error('Fase no encontrada'), { status: 404 });
   }
 
   if (fase.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error("No tienes permisos para escoger esta fase"),
+      new Error('No tienes permisos para escoger esta fase'),
       { status: 403 }
     );
   }
@@ -231,16 +256,34 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     idEmpleado: user.id_usuario,
     fecha: registro.fecha,
     horasARegistrar: horasRegistro,
-    idRegistroExcluir: id
+    idRegistroExcluir: id,
+    tipoPago: user.tipo_pago
   });
 
-  return await registroHorasRepository.update({
-    id,
-    id_proyecto: proyectoId,
-    id_fase: faseId,
-    horas: horasRegistro,
-    descripcion: descripcionRegistro
-  });
+  try {
+    return await registroHorasRepository.update({
+      id,
+      id_proyecto: proyectoId,
+      id_fase: faseId,
+      horas: horasRegistro,
+      descripcion: descripcionRegistro
+    });
+  } catch (error) {
+    if (
+      error.code === '23505' &&
+      error.constraint === 'unique_registro'
+    ) {
+      const customError = new Error(
+        'Ya existe un registro de horas para esta fase en esa fecha'
+      );
+
+      customError.status = 400;
+
+      throw customError;
+    }
+
+    throw error;
+  }
 };
 
 module.exports = {

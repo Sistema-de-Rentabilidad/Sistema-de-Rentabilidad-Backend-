@@ -70,7 +70,7 @@ const desactivarNota = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Nota desactivada correctamente',
+      message: 'Nota eliminada correctamente',
       data: result,
     });
   } catch (err) {

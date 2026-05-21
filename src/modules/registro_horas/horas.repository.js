@@ -1,4 +1,4 @@
-const pool = require("../../config/db");
+const pool = require('../../config/db');
 
 const ahoraLimaSql = "timezone('America/Lima', now())";
 
@@ -121,7 +121,7 @@ const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
           )
         END AS horas_trabajadas
      FROM marcaje
-     WHERE id_empleado = $1
+     WHERE id_usuario = $1
        AND fecha = $2
      LIMIT 1`,
     [idEmpleado, fecha]

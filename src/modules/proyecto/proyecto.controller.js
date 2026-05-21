@@ -1,4 +1,4 @@
-const proyectoService = require("./proyecto.service");
+const proyectoService = require('./proyecto.service');
 
 const getProyectos = async (req, res, next) => {
   try {
@@ -109,6 +109,7 @@ const desactivarProyecto = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
+      message: 'Proyecto eliminado correctamente',
       data: proyecto
     });
   } catch (error) {
@@ -140,7 +141,10 @@ const finalizarProyecto = async (req, res, next) => {
 const getHorasResumenProyecto = async (req, res, next) => {
   try {
     const resumen = await proyectoService.getHorasResumenByProyecto(parseInt(req.params.id, 10), req.empresaId);
-    return res.status(200).json({ success: true, data: resumen });
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Proyecto finalizado correctamente',
+      data: resumen });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ success: false, message: err.message });
     next(err);

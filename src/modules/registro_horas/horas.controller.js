@@ -1,9 +1,9 @@
-const registroHorasService = require("./horas.service");
+const registroHorasService = require('./horas.service');
 
 const getHorasByLider = async (req, res, next) => {
   try {
     if (!req.user?.id_usuario) {
-      return res.status(401).json({ success: false, message: "Usuario no autenticado" });
+      return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
     }
 
     const horas = await registroHorasService.getHorasByLider(req.user.id_usuario);
@@ -24,7 +24,7 @@ const getRegistrosHoras = async (req, res, next) => {
     if (registros.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No hay registros disponibles",
+        message: 'No hay registros disponibles',
         data: [],
       });
     }

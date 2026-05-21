@@ -82,7 +82,7 @@ const desactivarServicio = async (req, res, next) => {
 
         return res.status(200).json({
             success: true,
-            message: 'Servicio desactivado correctamente',
+            message: 'Servicio eliminado correctamente',
             data: result,
         });
     } catch (error) {

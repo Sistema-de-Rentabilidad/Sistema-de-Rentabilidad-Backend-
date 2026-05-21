@@ -88,7 +88,7 @@ const desactivarNota = async (id, user, empresaId) => {
 
   if (!nota.is_active) {
     throw Object.assign(
-      new Error('La nota ya está desactivada'),
+      new Error('La nota ya fue eliminada'),
       { status: 400 }
     );
   }
