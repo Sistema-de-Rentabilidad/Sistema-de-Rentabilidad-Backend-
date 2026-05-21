@@ -25,6 +25,11 @@ const createProyectoValidation = [
     .isFloat({ min: 1 })
     .withMessage('El presupuesto debe ser un número positivo mayor o igual a 1'),
 
+  body('margen')
+    .optional({ checkFalsy: true })
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('El margen debe ser un porcentaje entre 0 y 100'),
+
   // fechas
   body('fecha_inicio')
     .notEmpty().withMessage('La fecha de inicio es obligatoria')
@@ -107,6 +112,11 @@ const updateProyectoValidation = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage('El presupuesto debe ser mayor o igual a 0'),
+
+  body('margen')
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('El margen debe ser un porcentaje entre 0 y 100'),
 
   // fechas (obligatorias en create, pero opcional en update)
   body('fecha_inicio')

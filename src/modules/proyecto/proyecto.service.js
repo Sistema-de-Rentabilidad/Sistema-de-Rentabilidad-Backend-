@@ -30,7 +30,7 @@ const getProyectosEmpleado = async ({ empresaId, empleadoId }) => {
 };
 
 const createProyecto = async (empresaId, data) => {
-  const { nombre, descripcion, presupuesto, fecha_inicio, fecha_fin_estimada, id_servicio, id_lider, empleados = [] } = data;
+  const { nombre, descripcion, presupuesto, margen, fecha_inicio, fecha_fin_estimada, id_servicio, id_lider, empleados = [] } = data;
 
   const duplicado = await proyectoRepository.findByNombreAndEmpresa(
     nombre.trim(),
@@ -86,6 +86,7 @@ const createProyecto = async (empresaId, data) => {
     nombre,
     descripcion,
     presupuesto,
+    margen,
     fecha_inicio,
     fecha_fin_estimada,
     id_servicio,
