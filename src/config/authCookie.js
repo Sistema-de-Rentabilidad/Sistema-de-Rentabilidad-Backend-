@@ -1,22 +1,22 @@
-const ACCESS_TOKEN_COOKIE = "access_token";
+const ACCESS_TOKEN_COOKIE = 'access_token';
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
-const { NODE_ENV } = require("./env");
+const { NODE_ENV } = require('./env');
 
-const isProduction = NODE_ENV === "production";
+const isProduction = NODE_ENV === 'production';
 
 const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: ONE_DAY_MS,
-  path: "/",
+  path: '/',
 };
 
 const clearAccessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
-  path: "/",
+  sameSite: isProduction ? 'none' : 'lax',
+  path: '/',
 };
 
 module.exports = {

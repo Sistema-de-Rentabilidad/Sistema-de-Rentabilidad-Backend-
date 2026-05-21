@@ -1,5 +1,5 @@
-const { loginService, getCurrentUserService } = require("../auth/auth.service");
-const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOptions } = require("../../config/authCookie");
+const { loginService, getCurrentUserService } = require('../auth/auth.service');
+const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOptions } = require('../../config/authCookie');
 
 const login = async (req, res) => {
     try {
@@ -9,33 +9,33 @@ const login = async (req, res) => {
         res.cookie(ACCESS_TOKEN_COOKIE, result.token, accessTokenCookieOptions);
 
         return res.status(200).json({
-            message: "Login exitoso",
+            message: 'Login exitoso',
             user: result.user,
         });
     } catch (error) {
-        if (error.message === "CREDENCIALES_INVALIDAS") {
+        if (error.message === 'CREDENCIALES_INVALIDAS') {
             return res.status(401).json({
-                message: "Credenciales incorrectas",
+                message: 'Credenciales incorrectas',
                 failedAttempts: error.failedAttempts,
                 maxFailedAttempts: error.maxFailedAttempts,
                 remainingAttempts: error.remainingAttempts,
             });
         }
 
-        if (error.message === "USUARIO_INACTIVO") {
-            return res.status(403).json({ message: "Usuario inactivo" });
+        if (error.message === 'USUARIO_INACTIVO') {
+            return res.status(403).json({ message: 'Usuario inactivo' });
         }
 
-        if (error.message === "USUARIO_BLOQUEADO") {
+        if (error.message === 'USUARIO_BLOQUEADO') {
             return res.status(423).json({
-                message: "Demasiados intentos fallidos. Intenta nuevamente mas tarde.",
+                message: 'Demasiados intentos fallidos. Intenta nuevamente mas tarde.',
                 lockedUntil: error.lockedUntil,
                 retryAfterSeconds: error.retryAfterSeconds,
             });
         }
 
-        console.error("Error en login:", error.message);
-        return res.status(500).json({ message: "Error interno del servidor" });
+        console.error('Error en login:', error.message);
+        return res.status(500).json({ message: 'Error interno del servidor' });
     }
 };
 
@@ -51,7 +51,7 @@ const me = async (req, res) => {
         const status = error.status || 401;
         return res.status(status).json({
             success: false,
-            message: "Sesion invalida o expirada",
+            message: 'Sesion invalida o expirada',
         });
     }
 };
@@ -62,7 +62,7 @@ const logout = async (req, res) => {
 
     return res.status(200).json({
         success: true,
-        message: "Sesion cerrada correctamente",
+        message: 'Sesion cerrada correctamente',
     });
 };
 

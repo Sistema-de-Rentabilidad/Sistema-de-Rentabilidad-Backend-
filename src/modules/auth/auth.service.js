@@ -1,7 +1,7 @@
-const authRepository = require("../auth/auth.repository");
-const { comparePassword } = require("../../utils/hash");
-const { generateToken } = require("../../utils/jwt");
-const usuarioRepository = require("../usuario/usuario.repository");
+const authRepository = require('../auth/auth.repository');
+const { comparePassword } = require('../../utils/hash');
+const { generateToken } = require('../../utils/jwt');
+const usuarioRepository = require('../usuario/usuario.repository');
 
 const MAX_FAILED_ATTEMPTS = 3;
 const LOCKOUT_MS = 5 * 60 * 1000;
@@ -14,14 +14,14 @@ const getRetryAfterSeconds = (lockedUntil) => {
 };
 
 const createLockedError = (lockedUntil) => {
-    const error = new Error("USUARIO_BLOQUEADO");
+    const error = new Error('USUARIO_BLOQUEADO');
     error.lockedUntil = new Date(lockedUntil).toISOString();
     error.retryAfterSeconds = getRetryAfterSeconds(lockedUntil);
     return error;
 };
 
 const createInvalidCredentialsError = (failedAttempts = 0) => {
-    const error = new Error("CREDENCIALES_INVALIDAS");
+    const error = new Error('CREDENCIALES_INVALIDAS');
     error.failedAttempts = failedAttempts;
     error.maxFailedAttempts = MAX_FAILED_ATTEMPTS;
     error.remainingAttempts = Math.max(0, MAX_FAILED_ATTEMPTS - failedAttempts);
@@ -37,7 +37,7 @@ const loginService = async (email, password) => {
     }
 
     if (user.is_active === false) {
-        throw new Error("USUARIO_INACTIVO");
+        throw new Error('USUARIO_INACTIVO');
     }
 
     if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
@@ -88,7 +88,7 @@ const getCurrentUserService = async (idUsuario) => {
     const user = await authRepository.findActiveUserById(idUsuario);
 
     if (!user) {
-        const error = new Error("USUARIO_NO_ENCONTRADO");
+        const error = new Error('USUARIO_NO_ENCONTRADO');
         error.status = 401;
         throw error;
     }

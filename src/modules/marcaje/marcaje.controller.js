@@ -16,8 +16,8 @@ const getMarcajes = async (req, res, next) => {
       success: true,
       data: marcajes
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -30,8 +30,8 @@ const marcarEntrada = async (req, res, next) => {
       message: 'Entrada registrada correctamente',
       data: marcaje
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -44,8 +44,8 @@ const marcarSalida = async (req, res, next) => {
       message: 'Salida registrada correctamente',
       data: marcaje
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 

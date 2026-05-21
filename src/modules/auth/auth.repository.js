@@ -1,4 +1,4 @@
-const pool = require("../../config/db");
+const pool = require('../../config/db');
 
 const setFailedLoginState = async (idUsuario, attempts, lockedUntil) => {
     const result = await pool.query(

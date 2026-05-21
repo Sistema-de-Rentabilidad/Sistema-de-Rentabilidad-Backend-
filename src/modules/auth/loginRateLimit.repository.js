@@ -1,4 +1,4 @@
-const pool = require("../../config/db");
+const pool = require('../../config/db');
 
 const toInterval = (windowMs) => `${Math.ceil(windowMs / 1000)} seconds`;
 

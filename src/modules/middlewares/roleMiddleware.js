@@ -7,7 +7,7 @@ const roleMiddleware = (...rolesPermitidos) => {
             if (!user) {
                 return res.status(401).json({
                     success: false,
-                    message: "No autenticado",
+                    message: 'No autenticado',
                 });
             }
 
@@ -15,16 +15,16 @@ const roleMiddleware = (...rolesPermitidos) => {
             if (!rolesPermitidos.includes(user.rol)) {
                 return res.status(403).json({
                     success: false,
-                    message: "No tienes permisos para esta acción",
+                    message: 'No tienes permisos para esta acción',
                 });
             }
 
             next();
         } catch (error) {
-            console.error("❌ Error en roleMiddleware:", error);
+            console.error('❌ Error en roleMiddleware:', error);
             return res.status(500).json({
                 success: false,
-                message: "Error en validación de rol",
+                message: 'Error en validación de rol',
             });
         }
     };
