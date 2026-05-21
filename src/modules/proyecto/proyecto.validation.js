@@ -26,7 +26,7 @@ const createProyectoValidation = [
     .withMessage('El presupuesto debe ser un número positivo mayor o igual a 1'),
 
   body('margen')
-    .optional({ checkFalsy: true })
+    .notEmpty().withMessage('El margen es obligatorio')
     .isFloat({ min: 0, max: 100 })
     .withMessage('El margen debe ser un porcentaje entre 0 y 100'),
 

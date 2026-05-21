@@ -1,4 +1,4 @@
-const usuarioService = require("./usuario.service");
+const usuarioService = require('./usuario.service');
 
 const getUsuarios = async (req, res, next) => {
   try {
@@ -15,7 +15,7 @@ const createUsuario = async (req, res, next) => {
     const nuevoUsuario = await usuarioService.createUsuario(req.body, req.user);
     res.status(201).json({
       success: true,
-      message: "Usuario creado correctamente",
+      message: 'Usuario creado correctamente',
       user: {
         id: nuevoUsuario.id_usuario,
         nombre: nuevoUsuario.nombre,
@@ -55,7 +55,7 @@ const desactivarUsuario = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: "Usuario desactivado correctamente",
+      message: 'Usuario eliminado correctamente',
       data: usuarioDesactivado
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-const pool = require("../../config/db");
+const pool = require('../../config/db');
 
 const findAll = async (empresaId) => {
   let query = `
@@ -78,7 +78,6 @@ const findAllByLider = async ({ empresaId, liderId }) => {
         p.id_proyecto,
         p.nombre,
         p.descripcion,
-        p.margen,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
@@ -122,7 +121,6 @@ const findAllByEmpleado = async ({ empresaId, empleadoId }) => {
         p.id_proyecto,
         p.nombre,
         p.descripcion,
-        p.margen,
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,

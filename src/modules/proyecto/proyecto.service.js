@@ -1,7 +1,7 @@
-const proyectoRepository = require("./proyecto.repository");
-const servicioRepository = require("../servicio/servicio.repository");
-const usuarioRepository = require("../usuario/usuario.repository");
-const pool = require("../../config/db");
+const proyectoRepository = require('./proyecto.repository');
+const servicioRepository = require('../servicio/servicio.repository');
+const usuarioRepository = require('../usuario/usuario.repository');
+const pool = require('../../config/db');
 
 const getProyectos = async (empresaId) => {
   return await proyectoRepository.findAll(empresaId);
@@ -100,13 +100,13 @@ const getProyectoById = async (proyectoId, empresaId) => {
   const proyecto = await proyectoRepository.findById(proyectoId);
 
   if (!proyecto) {
-    const err = new Error("Proyecto no encontrado");
+    const err = new Error('Proyecto no encontrado');
     err.status = 404;
     throw err;
   }
 
   if (proyecto.id_empresa !== empresaId) {
-    const err = new Error("No tienes permisos para acceder a este proyecto");
+    const err = new Error('No tienes permisos para acceder a este proyecto');
     err.status = 403;
     throw err;
   }
@@ -214,7 +214,7 @@ const desactivarProyecto = async (proyectoId, empresaId) => {
 
   if (!proyecto.is_active) {
     throw Object.assign(
-      new Error('El proyecto ya está desactivado'),
+      new Error('El proyecto ya está eliminado'),
       { status: 400 }
     );
   }
@@ -228,7 +228,7 @@ const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
 
   if (!proyecto) {
     throw Object.assign(
-      new Error("Proyecto no encontrado"),
+      new Error('Proyecto no encontrado'),
       { status: 404 }
     );
   }
@@ -236,7 +236,7 @@ const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
   // validar empresa
   if (proyecto.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error("No pertenece a tu empresa"),
+      new Error('No pertenece a tu empresa'),
       { status: 403 }
     );
   }
@@ -244,7 +244,7 @@ const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
   // validar líder responsable
   if (proyecto.id_lider !== liderId) {
     throw Object.assign(
-      new Error("No eres líder de este proyecto"),
+      new Error('No eres líder de este proyecto'),
       { status: 403 }
     );
   }
@@ -252,7 +252,7 @@ const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
   // evitar doble finalización
   if (proyecto.fecha_fin_real) {
     throw Object.assign(
-      new Error("El proyecto ya fue finalizado"),
+      new Error('El proyecto ya fue finalizado'),
       { status: 400 }
     );
   }
@@ -262,11 +262,11 @@ const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
 
 const getHorasResumenByProyecto = async (proyectoId, empresaId) => {
   const { rows } = await pool.query(
-    "SELECT id_proyecto, id_empresa FROM proyecto WHERE id_proyecto = $1",
+    'SELECT id_proyecto, id_empresa FROM proyecto WHERE id_proyecto = $1',
     [proyectoId]
   );
-  if (!rows[0]) { const e = new Error("Proyecto no encontrado"); e.status = 404; throw e; }
-  if (rows[0].id_empresa !== empresaId) { const e = new Error("No autorizado"); e.status = 403; throw e; }
+  if (!rows[0]) { const e = new Error('Proyecto no encontrado'); e.status = 404; throw e; }
+  if (rows[0].id_empresa !== empresaId) { const e = new Error('No autorizado'); e.status = 403; throw e; }
   return await proyectoRepository.findHorasResumenByProyecto(proyectoId);
 };
 

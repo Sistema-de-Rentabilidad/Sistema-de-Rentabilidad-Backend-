@@ -1,5 +1,5 @@
-const { hashPassword } = require("../../utils/hash");
-const usuarioRepository = require("./usuario.repository");
+const { hashPassword } = require('../../utils/hash');
+const usuarioRepository = require('./usuario.repository');
 const historialRepository = require('../historial_sueldo/historial.repository');
 const historialService = require('../historial_sueldo/historial.service');
 
@@ -9,11 +9,11 @@ const getUsuarios = async (user) => {
     return await usuarioRepository.findOnlypropietario(user.id_usuario);
   }
   // propietario solo su empresa
-  if (user.rol === "propietario") {
+  if (user.rol === 'propietario') {
     return await usuarioRepository.findByEmpresa(user.id_empresa, user.id_usuario);
   }
 
-  const error = new Error("No tienes permisos para ver usuarios");
+  const error = new Error('No tienes permisos para ver usuarios');
   error.status = 403;
   throw error;
 };
@@ -86,15 +86,24 @@ const createUsuario = async (data, currentUser) => {
   // reglas de sueldo
   if (rolFinal === 'empleado') {
     if (!monto || !tipo_pago) {
-      throw new Error('Empleado requiere monto y tipo de pago');
+      throw Object.assign(
+        new Error('Empleado requiere monto y tipo de pago'),
+        { status: 400 }
+      );
     }
 
     if (tipo_pago === 'mensual' && (!horas_mensuales || horas_mensuales <= 0)) {
-      throw new Error('Empleado mensual requiere horas mensuales');
+      throw Object.assign(
+        new Error('Empleado mensual requiere horas mensuales'),
+        { status: 400 }
+      );
     }
   } else {
     if (monto || tipo_pago || horas_mensuales) {
-      throw new Error('Solo empleados pueden tener información salarial');
+      throw Object.assign(
+        new Error('Solo empleados pueden tener información salarial'),
+        { status: 400 }
+      );
     }
   }
 
@@ -298,14 +307,14 @@ const desactivarUsuario = async (id, currentUser) => {
   }
 
   if (currentUser.id_usuario === usuario.id_usuario) {
-    const error = new Error('No puedes desactivar tu propio usuario');
+    const error = new Error('No puedes eliminar tu propio usuario');
     error.status = 400;
     throw error;
   }
 
   if (currentUser.rol === 'admin') {
     if (usuario.rol !== 'propietario') {
-      const error = new Error('No tienes permisos para desactivar a este usuario');
+      const error = new Error('No tienes permisos para eliminar a este usuario');
       error.status = 403;
       throw error;
     }
@@ -316,14 +325,14 @@ const desactivarUsuario = async (id, currentUser) => {
     const esRolEditable = ['empleado', 'lider'].includes(usuario.rol);
 
     if (!esDeSuEmpresa || !esRolEditable) {
-      const error = new Error('No tienes permisos para desactivar a este usuario');
+      const error = new Error('No tienes permisos para eliminar a este usuario');
       error.status = 403;
       throw error;
     }
   }
 
   if (!usuario.is_active) {
-    const error = new Error('El usuario ya esta desactivado');
+    const error = new Error('El usuario ya fue eliminado');
     error.status = 400;
     throw error;
   }

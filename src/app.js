@@ -16,7 +16,6 @@ const marcajeRoutes = require('./modules/marcaje/marcaje.routes');
 const faseRoutes = require('./modules/fase/fase.routes');
 const notasRoutes = require('./modules/nota/nota.routes');
 
-const rejectQueryParams = require('./modules/middlewares/rejectQueryParams');
 const csrfProtection = require('./modules/middlewares/csrfProtection');
 const errorHandler = require('./modules/middlewares/errorHandler');
 
@@ -34,6 +33,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "same-site" },
   referrerPolicy: { policy: "no-referrer" },
 }));
+
 app.use(cors({
   origin(origin, callback) {
     if (origin === FRONTEND_ORIGIN || (!origin && NODE_ENV !== 'production')) {
@@ -46,13 +46,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
+
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
-app.use('/api', rejectQueryParams);
 app.use('/api', csrfProtection);
 
 // prefijos API
