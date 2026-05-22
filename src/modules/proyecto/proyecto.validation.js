@@ -6,8 +6,8 @@ const createProyectoValidation = [
   body('nombre')
     .notEmpty().withMessage('El nombre es obligatorio')
     .isLength({ min: 3, max: 100 }).withMessage('El nombre debe tener entre 3 y 100 caracteres')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('El nombre solo debe contener letras y espacios')
+    // .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
+    // .withMessage('El nombre solo debe contener letras y espacios')
     .trim(),
 
   // descripción (opcional)
@@ -94,8 +94,8 @@ const updateProyectoValidation = [
     .optional()
     .isLength({ min: 3, max: 100 })
     .withMessage('El nombre debe tener entre 3 y 100 caracteres')
-    .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
-    .withMessage('El nombre solo debe contener letras y espacios')
+    // .matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/)
+    // .withMessage('El nombre solo debe contener letras y espacios')
     .trim(),
 
   // descripción
