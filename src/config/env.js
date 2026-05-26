@@ -8,7 +8,7 @@ const REQUIRED_ENV_VARS = [
   'NODE_ENV',
 ];
 
-const VALID_NODE_ENVS = new Set(['development', 'test', 'production']);
+const VALID_NODE_ENVS = new Set(['development', 'test', 'qa', 'production']);
 const VALID_RATE_LIMIT_STORES = new Set(['auto', 'memory', 'database']);
 const MIN_JWT_SECRET_LENGTH = 32;
 
