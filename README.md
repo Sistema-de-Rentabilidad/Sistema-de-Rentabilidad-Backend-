@@ -38,6 +38,5 @@ El proyecto carga automáticamente el archivo `.env` según el entorno:
 
 | Entorno | Archivo |
 |---|---|
-| Development | `.env.development` |
+| Development/Production | `.env` |
 | QA | `.env.qa` |
-| Production | `.env.production` |
