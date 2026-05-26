@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed:qa": "cross-env NODE_ENV=qa ode seed/index.js",
+    "seed:qa": "cross-env NODE_ENV=qa node seed/index.js",
     "dev:qa": "cross-env NODE_ENV=qa nodemon src/server.js",
     "qa:reset": "npm run seed:qa && npm run dev:qa"
   },
