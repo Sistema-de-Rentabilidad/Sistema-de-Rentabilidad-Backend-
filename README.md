@@ -1,17 +1,17 @@
 # 🚀 Entornos del Proyecto
 
-## 📦 Desarrollo normal
+## 📦 Desarrollo
 
-Ejecuta el backend en entorno de desarrollo:
+Ejecuta el backend en entorno local de desarrollo:
 
 ```bash
 npm run dev
 ```
 
-### Usa:
-- `.env.development`
-- Base de datos desarrollo
-- Logs desarrollo
+### Configuración
+- Usa `.env`
+- Base de datos local/desarrollo
+- Hot reload con `node --watch`
 
 ---
 
@@ -23,20 +23,88 @@ Ejecuta el backend en entorno QA/testing:
 npm run dev:qa
 ```
 
-### Usa:
-- `.env.qa`
+### Configuración
+- Usa `.env.qa`
 - Base de datos QA
-- Datos fake/seeds QA
-- Swagger QA
 - Logs QA
+- Hot reload con `nodemon`
+
+---
+
+## 🌱 Seeds QA
+
+Carga datos QA para pruebas funcionales:
+
+```bash
+npm run seed:qa
+```
+
+### Inserta datos de:
+- Usuarios
+- Empresas
+- Servicios
+- Proyectos
+- Fases
+- Registros de horas
+- Marcajes
+- Notas
+- Relaciones entre entidades
+
+---
+
+## 🔄 Reset completo QA
+
+Limpia la base QA, ejecuta seeds y levanta el backend QA:
+
+```bash
+npm run qa:reset
+```
+
+Ideal para:
+- Testing manual
+- QA funcional
+- Demo del sistema
+- Reiniciar datos rápidamente
+
+---
+
+## 🔐 Credenciales QA
+
+| Rol | Email |
+|---|---|
+| Admin | `qa_admin@test.com` |
+| Propietario | `qa_propietario@test.com` |
+| Líder | `qa_lider@test.com` |
+| Empleado | `qa_empleado1@test.com` |
+| Empleado | `qa_empleado2@test.com` |
+
+Password para todos:
+
+```txt
+Qa123456*
+```
 
 ---
 
 ## 📌 Variables de entorno
 
-El proyecto carga automáticamente el archivo `.env` según el entorno:
-
 | Entorno | Archivo |
 |---|---|
-| Development/Production | `.env` |
+| Desarrollo | `.env` |
 | QA | `.env.qa` |
+
+---
+
+## 📜 Scripts disponibles
+
+```json
+"scripts": {
+  "start": "node src/server.js",
+  "dev": "node --watch src/server.js",
+  "seed:qa": "cross-env NODE_ENV=qa node seed/index.js",
+  "dev:qa": "cross-env NODE_ENV=qa nodemon src/server.js",
+  "qa:reset": "npm run seed:qa && npm run dev:qa"
+}
+```
+
+> ⚠️ Los seeds QA solo deben ejecutarse sobre la base de datos QA.
