@@ -9,7 +9,9 @@
     "dev": "node --watch src/server.js",
     "seed:qa": "cross-env NODE_ENV=qa node seed/index.js",
     "dev:qa": "cross-env NODE_ENV=qa nodemon src/server.js",
-    "qa:reset": "npm run seed:qa && npm run dev:qa"
+    "qa:reset": "npm run seed:qa && npm run dev:qa",
+    "test:api": "newman run postman/collections/backend-qa.postman_collection.json",
+    "test:api:env": "newman run postman/collections/backend-qa.postman_collection.json -e postman/environments/qa.postman_environment.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.0",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
+    "newman": "^6.2.2",
     "nodemon": "^3.1.14"
   }
 }
