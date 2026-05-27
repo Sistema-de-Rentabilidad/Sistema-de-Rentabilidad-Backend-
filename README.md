@@ -95,6 +95,45 @@ Qa123456*
 
 ---
 
+## 🧪 Pruebas automatizadas API
+
+Las pruebas automatizadas del backend usan Jest + Supertest y cargan la configuración de `.env.qa`.
+
+Ejecutar todas las pruebas Jest:
+
+```bash
+npm test
+```
+
+Ejecutar pruebas en modo watch:
+
+```bash
+npm run test:watch
+```
+
+Ejecutar pruebas con coverage:
+
+```bash
+npm run test:coverage
+```
+
+Ejecutar solo pruebas de API/integración con Supertest:
+
+```bash
+npm run test:api
+```
+
+Ejecutar colecciones Postman/Newman:
+
+```bash
+npm run test:postman
+npm run test:postman:env
+```
+
+Por ahora la estructura queda preparada para empezar a escribir pruebas. No se incluyen pruebas con datos reales ni flujos complejos en esta configuración inicial.
+
+---
+
 ## 📜 Scripts disponibles
 
 ```json
@@ -103,7 +142,13 @@ Qa123456*
   "dev": "node --watch src/server.js",
   "seed:qa": "cross-env NODE_ENV=qa node seed/index.js",
   "dev:qa": "cross-env NODE_ENV=qa nodemon src/server.js",
-  "qa:reset": "npm run seed:qa && npm run dev:qa"
+  "qa:reset": "npm run seed:qa && npm run dev:qa",
+  "test": "cross-env NODE_ENV=qa jest --passWithNoTests",
+  "test:watch": "cross-env NODE_ENV=qa jest --watch --passWithNoTests",
+  "test:coverage": "cross-env NODE_ENV=qa jest --coverage --passWithNoTests",
+  "test:api": "cross-env NODE_ENV=qa jest --runInBand tests/integration --passWithNoTests",
+  "test:postman": "newman run postman/collections/backend-qa.postman_collection.json",
+  "test:postman:env": "newman run postman/collections/backend-qa.postman_collection.json -e postman/environments/qa.postman_environment.json"
 }
 ```
 
