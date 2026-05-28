@@ -33,9 +33,11 @@ const findActiveUserById = async (idUsuario) => {
             u.email,
             u.rol,
             u.id_empresa,
+            e.nombre AS empresa_nombre,
             u.is_active,
             hs.tipo_pago
          FROM usuario u
+         LEFT JOIN empresa e ON e.id_empresa = u.id_empresa
          LEFT JOIN historial_sueldo hs
            ON hs.id_usuario = u.id_usuario
           AND hs.fecha_fin IS NULL
