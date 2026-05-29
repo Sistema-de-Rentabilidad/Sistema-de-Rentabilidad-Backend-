@@ -3,6 +3,11 @@ const app = require('../../../src/app');
 
 const { login } = require('../../helpers/auth');
 
+const {
+    crearUsuarioTemporal,
+    eliminarUsuarioTemporal
+} = require('../../helpers/usuario.helper');
+
 describe('Restricción correo duplicado', () => {
 
     test('CP-HU2-5-BE - debe responder 409 cuando el email ya existe', async () => {
@@ -30,26 +35,60 @@ describe('Restricción correo duplicado', () => {
 
 describe('Actualización password API', () => {
 
+    let usuario;
+
+    beforeEach(async () => {
+
+        // Crear usuario temporal
+        usuario = await crearUsuarioTemporal();
+
+    });
+
+    afterEach(async () => {
+
+        // Eliminar usuario temporal
+        await eliminarUsuarioTemporal(
+            usuario.id_usuario
+        );
+
+    });
+
     test('CP-HU2-7-BE - API actualiza password', async () => {
 
+        // Login con usuario temporal
         const auth = await login(
-            'demo_propietario@test.com',
-            'Qa123456*'
+            usuario.email,
+            usuario.passwordPlano
         );
+
+        // Nueva contraseña
+        const nuevaPassword = 'NuevaPassword123*';
 
         // Actualizar contraseña
         const response = await request(app)
-            .put('/api/usuarios/6')
+            .put(`/api/usuarios/${usuario.id_usuario}`)
             .set('Cookie', auth.cookies)
             .send({
-                password: 'NuevaPassword123*'
+                password: nuevaPassword
             });
 
+        // API OK
         expect(response.status).toBe(200);
 
-        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty(
+            'success',
+            true
+        );
 
         expect(response.body).toHaveProperty('data');
+
+        // Verificar login con nueva password
+        const nuevoLogin = await login(
+            usuario.email,
+            nuevaPassword
+        );
+
+        expect(nuevoLogin).toHaveProperty('cookies');
 
     });
 

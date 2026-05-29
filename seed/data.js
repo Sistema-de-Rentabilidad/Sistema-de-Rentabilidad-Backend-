@@ -178,6 +178,20 @@ module.exports = {
         },
 
         {
+            id_empresa: 1,
+            id_servicio: 1,
+            id_lider: 3,
+            nombre: 'Proyecto Alpha Finalizado',
+            descripcion: 'Sistema de control de rentabilidad',
+            presupuesto: 12000,
+            fecha_inicio: '2025-04-01',
+            fecha_fin_estimada: '2025-07-01',
+            fecha_fin_real: '2025-07-08',
+            margen: 18,
+            is_active: true,
+        },
+
+        {
             id_empresa: 2,
             id_servicio: 3,
             id_lider: 7,

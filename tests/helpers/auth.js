@@ -16,7 +16,7 @@ async function login(email, password) {
 
   return {
     cookies: response.headers['set-cookie'],
-    user: response.body.data
+    user: response.body.user
   };
 }
 
