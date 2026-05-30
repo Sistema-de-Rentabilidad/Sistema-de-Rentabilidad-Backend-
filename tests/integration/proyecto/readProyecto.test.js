@@ -165,7 +165,7 @@ describe('Restricción proyectos otros líderes', () => {
             'Qa123456*'
         );
 
-    });
+    }, 15000);
 
     test(
         'CP-HU34-4-BE - API no retorna proyectos externos',

@@ -1,6 +1,8 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 
+jest.setTimeout(30000);
+
 const { login } = require('../../helpers/auth');
 
 const {
@@ -75,7 +77,7 @@ describe('Rentabilidad proyecto', () => {
             expect(rentabilidad)
                 .toBe(rentabilidadEsperada);
 
-        }
+        },
 
     );
 

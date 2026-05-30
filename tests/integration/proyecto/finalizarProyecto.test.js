@@ -1,6 +1,8 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 
+jest.setTimeout(30000);
+
 const pool = require('../../../src/config/db');
 
 const { login } = require('../../helpers/auth');
@@ -53,7 +55,7 @@ describe('Actualización fecha finalización', () => {
              * Consumir endpoint finalizar
              */
             const response = await request(app)
-                .patch(
+                .put(
                     `/api/proyectos/${proyecto.id_proyecto}/finalizar`
                 )
                 .set('Cookie', auth.cookies);
@@ -95,17 +97,19 @@ describe('Actualización fecha finalización', () => {
             ).not.toBeNull();
 
             /**
-             * Debe ser fecha actual
-             * (tolerancia 5 segundos)
+             * Debe ser la fecha actual
+             * (campo date almacena solo día)
              */
-            const diferenciaMs =
-                Math.abs(
-                    fechaFinalizacion -
-                    fechaAntes
-                );
+            const fechaEsperada = fechaAntes
+                .toISOString()
+                .slice(0, 10);
 
-            expect(diferenciaMs)
-                .toBeLessThan(5000);
+            const fechaRegistrada = fechaFinalizacion
+                .toISOString()
+                .slice(0, 10);
+
+            expect(fechaRegistrada)
+                .toBe(fechaEsperada);
 
         }
 

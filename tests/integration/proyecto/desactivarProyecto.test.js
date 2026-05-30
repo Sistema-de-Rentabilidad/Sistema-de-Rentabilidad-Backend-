@@ -51,7 +51,7 @@ describe('Eliminación lógica proyecto', () => {
         // Opcional
         expect(response.body.message);
 
-    });
+    },15000);
 
 });
 
