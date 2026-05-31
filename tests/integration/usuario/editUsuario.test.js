@@ -1,4 +1,5 @@
 const request = require('supertest');
+const bcrypt = require('bcrypt');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
 
@@ -146,6 +147,89 @@ describe('Actualización usuario empleado por propietario', () => {
 
 });
 
+describe('Actualización usuario propietario por admin', () => {
+
+    let usuario;
+    let authPropietario;
+
+    beforeEach(async () => {
+        usuario = await crearUsuarioTemporal({ rol: 'propietario' });
+
+        authPropietario = await login(
+            usuario.email,
+            usuario.passwordPlano
+        );
+    });
+
+    afterEach(async () => {
+        await eliminarUsuarioTemporal(usuario.id_usuario);
+    });
+
+    test('CP-HU44-1-BE - Actualización API propietario', async () => {
+        const nuevoNombre = 'Propietario Actualizado';
+        const nuevoEmail = `qa_propietario_actualizado_${Date.now()}@test.com`;
+
+        const response = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({
+                nombre: nuevoNombre,
+                email: nuevoEmail
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(response.body.data).toMatchObject({
+            nombre: nuevoNombre,
+            email: nuevoEmail.toLowerCase()
+        });
+
+        const dbResult = await pool.query(
+            `SELECT nombre, email FROM usuario WHERE id_usuario = $1`,
+            [usuario.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(dbResult.rows[0]).toMatchObject({
+            nombre: nuevoNombre,
+            email: nuevoEmail.toLowerCase()
+        });
+    });
+
+    test('CP-HU44-5-BE - Restricción correo duplicado propietario', async () => {
+        const duplicateEmail = 'qa_admin@test.com';
+
+        const response = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({
+                email: duplicateEmail
+            });
+
+        expect(response.status).toBe(409);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/email.*registrado/i);
+    });
+
+    test('CP-HU44-8-BE - Propietario inexistente edición', async () => {
+        const invalidUsuarioId = 99999;
+        const nuevoNombre = 'Intento Edicion';
+
+        const response = await request(app)
+            .put(`/api/usuarios/${invalidUsuarioId}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({
+                nombre: nuevoNombre
+            });
+
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/no encontrado|not found/i);
+    });
+
+});
+
 describe('Actualización password API', () => {
 
     let usuario;
@@ -203,6 +287,36 @@ describe('Actualización password API', () => {
 
         expect(nuevoLogin).toHaveProperty('cookies');
 
+    });
+
+    test('CP-HU2-7-BD - Persistencia password cifrada', async () => {
+        const auth = await login(
+            usuario.email,
+            usuario.passwordPlano
+        );
+
+        const nuevaPassword = 'NuevaPassword123*';
+
+        const response = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', auth.cookies)
+            .send({
+                password: nuevaPassword
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('success', true);
+
+        const dbResult = await pool.query(
+            `SELECT password FROM usuario WHERE id_usuario = $1`,
+            [usuario.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        const storedPassword = dbResult.rows[0].password;
+
+        expect(storedPassword).not.toBe(nuevaPassword);
+        expect(await bcrypt.compare(nuevaPassword, storedPassword)).toBe(true);
     });
 
 });
