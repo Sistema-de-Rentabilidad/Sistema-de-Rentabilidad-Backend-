@@ -4,6 +4,241 @@ const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
 
 const { login } = require('../../helpers/auth');
+const {
+    crearUsuarioTemporal,
+    eliminarUsuarioTemporal
+} = require('../../helpers/usuario.helper');
+
+describe('Obtención proyectos por empresa', () => {
+
+    let auth;
+    let usuarioTemporal;
+
+    beforeEach(async () => {
+        auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+    });
+
+    afterEach(async () => {
+        if (usuarioTemporal) {
+            await eliminarUsuarioTemporal(usuarioTemporal.id_usuario);
+            usuarioTemporal = null;
+        }
+    });
+
+    test(
+        'CP-HU17-1-BE - API retorna proyectos de la empresa',
+        async () => {
+
+            /**
+             * Proyectos activos de la empresa del propietario
+             */
+            const bdResult = await pool.query(
+                `
+                SELECT id_proyecto
+                FROM proyecto
+                WHERE id_empresa = $1
+                    AND is_active = true
+                ORDER BY fecha_inicio DESC
+                `,
+                [auth.user.id_empresa]
+            );
+
+            expect(bdResult.rows.length)
+                .toBeGreaterThan(0);
+
+            /**
+             * Consumir endpoint
+             */
+            const response = await request(app)
+                .get('/api/proyectos')
+                .set('Cookie', auth.cookies);
+
+            expect(response.status)
+                .toBe(200);
+
+            expect(response.body)
+                .toHaveProperty('success', true);
+
+            expect(response.body)
+                .toHaveProperty('data');
+
+            expect(Array.isArray(response.body.data))
+                .toBe(true);
+
+            expect(response.body.data.length)
+                .toBeGreaterThan(0);
+
+            const idsBD = bdResult.rows.map(
+                proyecto => proyecto.id_proyecto
+            );
+
+            const idsAPI = response.body.data.map(
+                proyecto => proyecto.id_proyecto
+            );
+
+            idsAPI.forEach(id => {
+                expect(idsBD).toContain(id);
+            });
+
+            expect(idsAPI.length)
+                .toBe(idsBD.length);
+
+        }
+    );
+
+    test(
+        'CP-HU17-3-BE - API retorna arreglo vacío cuando no existen proyectos',
+        async () => {
+
+            usuarioTemporal = await crearUsuarioTemporal({
+                rol: 'propietario'
+            });
+
+            const proyectosEmpresa = await pool.query(
+                `
+                SELECT id_proyecto
+                FROM proyecto
+                WHERE id_empresa = $1
+                    AND is_active = true
+                `,
+                [usuarioTemporal.id_empresa]
+            );
+
+            expect(proyectosEmpresa.rowCount)
+                .toBe(0);
+
+            const authTemporal = await login(
+                usuarioTemporal.email,
+                usuarioTemporal.passwordPlano
+            );
+
+            const response = await request(app)
+                .get('/api/proyectos')
+                .set('Cookie', authTemporal.cookies);
+
+            expect(response.status)
+                .toBe(200);
+
+            expect(response.body)
+                .toHaveProperty('success', true);
+
+            expect(response.body)
+                .toHaveProperty('message');
+
+            expect(response.body.message)
+                .toMatch(/no hay proyectos disponibles/i);
+
+            expect(response.body)
+                .toHaveProperty('data');
+
+            expect(response.body.data)
+                .toEqual([]);
+
+        }
+    );
+
+    test(
+        'CP-HU17-5-BE - API no retorna proyectos externos de otra empresa',
+        async () => {
+
+            const proyectosExternos = await pool.query(
+                `
+                SELECT id_proyecto
+                FROM proyecto
+                WHERE id_empresa <> $1
+                    AND is_active = true
+                `,
+                [auth.user.id_empresa]
+            );
+
+            expect(proyectosExternos.rowCount)
+                .toBeGreaterThan(0);
+
+            const proyectosEmpresa = await pool.query(
+                `
+                SELECT id_proyecto
+                FROM proyecto
+                WHERE id_empresa = $1
+                    AND is_active = true
+                `,
+                [auth.user.id_empresa]
+            );
+
+            const response = await request(app)
+                .get('/api/proyectos')
+                .set('Cookie', auth.cookies);
+
+            expect(response.status)
+                .toBe(200);
+
+            expect(response.body)
+                .toHaveProperty('success', true);
+
+            expect(response.body)
+                .toHaveProperty('data');
+
+            expect(Array.isArray(response.body.data))
+                .toBe(true);
+
+            const idsExternos = proyectosExternos.rows.map(
+                proyecto => proyecto.id_proyecto
+            );
+
+            const idsEmpresa = proyectosEmpresa.rows.map(
+                proyecto => proyecto.id_proyecto
+            );
+
+            const idsAPI = response.body.data.map(
+                proyecto => proyecto.id_proyecto
+            );
+
+            idsExternos.forEach(id => {
+                expect(idsAPI).not.toContain(id);
+            });
+
+            idsAPI.forEach(id => {
+                expect(idsEmpresa).toContain(id);
+            });
+
+        }
+    );
+
+});
+
+describe('Restricción backend módulo proyectos', () => {
+
+    test(
+        'CP-HU17-2-BE - API responde 403 para usuario sin permiso en proyectos',
+        async () => {
+
+            const auth = await login(
+                'qa_admin@test.com',
+                'Qa123456*'
+            );
+
+            const response = await request(app)
+                .get('/api/proyectos')
+                .set('Cookie', auth.cookies);
+
+            expect(response.status)
+                .toBe(403);
+
+            expect(response.body)
+                .toHaveProperty('success', false);
+
+            expect(response.body)
+                .toHaveProperty('message');
+
+            expect(response.body.message)
+                .toMatch(/permisos|acción/i);
+
+        }
+    );
+
+});
 
 describe('Obtención proyectos asignados líder', () => {
 
