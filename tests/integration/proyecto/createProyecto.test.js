@@ -45,6 +45,225 @@ describe('Restricción nombre duplicado', () => {
 
 });
 
+describe('Validación duplicidad empleados', () => {
+
+    test('CP-HU18-3-BE - API rechaza empleados duplicados', async () => {
+
+        const auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+
+        const nombreProyecto = `Proyecto QA duplicidad empleados ${Date.now()}`;
+
+        const response = await request(app)
+            .post('/api/proyectos')
+            .set('Cookie', auth.cookies)
+            .send({
+                id_servicio: 1,
+                id_lider: 3,
+                nombre: nombreProyecto,
+                descripcion: 'Proyecto temporal testing',
+                presupuesto: 1000,
+                fecha_inicio: '2025-01-01',
+                fecha_fin_estimada: '2025-12-31',
+                margen: 20,
+                empleados: [4, 4]
+            });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+        expect(response.body.message).toMatch(/empleados duplicados/i);
+
+        const dbResult = await pool.query(
+            `
+            SELECT id_proyecto
+            FROM proyecto
+            WHERE nombre = $1
+            `,
+            [nombreProyecto]
+        );
+
+        expect(dbResult.rowCount).toBe(0);
+    });
+
+});
+
+describe('Validación fechas proyecto', () => {
+
+    test('CP-HU18-5-BE - API rechaza fecha fin menor a fecha inicio', async () => {
+
+        const auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+
+        const nombreProyecto = `Proyecto QA fecha invalida ${Date.now()}`;
+
+        const response = await request(app)
+            .post('/api/proyectos')
+            .set('Cookie', auth.cookies)
+            .send({
+                id_servicio: 1, id_lider: 3, nombre: nombreProyecto, descripcion: 'Proyecto temporal testing',
+                presupuesto: 1000, fecha_inicio: '2025-12-31', fecha_fin_estimada: '2025-01-01',
+                margen: 20, empleados: [4]
+            });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('errors');
+        expect(Array.isArray(response.body.errors)).toBe(true);
+        expect(
+            response.body.errors.some(error =>
+                error.msg === 'La fecha fin no puede ser menor a la fecha de inicio'
+            )
+        ).toBe(true);
+
+        const dbResult = await pool.query(
+            `
+            SELECT id_proyecto
+            FROM proyecto
+            WHERE nombre = $1
+            `,
+            [nombreProyecto]
+        );
+
+        expect(dbResult.rowCount).toBe(0);
+    });
+
+});
+
+describe('Restricción líder externo', () => {
+
+    test('CP-HU18-11-BE - API rechaza proyecto con líder que no pertenece a la empresa', async () => {
+
+        const auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+        const empresaAutenticadaId = auth.user.id_empresa;
+
+        const liderExternoResult = await pool.query(
+            `
+            SELECT id_usuario, id_empresa
+            FROM usuario
+            WHERE id_empresa <> $1
+              AND rol = 'lider'
+            LIMIT 1
+            `,
+            [empresaAutenticadaId]
+        );
+
+        expect(liderExternoResult.rowCount).toBeGreaterThan(0);
+
+        const liderExternoId = liderExternoResult.rows[0].id_usuario;
+        expect(liderExternoResult.rows[0].id_empresa)
+            .not.toBe(empresaAutenticadaId);
+
+        const nombreProyecto = `Proyecto QA lider externo ${Date.now()}`;
+
+        const response = await request(app)
+            .post('/api/proyectos')
+            .set('Cookie', auth.cookies)
+            .send({
+                id_servicio: 1,
+                id_lider: liderExternoId,
+                nombre: nombreProyecto,
+                descripcion: 'Proyecto temporal testing con lider externo',
+                presupuesto: 1000,
+                fecha_inicio: '2025-01-01',
+                fecha_fin_estimada: '2025-12-31',
+                margen: 20,
+                empleados: [4]
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+
+        expect(response.body.message).toMatch(/Líder no válido/i);
+
+        const dbResult = await pool.query(
+            `
+            SELECT id_proyecto
+            FROM proyecto
+            WHERE nombre = $1
+            `,
+            [nombreProyecto]
+        );
+
+        expect(dbResult.rowCount).toBe(0);
+    });
+
+});
+
+describe('Restricción empleado externo', () => {
+
+    test('CP-HU18-12-BE - API rechaza proyecto con empleado que no pertenece a la empresa', async () => {
+
+        const auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+        const empresaAutenticadaId = auth.user.id_empresa;
+
+        const empleadoExternoResult = await pool.query(
+            `
+            SELECT id_usuario, id_empresa
+            FROM usuario
+            WHERE id_empresa <> $1
+              AND rol = 'empleado'
+            LIMIT 1
+            `,
+            [empresaAutenticadaId]
+        );
+
+        expect(empleadoExternoResult.rowCount).toBeGreaterThan(0);
+
+        const empleadoExternoId = empleadoExternoResult.rows[0].id_usuario;
+        expect(empleadoExternoResult.rows[0].id_empresa)
+            .not.toBe(empresaAutenticadaId);
+
+        const nombreProyecto = `Proyecto QA empleado externo ${Date.now()}`;
+
+        const response = await request(app)
+            .post('/api/proyectos')
+            .set('Cookie', auth.cookies)
+            .send({
+                id_servicio: 1,
+                id_lider: 3,
+                nombre: nombreProyecto,
+                descripcion: 'Proyecto temporal testing con empleado externo',
+                presupuesto: 1000,
+                fecha_inicio: '2025-01-01',
+                fecha_fin_estimada: '2025-12-31',
+                margen: 20,
+                empleados: [empleadoExternoId]
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+
+        expect(response.body.message).toMatch(/Empleado no válido/i);
+
+        const dbResult = await pool.query(
+            `
+            SELECT id_proyecto
+            FROM proyecto
+            WHERE nombre = $1
+            `,
+            [nombreProyecto]
+        );
+
+        expect(dbResult.rowCount).toBe(0);
+    });
+
+});
+
 describe('Restricción UNIQUE nombre proyecto', () => {
 
     test('CP-HU18-8-BD - BD rechaza nombre duplicado', async () => {

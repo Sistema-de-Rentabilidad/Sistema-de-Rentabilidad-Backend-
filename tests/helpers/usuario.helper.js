@@ -9,7 +9,8 @@ async function crearUsuarioTemporal(options = {}) {
         idEmpresa = null,
         nombre = null,
         email = null,
-        passwordPlano = 'Qa123456*'
+        passwordPlano = 'Qa123456*',
+        isActive = true,
     } = options;
 
     const timestamp = Date.now();
@@ -31,9 +32,10 @@ async function crearUsuarioTemporal(options = {}) {
             nombre,
             email,
             password,
-            rol
+            rol,
+            is_active
         )
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         `,
         [
@@ -41,7 +43,8 @@ async function crearUsuarioTemporal(options = {}) {
             userNombre,
             userEmail,
             passwordHash,
-            rol
+            rol,
+            isActive,
         ]
     );
 
