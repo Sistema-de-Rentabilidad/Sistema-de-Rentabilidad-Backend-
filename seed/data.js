@@ -96,6 +96,14 @@ module.exports = {
         },
 
         {
+            nombre: 'Testing Lider',
+            email: 'testing_lider@test.com',
+            rol: 'lider',
+            id_empresa: 3,
+            is_active: true,
+        },
+
+        {
             nombre: 'Testing Empleado',
             email: 'testing_empleado@test.com',
             rol: 'empleado',
@@ -208,7 +216,7 @@ module.exports = {
         {
             id_empresa: 3,
             id_servicio: 5,
-            id_lider: 9,
+            id_lider: 11,
             nombre: 'Proyecto Gamma',
             descripcion: 'Automatización de pruebas E2E',
             presupuesto: 20000,
@@ -276,45 +284,59 @@ module.exports = {
             horas_estimadas: 25,
             is_active: true,
         },
+
+        {
+            id_proyecto: 5,
+            nombre: 'Definición',
+            horas_estimadas: 25,
+            is_active: true,
+        },
+
+        {
+            id_proyecto: 5,
+            nombre: 'Automatización',
+            horas_estimadas: 60,
+            is_active: true,
+        },
     ],
 
     notas: [
         {
+            id_usuario: 3,
             id_proyecto: 1,
-            id_lider: 3,
             descripcion: 'Avance correcto del sprint 1',
             fecha: '2025-05-01',
             is_active: true,
         },
 
         {
+            id_usuario: 3,
             id_proyecto: 1,
-            id_lider: 3,
             descripcion: 'Pendiente validación de módulos financieros',
             fecha: '2025-05-10',
             is_active: true,
         },
 
         {
+            id_usuario: 3,
             id_proyecto: 2,
-            id_lider: 3,
             descripcion: 'Cliente aprobó las pruebas funcionales',
             fecha: '2025-05-15',
             is_active: true,
         },
 
         {
-            id_proyecto: 3,
-            id_lider: 7,
-            descripcion: 'Proyecto finalizado dentro del presupuesto',
-            fecha: '2025-06-20',
-            is_active: false,
+            id_usuario: 7,
+            id_proyecto: 4,
+            descripcion: 'Validación final completada',
+            fecha: '2025-06-10',
+            is_active: true,
         },
 
         {
-            id_proyecto: 4,
-            id_lider: 9,
-            descripcion: 'Automatización Cypress completada',
+            id_usuario: 11,
+            id_proyecto: 5,
+            descripcion: 'Automatización en curso',
             fecha: '2025-05-22',
             is_active: true,
         },
@@ -358,7 +380,16 @@ module.exports = {
         },
 
         {
-            id_usuario: 8,
+            id_usuario: 11,
+            tipo_pago: 'mensual',
+            monto: 5200,
+            fecha_inicio: '2025-02-01',
+            fecha_fin: null,
+            horas_mensuales: 160,
+        },
+
+        {
+            id_usuario: 12,
             tipo_pago: 'por_hora',
             monto: 22,
             fecha_inicio: '2025-02-01',
@@ -390,12 +421,27 @@ module.exports = {
 
         {
             id_proyecto: 3,
+            id_empleado: 4,
+        },
+
+        {
+            id_proyecto: 3,
+            id_empleado: 5,
+        },
+
+        {
+            id_proyecto: 4,
             id_empleado: 8,
         },
 
         {
             id_proyecto: 4,
-            id_empleado: 10,
+            id_empleado: 9,
+        },
+
+        {
+            id_proyecto: 5,
+            id_empleado: 12,
         },
     ],
 
@@ -417,40 +463,46 @@ module.exports = {
 
         {
             id_fase: 4,
-            id_empleado: 4,
+            id_empleado: 8,
         },
 
         {
             id_fase: 5,
-            id_empleado: 5,
+            id_empleado: 9,
         },
 
         {
             id_fase: 7,
-            id_empleado: 10,
+            id_empleado: 8,
+        },
+
+        {
+            id_fase: 8,
+            id_empleado: 9,
+        },
+
+        {
+            id_fase: 9,
+            id_empleado: 12,
+        },
+
+        {
+            id_fase: 10,
+            id_empleado: 12,
         },
     ],
 
     marcajes: [
         {
             id_usuario: 4,
-            fecha: '2025-05-20',
-            hora_entrada: '2025-05-20 08:00:00',
-            hora_salida: '2025-05-20 17:00:00',
         },
 
         {
             id_usuario: 5,
-            fecha: '2025-05-20',
-            hora_entrada: '2025-05-20 09:00:00',
-            hora_salida: '2025-05-20 16:00:00',
         },
 
         {
-            id_usuario: 10,
-            fecha: '2025-05-21',
-            hora_entrada: '2025-05-21 08:30:00',
-            hora_salida: '2025-05-21 17:30:00',
+            id_usuario: 8,
         },
     ],
 
@@ -458,8 +510,6 @@ module.exports = {
         {
             id_empleado: 4,
             id_proyecto: 1,
-            fecha: '2025-05-20',
-            horas: 8,
             descripcion: 'Desarrollo de dashboard financiero',
             id_fase: 2,
         },
@@ -467,8 +517,6 @@ module.exports = {
         {
             id_empleado: 5,
             id_proyecto: 1,
-            fecha: '2025-05-20',
-            horas: 6,
             descripcion: 'Pruebas funcionales módulo login',
             id_fase: 3,
         },
@@ -476,19 +524,22 @@ module.exports = {
         {
             id_empleado: 4,
             id_proyecto: 2,
-            fecha: '2025-05-21',
-            horas: 4,
             descripcion: 'Planificación del sprint QA',
             id_fase: 4,
         },
 
         {
-            id_empleado: 10,
+            id_empleado: 8,
             id_proyecto: 4,
-            fecha: '2025-05-22',
-            horas: 7,
             descripcion: 'Automatización de pruebas Cypress',
             id_fase: 7,
+        },
+
+        {
+            id_empleado: 12,
+            id_proyecto: 5,
+            descripcion: 'Configuración de casos de prueba',
+            id_fase: 9,
         },
     ],
 };
