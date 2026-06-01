@@ -3,10 +3,11 @@ require('dotenv').config({
 });
 
 const app = require('./app');
+const logger = require('./utils/logger');
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌎 Environment: ${process.env.NODE_ENV}`);
+  logger.info(`🚀 Server running on port ${PORT}`);
+  logger.info(`🌎 Environment: ${process.env.NODE_ENV}`);
 });

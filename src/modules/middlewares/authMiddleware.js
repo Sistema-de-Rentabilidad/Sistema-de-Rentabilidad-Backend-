@@ -1,6 +1,7 @@
 const { verifyToken } = require('../../utils/jwt');
 const { ACCESS_TOKEN_COOKIE } = require('../../config/authCookie');
 const authRepository = require('../auth/auth.repository');
+const logger = require('../../utils/logger');
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -28,7 +29,11 @@ const authMiddleware = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error('❌ Error en authMiddleware:', error.message);
+        logger.error('❌ Error en authMiddleware:', {
+            message: error.message,
+            method: req.method,
+            url: req.originalUrl,
+        });
         return res.status(401).json({
             success: false,
             message: 'Token inválido o expirado',

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
+const morgan = require('morgan');
 const { FRONTEND_ORIGIN, NODE_ENV } = require('./config/env');
 const app = express();
 
@@ -49,6 +50,14 @@ app.use(cors({
 
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
+
+if (NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', {
+    skip: (req, res) => res.statusCode < 400,
+  }));
+}
 
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
