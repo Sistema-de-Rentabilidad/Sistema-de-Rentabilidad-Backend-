@@ -3,8 +3,8 @@ const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOpt
 const logger = require('../../utils/logger');
 
 const login = async (req, res) => {
+    const { email, password } = req.body;
     try {
-        const { email, password } = req.body;
         const result = await loginService(email, password);
 
         res.cookie(ACCESS_TOKEN_COOKIE, result.token, accessTokenCookieOptions);
@@ -17,7 +17,7 @@ const login = async (req, res) => {
     } catch (error) {
         if (error.message === 'CREDENCIALES_INVALIDAS') {
             logger.warn('Login fallido por credenciales invalidas', {
-                email,
+                email: email || req.body?.email,
                 failedAttempts: error.failedAttempts,
                 remainingAttempts: error.remainingAttempts,
             });
@@ -31,13 +31,13 @@ const login = async (req, res) => {
         }
 
         if (error.message === 'USUARIO_INACTIVO') {
-            logger.warn('Login fallido: usuario inactivo', { email });
+            logger.warn('Login fallido: usuario inactivo', { email: email || req.body?.email });
             return res.status(403).json({ message: 'Usuario inactivo' });
         }
 
         if (error.message === 'USUARIO_BLOQUEADO') {
             logger.warn('Login bloqueado', {
-                email,
+                email: email || req.body?.email,
                 lockedUntil: error.lockedUntil,
                 retryAfterSeconds: error.retryAfterSeconds,
             });
