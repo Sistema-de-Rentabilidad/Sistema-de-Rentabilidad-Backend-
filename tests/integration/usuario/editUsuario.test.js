@@ -35,6 +35,49 @@ describe('Restricción correo duplicado', () => {
 
 });
 
+describe('Actualización API perfil', () => {
+
+    let usuario;
+
+    beforeEach(async () => {
+        usuario = await crearUsuarioTemporal();
+    });
+
+    afterEach(async () => {
+        await eliminarUsuarioTemporal(usuario.id_usuario);
+    });
+
+    test('CP-HU2-1-BE - Actualización API perfil con datos válidos', async () => {
+        const auth = await login(
+            usuario.email,
+            usuario.passwordPlano
+        );
+
+        const nuevoNombre = 'Perfil Actualizado';
+
+        const response = await request(app)
+            .put(`/api/usuarios/${auth.user.id_usuario}`)
+            .set('Cookie', auth.cookies)
+            .send({
+                nombre: nuevoNombre
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(response.body.data).toHaveProperty('nombre', nuevoNombre);
+
+        const dbResult = await pool.query(
+            `SELECT nombre FROM usuario WHERE id_usuario = $1`,
+            [auth.user.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(dbResult.rows[0].nombre).toBe(nuevoNombre);
+    });
+
+});
+
 describe('Actualización usuario empleado por propietario', () => {
 
     let authPropietario;
