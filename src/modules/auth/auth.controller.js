@@ -1,5 +1,6 @@
 const { loginService, getCurrentUserService } = require('../auth/auth.service');
 const { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions, clearAccessTokenCookieOptions } = require('../../config/authCookie');
+const logger = require('../../utils/logger');
 
 const login = async (req, res) => {
     try {
@@ -7,6 +8,7 @@ const login = async (req, res) => {
         const result = await loginService(email, password);
 
         res.cookie(ACCESS_TOKEN_COOKIE, result.token, accessTokenCookieOptions);
+        logger.info('Login exitoso', { email });
 
         return res.status(200).json({
             message: 'Login exitoso',
@@ -14,6 +16,12 @@ const login = async (req, res) => {
         });
     } catch (error) {
         if (error.message === 'CREDENCIALES_INVALIDAS') {
+            logger.warn('Login fallido por credenciales invalidas', {
+                email,
+                failedAttempts: error.failedAttempts,
+                remainingAttempts: error.remainingAttempts,
+            });
+
             return res.status(401).json({
                 message: 'Credenciales incorrectas',
                 failedAttempts: error.failedAttempts,
@@ -23,10 +31,17 @@ const login = async (req, res) => {
         }
 
         if (error.message === 'USUARIO_INACTIVO') {
+            logger.warn('Login fallido: usuario inactivo', { email });
             return res.status(403).json({ message: 'Usuario inactivo' });
         }
 
         if (error.message === 'USUARIO_BLOQUEADO') {
+            logger.warn('Login bloqueado', {
+                email,
+                lockedUntil: error.lockedUntil,
+                retryAfterSeconds: error.retryAfterSeconds,
+            });
+
             return res.status(423).json({
                 message: 'Demasiados intentos fallidos. Intenta nuevamente mas tarde.',
                 lockedUntil: error.lockedUntil,
@@ -34,7 +49,7 @@ const login = async (req, res) => {
             });
         }
 
-        console.error('Error en login:', error.message);
+        logger.error('Error en login:', { message: error.message });
         return res.status(500).json({ message: 'Error interno del servidor' });
     }
 };
