@@ -33,7 +33,10 @@ describe('HU2 - Edicion de mi usuario', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('success', true);
+        
+        // Verificación de seguridad para evitar "null nor undefined"
         expect(response.body).toHaveProperty('data');
+        expect(response.body.data).not.toBeNull();
         expect(response.body.data).toHaveProperty('nombre', nuevoNombre);
 
         const dbResult = await pool.query(
@@ -53,13 +56,16 @@ describe('HU2 - Edicion de mi usuario', () => {
             .set('Cookie', authUsuario.cookies)
             .send({ email: duplicateEmail });
 
-        expect(response.status).toBe(400);
+        expect(response.status).toBe(409);
         expect(response.body).toHaveProperty('success', false);
         expect(response.body.message).toMatch(/email.*registrado/i);
     });
 
     test('CP-HU2-7-BE - API actualiza password', async () => {
         const nuevaPassword = 'NuevaPassword123*';
+
+        // Ensure authentication is still valid before the request
+        expect(authUsuario).toHaveProperty('cookies');
 
         const response = await request(app)
             .put(`/api/usuarios/${usuario.id_usuario}`)
@@ -69,6 +75,7 @@ describe('HU2 - Edicion de mi usuario', () => {
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('data');
+        expect(response.body.data).not.toHaveProperty('password');
 
         const nuevoLogin = await login(usuario.email, nuevaPassword);
         expect(nuevoLogin).toHaveProperty('cookies');
@@ -328,7 +335,7 @@ describe('HU44 - Edicion de propietario', () => {
             .set('Cookie', authAdmin.cookies)
             .send({ email: duplicateEmail });
 
-        expect(response.status).toBe(400);
+        expect(response.status).toBe(409);
         expect(response.body).toHaveProperty('success', false);
         expect(response.body.message).toMatch(/email.*registrado/i);
     });

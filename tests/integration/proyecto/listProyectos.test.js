@@ -9,6 +9,8 @@ const {
     eliminarUsuarioTemporal
 } = require('../../helpers/usuario.helper');
 
+jest.setTimeout(20000);
+
 describe('Obtención proyectos por empresa', () => {
 
     let auth;

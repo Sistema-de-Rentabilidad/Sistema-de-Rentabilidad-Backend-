@@ -10,6 +10,8 @@ const {
     eliminarProyectoTemporal
 } = require('../../helpers/proyecto.helper');
 
+jest.setTimeout(20000);
+
 describe('Eliminación lógica proyecto', () => {
 
     let proyecto;

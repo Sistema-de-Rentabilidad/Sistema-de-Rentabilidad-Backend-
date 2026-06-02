@@ -2,9 +2,12 @@ const request = require('supertest');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
 const faseService = require('../../../src/modules/fase/fase.service');
+const jwt = require('jsonwebtoken'); // Importamos la librería para generar tokens
 
 const { login } = require('../../helpers/auth');
 const { crearFaseTemporal, eliminarFaseTemporal } = require('../../helpers/fase.helper');
+const { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE } = require('../../../src/config/env');
+const { ACCESS_TOKEN_COOKIE } = require('../../../src/config/authCookie');
 
 jest.setTimeout(20000);
 
@@ -249,10 +252,23 @@ describe('HU37 - Editar fase', () => {
 
     test('CP-HU37-9-BE - Token expirado edición fase', async () => {
 
+        // 1. Generar un token firmado con el secreto real, pero con fecha de expiración pasada
+        const expiredToken = jwt.sign(
+            { id_usuario: auth.id_usuario }, // Payload (el id_usuario es necesario para tu authMiddleware)
+            JWT_SECRET,
+            {
+                expiresIn: '-1h', // Expirado hace una hora
+                issuer: JWT_ISSUER,
+                audience: JWT_AUDIENCE,
+                subject: '3'
+            }
+        );
+
         const nombreOriginal = fase.nombre;
 
         const response = await request(app)
             .put(`/api/fases/${fase.id_fase}`)
+            .set('Cookie', [`${ACCESS_TOKEN_COOKIE}=${expiredToken}`])
             .send({
                 nombre: 'Fase Editada Con Token Expirado'
             });
