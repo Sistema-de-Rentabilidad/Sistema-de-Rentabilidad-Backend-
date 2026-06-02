@@ -1,9 +1,12 @@
 const request = require('supertest');
 const app = require('../../../src/app');
+
 const { ACCESS_TOKEN_COOKIE } = require('../../../src/config/authCookie');
 const { login } = require('../../helpers/auth');
 
-describe('Logout Token', () => {
+jest.setTimeout(15000);
+
+describe('HU14 - Cierre de sesion', () => {
   test('CP-HU14-1-BE - API invalida sesión con JWT válido (Cerrar sesión)', async () => {
     const auth = await login('qa_propietario@test.com', 'Qa123456*');
 

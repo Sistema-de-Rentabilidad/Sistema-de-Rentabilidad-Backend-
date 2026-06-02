@@ -1,7 +1,13 @@
+const request = require('supertest');
+const app = require('../../../src/app');
+const pool = require('../../../src/config/db');
+
 const { login, loginAttempt } = require('../../helpers/auth');
 const { crearUsuarioTemporal, eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 
-describe('HU1 - Inicio de sesión', () => {
+jest.setTimeout(15000);
+
+describe('HU1 - Inicio de sesion', () => {
   let usuarioTemporal = null;
 
   afterEach(async () => {
@@ -47,4 +53,82 @@ describe('HU1 - Inicio de sesión', () => {
     expect(response.headers['set-cookie']).toBeUndefined();
   });
 
+  test('CP-HU1-6-BE - Persistencia token JWT', async () => {
+    const auth = await login('qa_propietario@test.com', 'Qa123456*');
+
+    const response = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', auth.cookies);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('user');
+    expect(response.body.user).toMatchObject({
+      id_usuario: auth.user.id_usuario,
+      email: auth.user.email,
+      rol: auth.user.rol,
+    });
+  });
+
+  test('CP-HU1-9-BE - debe responder 401 sin JWT', async () => {
+    const response = await request(app)
+      .get('/api/horas');
+
+    expect(response.status).toBe(401);
+
+    expect(response.body).toHaveProperty('message');
+  });
+});
+
+describe('HU1 - Inicio de sesion', () => {
+  const email = 'qa_propietario@test.com';
+  const password = 'Qa123456*';
+
+  afterEach(async () => {
+    await pool.query(
+      `UPDATE usuario
+       SET failed_login_attempts = 0,
+           locked_until = NULL,
+           last_failed_login_at = NULL
+       WHERE email = $1`,
+      [email]
+    );
+  });
+
+  test('CP-HU1-11-BE - Desbloqueo automático backend', async () => {
+    const expiredAt = new Date(Date.now() - 60 * 1000).toISOString();
+
+    await pool.query(
+      `UPDATE usuario
+       SET failed_login_attempts = 3,
+           locked_until = $1,
+           last_failed_login_at = NOW()
+       WHERE email = $2`,
+      [expiredAt, email]
+    );
+
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({ email, password });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message', 'Login exitoso');
+    expect(response.body).toHaveProperty('user');
+    expect(response.body.user).toMatchObject({
+      email,
+      rol: expect.any(String),
+    });
+    expect(response.headers['set-cookie']).toBeDefined();
+
+    const dbResult = await pool.query(
+      `SELECT failed_login_attempts, locked_until
+       FROM usuario
+       WHERE email = $1`,
+      [email]
+    );
+
+    expect(dbResult.rowCount).toBe(1);
+    expect(dbResult.rows[0].failed_login_attempts).toBe(0);
+    expect(dbResult.rows[0].locked_until).toBeNull();
+  });
 });
