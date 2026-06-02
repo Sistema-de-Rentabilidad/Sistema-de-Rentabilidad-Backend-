@@ -4,13 +4,10 @@ const pool = require('../../../src/config/db');
 
 const { login } = require('../../helpers/auth');
 
-const {
-    crearUsuarioTemporal,
-    eliminarUsuarioTemporal
-} = require('../../helpers/usuario.helper');
+const { crearUsuarioTemporal, eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 const { crearProyectoTemporal, eliminarProyectoTemporal } = require('../../helpers/proyecto.helper');
 
-describe('Desactivación usuario', () => {
+describe('HU15 - Desactivacion de usuario', () => {
 
     let authPropietario;
     let usuario;
@@ -102,17 +99,6 @@ describe('Desactivación usuario', () => {
         expect(response.body.message).toMatch(/permiso|autorizad|forbidden|denegad/i);
     });
 
-    test('CP-HU15-8-BE - Restricción autoeliminación', async () => {
-        // Intentar desactivar su propio usuario
-        const response = await request(app)
-            .put(`/api/usuarios/${authPropietario.user.id_usuario}/desactivar`)
-            .set('Cookie', authPropietario.cookies);
-
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body.message).toMatch(/propio|No puedes eliminar tu propio usuario/i);
-    });
-
     test('CP-HU15-7-BE - Restricción usuario con proyectos', async () => {
         // Crear un proyecto y asignar el usuario temporal como empleado
         const proyecto = await crearProyectoTemporal({ id_empresa: authPropietario.user.id_empresa, id_lider: authPropietario.user.id_usuario });
@@ -194,6 +180,17 @@ describe('Desactivación usuario', () => {
         );
 
         await eliminarProyectoTemporal(proyecto.id_proyecto);
+    });
+
+    test('CP-HU15-8-BE - Restricción autoeliminación', async () => {
+        // Intentar desactivar su propio usuario
+        const response = await request(app)
+            .put(`/api/usuarios/${authPropietario.user.id_usuario}/desactivar`)
+            .set('Cookie', authPropietario.cookies);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/propio|No puedes eliminar tu propio usuario/i);
     });
 
 });

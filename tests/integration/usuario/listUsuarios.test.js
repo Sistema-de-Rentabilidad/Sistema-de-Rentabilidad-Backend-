@@ -2,6 +2,7 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
+
 const { ACCESS_TOKEN_COOKIE } = require('../../../src/config/authCookie');
 const { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE, JWT_REQUIRE_CLAIMS } = require('../../../src/config/env');
 const { login } = require('../../helpers/auth');
@@ -123,7 +124,7 @@ describe('HU11 - Gestion de propietarios', () => {
     });
 });
 
-describe('HU45 - Propietario gestiona empleados y lideres', () => {
+describe('HU45 - Gestion de usuarios (empleados y lideres)', () => {
     let authPropietario = null;
     let usuarioMismaEmpresa = null;
     let usuarioOtraEmpresa = null;

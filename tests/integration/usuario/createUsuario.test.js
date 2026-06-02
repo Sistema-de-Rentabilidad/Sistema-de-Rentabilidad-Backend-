@@ -3,23 +3,22 @@ const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
 
 const { login } = require('../../helpers/auth');
-const {
-    crearEmpresaTemporal,
-    eliminarEmpresaTemporal
-} = require('../../helpers/empresa.helper');
-const {
-    eliminarUsuarioTemporal
-} = require('../../helpers/usuario.helper');
+const { crearEmpresaTemporal, eliminarEmpresaTemporal } = require('../../helpers/empresa.helper');
+const { eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
+
 const usuarioRepository = require('../../../src/modules/usuario/usuario.repository');
 
-describe('Registro API propietario', () => {
+describe('HU12 - Creacion de propietario', () => {
 
     let auth;
     let empresa;
     let createdUserId;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         auth = await login('qa_admin@test.com', 'Qa123456*');
+    });
+
+    beforeEach(async () => {
         empresa = await crearEmpresaTemporal();
         createdUserId = null;
     });
@@ -27,7 +26,8 @@ describe('Registro API propietario', () => {
     afterEach(async () => {
         if (createdUserId) {
             await eliminarUsuarioTemporal(createdUserId);
-        } else if (empresa?.id_empresa) {
+        }
+        if (empresa?.id_empresa) {
             await eliminarEmpresaTemporal(empresa.id_empresa);
         }
     });
@@ -165,14 +165,16 @@ describe('Registro API propietario', () => {
 
 });
 
-describe('Registro API empleado', () => {
+describe('HU13 - Creacion de empleado/lider', () => {
 
     let authPropietario;
     let createdEmpleadoId;
 
-    beforeEach(async () => {
-        // Login con propietario existente en seed
+    beforeAll(async () => {
         authPropietario = await login('qa_propietario@test.com', 'Qa123456*');
+    });
+
+    beforeEach(async () => {
         createdEmpleadoId = null;
     });
 
