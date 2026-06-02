@@ -27,7 +27,7 @@ describe('Restricción correo duplicado', () => {
                 email: 'qa_empleado1@test.com'
             });
 
-        expect(response.status).toBe(409);
+        expect(response.status).toBe(400);
 
         expect(response.body.message)
             .toMatch(/email.*registrado/i);
@@ -150,6 +150,29 @@ describe('Actualización usuario empleado por propietario', () => {
         });
     });
 
+    test('CP-HU16-5-BE - Restricción correo duplicado edición empleado', async () => {
+        // Intentar actualizar el email del empleado a uno ya existente en seed
+        const duplicateEmail = 'qa_admin@test.com';
+
+        const response = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({ email: duplicateEmail });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/email.*registrado|ya.*existe|duplicad/i);
+
+        // Verificar que el email no cambió en BD
+        const dbResult = await pool.query(
+            `SELECT email FROM usuario WHERE id_usuario = $1`,
+            [usuario.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(dbResult.rows[0].email).not.toBe(duplicateEmail);
+    });
+
     test('CP-HU16-10-BE - Restricción edición empresa ajena', async () => {
         // Usar empleado existente en seed de otra empresa
         const seedEmail = 'demo_empleado1@test.com';
@@ -186,6 +209,26 @@ describe('Actualización usuario empleado por propietario', () => {
 
         expect(dbResult.rowCount).toBe(1);
         expect(dbResult.rows[0].nombre).toBe(empleadoOtraEmpresa.nombre);
+    });
+
+    test('CP-HU16-9-BE - Usuario inexistente edición', async () => {
+        const invalidUsuarioId = 999999;
+
+        const exists = await pool.query(
+            `SELECT id_usuario FROM usuario WHERE id_usuario = $1`,
+            [invalidUsuarioId]
+        );
+
+        expect(exists.rowCount).toBe(0);
+
+        const response = await request(app)
+            .put(`/api/usuarios/${invalidUsuarioId}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({ nombre: 'NombreInexistente' });
+
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/no encontrado|not found/i);
     });
 
 });
@@ -237,6 +280,35 @@ describe('Actualización usuario propietario por admin', () => {
         expect(dbResult.rows[0]).toMatchObject({
             nombre: nuevoNombre,
             email: nuevoEmail.toLowerCase()
+        });
+    });
+
+    test('CP-HU44-3-BE - Actualización parcial propietario por admin', async () => {
+        // Login como admin
+        const authAdmin = await login('qa_admin@test.com', 'Qa123456*');
+
+        const nuevoNombre = 'Propietario Editado Por Admin';
+
+        const response = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authAdmin.cookies)
+            .send({ nombre: nuevoNombre });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(response.body.data).toHaveProperty('nombre', nuevoNombre);
+
+        // Verificar persistencia en BD y que el email no cambió
+        const dbResult = await pool.query(
+            `SELECT nombre, email FROM usuario WHERE id_usuario = $1`,
+            [usuario.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(dbResult.rows[0]).toMatchObject({
+            nombre: nuevoNombre,
+            email: usuario.email.toLowerCase()
         });
     });
 
@@ -333,9 +405,11 @@ describe('Actualización password API', () => {
     });
 
     test('CP-HU2-7-BD - Persistencia password cifrada', async () => {
+        const oldPassword = usuario.passwordPlano;
+
         const auth = await login(
             usuario.email,
-            usuario.passwordPlano
+            oldPassword
         );
 
         const nuevaPassword = 'NuevaPassword123*';
@@ -349,6 +423,8 @@ describe('Actualización password API', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(response.body.data).not.toHaveProperty('password');
 
         const dbResult = await pool.query(
             `SELECT password FROM usuario WHERE id_usuario = $1`,
@@ -359,6 +435,7 @@ describe('Actualización password API', () => {
         const storedPassword = dbResult.rows[0].password;
 
         expect(storedPassword).not.toBe(nuevaPassword);
+        expect(storedPassword).not.toBe(oldPassword);
         expect(await bcrypt.compare(nuevaPassword, storedPassword)).toBe(true);
     });
 

@@ -10,6 +10,7 @@ const {
 const {
     eliminarUsuarioTemporal
 } = require('../../helpers/usuario.helper');
+const usuarioRepository = require('../../../src/modules/usuario/usuario.repository');
 
 describe('Registro API propietario', () => {
 
@@ -134,6 +135,34 @@ describe('Registro API propietario', () => {
         ).rejects.toMatchObject({ code: '23505' }); // Postgres unique_violation
     });
 
+    test('CP-HU12-10-BE - Error interno registro propietario', async () => {
+        const payload = {
+            nombre: `Propietario Error Test`,
+            email: `qa_propietario_error_${Date.now()}@test.com`,
+            password: 'Password123*',
+            id_empresa: empresa.id_empresa
+        };
+
+        // Simular error interno en la creación (BD/Repo)
+        const spy = jest.spyOn(usuarioRepository, 'create').mockImplementation(() => {
+            throw new Error('Simulated DB failure');
+        });
+
+        try {
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', auth.cookies)
+                .send(payload);
+
+            expect(response.status).toBe(500);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body).toHaveProperty('message');
+            expect(response.body.message).toMatch(/error interno del servidor/i);
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
 });
 
 describe('Registro API empleado', () => {
@@ -230,6 +259,53 @@ describe('Registro API empleado', () => {
             id_empresa: authPropietario.user.id_empresa,
             is_active: true
         });
+    });
+
+    test('CP-HU13-4-BE - Restricción correo duplicado empleado', async () => {
+        // Intentar registrar un empleado usando un email que ya existe en seed
+        const payload = {
+            nombre: 'Empleado Duplicado',
+            email: 'qa_empleado1@test.com', // email existente en seed
+            password: 'Password123*',
+            rol: 'empleado',
+            tipo_pago: 'mensual',
+            monto: 1000,
+            horas_mensuales: 40
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authPropietario.cookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+        expect(response.body.message).toMatch(/email.*registrado|ya.*existe|duplicad/i);
+    });
+
+    test('CP-HU13-11-BE - Restricción registro usuarios por empleado', async () => {
+        // Login con empleado del seed
+        const authEmpleado = await login('qa_empleado1@test.com', 'Qa123456*');
+
+        const payload = {
+            nombre: 'Intento por empleado',
+            email: `qa_emp_intento_${Date.now()}@test.com`,
+            password: 'Password123*',
+            rol: 'empleado',
+            tipo_pago: 'mensual',
+            monto: 1000,
+            horas_mensuales: 40
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authEmpleado.cookies)
+            .send(payload);
+
+        expect(response.status).toBe(403);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/permiso|autorizad|forbidden|denegad/i);
     });
 
 });
