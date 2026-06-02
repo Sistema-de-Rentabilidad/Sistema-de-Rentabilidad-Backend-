@@ -45,7 +45,7 @@ describe('HU2 - Edicion de mi usuario', () => {
         expect(dbResult.rows[0].nombre).toBe(nuevoNombre);
     });
 
-    test('CP-HU2-5-BE - debe responder 400 cuando el email ya existe', async () => {
+    test('CP-HU2-5-BE - Restricción correo duplicado', async () => {
         const duplicateEmail = 'qa_empleado1@test.com';
 
         const response = await request(app)
