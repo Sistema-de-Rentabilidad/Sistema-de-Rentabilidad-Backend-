@@ -24,13 +24,7 @@ describe('HU15 - Desactivacion de usuario', () => {
     });
 
     afterEach(async () => {
-        // Limpieza de BD si el usuario no fue desactivado
-        const result = await pool.query(
-            `SELECT is_active FROM usuario WHERE id_usuario = $1`,
-            [usuario.id_usuario]
-        );
-
-        if (result.rowCount > 0 && result.rows[0].is_active) {
+        if (usuario?.id_usuario) {
             await eliminarUsuarioTemporal(usuario.id_usuario);
         }
     });
@@ -46,6 +40,58 @@ describe('HU15 - Desactivacion de usuario', () => {
         expect(response.body.message).toMatch(/eliminado|desactivado/i);
         expect(response.body).toHaveProperty('data');
         expect(response.body.data).toHaveProperty('is_active', false);
+
+        const dbResult = await pool.query(
+            `SELECT is_active FROM usuario WHERE id_usuario = $1`,
+            [usuario.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(dbResult.rows[0].is_active).toBe(false);
+    });
+
+    test('TC-428 - Validacion estado usuario', async () => {
+        const authUsuario = await login(usuario.email, usuario.passwordPlano);
+
+        const activeResponse = await request(app)
+            .get('/api/auth/me')
+            .set('Cookie', authUsuario.cookies);
+
+        expect(activeResponse.status).toBe(200);
+        expect(activeResponse.body).toHaveProperty('success', true);
+        expect(activeResponse.body).toHaveProperty('user');
+        expect(activeResponse.body.user).toMatchObject({
+            id_usuario: usuario.id_usuario,
+            email: usuario.email
+        });
+
+        const deactivateResponse = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}/desactivar`)
+            .set('Cookie', authPropietario.cookies);
+
+        expect(deactivateResponse.status).toBe(200);
+        expect(deactivateResponse.body).toHaveProperty('success', true);
+        expect(deactivateResponse.body).toHaveProperty('data');
+        expect(deactivateResponse.body.data).toMatchObject({
+            id_usuario: usuario.id_usuario,
+            is_active: false
+        });
+
+        const staleSessionResponse = await request(app)
+            .get('/api/auth/me')
+            .set('Cookie', authUsuario.cookies);
+
+        expect(staleSessionResponse.status).toBe(401);
+        expect(staleSessionResponse.body).toHaveProperty('success', false);
+        expect(staleSessionResponse.body.message).toMatch(/usuario|sesion|token/i);
+
+        const getInactiveResponse = await request(app)
+            .get(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authPropietario.cookies);
+
+        expect(getInactiveResponse.status).toBe(404);
+        expect(getInactiveResponse.body).toHaveProperty('success', false);
+        expect(getInactiveResponse.body.message).toMatch(/usuario.*no encontrado|no encontrado/i);
 
         const dbResult = await pool.query(
             `SELECT is_active FROM usuario WHERE id_usuario = $1`,

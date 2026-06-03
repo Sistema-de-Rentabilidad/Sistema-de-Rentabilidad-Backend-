@@ -48,6 +48,37 @@ describe('HU2 - Edicion de mi usuario', () => {
         expect(dbResult.rows[0].nombre).toBe(nuevoNombre);
     });
 
+    test('TC-442 - Persistencia cambios perfil', async () => {
+        const nuevoNombre = 'Perfil Persistido';
+
+        const updateResponse = await request(app)
+            .put(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authUsuario.cookies)
+            .send({ nombre: nuevoNombre });
+
+        expect(updateResponse.status).toBe(200);
+        expect(updateResponse.body).toHaveProperty('success', true);
+        expect(updateResponse.body).toHaveProperty('data');
+        expect(updateResponse.body.data).toHaveProperty('nombre', nuevoNombre);
+
+        const getResponse = await request(app)
+            .get(`/api/usuarios/${usuario.id_usuario}`)
+            .set('Cookie', authUsuario.cookies);
+
+        expect(getResponse.status).toBe(200);
+        expect(getResponse.body).toHaveProperty('success', true);
+        expect(getResponse.body).toHaveProperty('data');
+        expect(getResponse.body.data).toHaveProperty('nombre', nuevoNombre);
+
+        const dbResult = await pool.query(
+            `SELECT nombre FROM usuario WHERE id_usuario = $1`,
+            [usuario.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(dbResult.rows[0].nombre).toBe(nuevoNombre);
+    });
+
     test('CP-HU2-5-BE - Restricción correo duplicado', async () => {
         const duplicateEmail = 'qa_empleado1@test.com';
 

@@ -132,3 +132,75 @@ describe('HU1 - Inicio de sesion', () => {
     expect(dbResult.rows[0].locked_until).toBeNull();
   });
 });
+
+describe('Testiny - Restriccion backend por intentos fallidos', () => {
+  let usuarioTemporal = null;
+
+  afterEach(async () => {
+    if (usuarioTemporal?.id_usuario) {
+      await pool.query(
+        `UPDATE usuario
+         SET failed_login_attempts = 0,
+             locked_until = NULL,
+             last_failed_login_at = NULL
+         WHERE id_usuario = $1`,
+        [usuarioTemporal.id_usuario]
+      );
+
+      await eliminarUsuarioTemporal(usuarioTemporal.id_usuario);
+      usuarioTemporal = null;
+    }
+  });
+
+  test('TC-432 - Restriccion backend por intentos fallidos', async () => {
+    usuarioTemporal = await crearUsuarioTemporal({ rol: 'propietario' });
+
+    const wrongPassword = `${usuarioTemporal.passwordPlano}x`;
+    const clientIp = `203.0.113.${(Date.now() % 200) + 1}`;
+
+    const attemptLogin = (password) => request(app)
+      .post('/api/auth/login')
+      .set('X-Forwarded-For', clientIp)
+      .send({
+        email: usuarioTemporal.email,
+        password,
+      });
+
+    const firstResponse = await attemptLogin(wrongPassword);
+    expect(firstResponse.status).toBe(401);
+    expect(firstResponse.body).toHaveProperty('message', 'Credenciales incorrectas');
+    expect(firstResponse.body).toHaveProperty('failedAttempts', 1);
+    expect(firstResponse.body).toHaveProperty('remainingAttempts', 2);
+
+    const secondResponse = await attemptLogin(wrongPassword);
+    expect(secondResponse.status).toBe(401);
+    expect(secondResponse.body).toHaveProperty('message', 'Credenciales incorrectas');
+    expect(secondResponse.body).toHaveProperty('failedAttempts', 2);
+    expect(secondResponse.body).toHaveProperty('remainingAttempts', 1);
+
+    const blockedResponse = await attemptLogin(wrongPassword);
+    expect(blockedResponse.status).toBe(423);
+    expect(blockedResponse.body).toHaveProperty(
+      'message',
+      'Demasiados intentos fallidos. Intenta nuevamente mas tarde.'
+    );
+    expect(blockedResponse.body).toHaveProperty('lockedUntil');
+    expect(blockedResponse.body).toHaveProperty('retryAfterSeconds');
+
+    const blockedWithValidPassword = await attemptLogin(usuarioTemporal.passwordPlano);
+    expect(blockedWithValidPassword.status).toBe(423);
+    expect(blockedWithValidPassword.body).toHaveProperty('lockedUntil');
+    expect(blockedWithValidPassword.headers['set-cookie']).toBeUndefined();
+
+    const dbResult = await pool.query(
+      `SELECT failed_login_attempts, locked_until
+       FROM usuario
+       WHERE id_usuario = $1`,
+      [usuarioTemporal.id_usuario]
+    );
+
+    expect(dbResult.rowCount).toBe(1);
+    expect(dbResult.rows[0].failed_login_attempts).toBe(3);
+    expect(dbResult.rows[0].locked_until).not.toBeNull();
+  });
+});

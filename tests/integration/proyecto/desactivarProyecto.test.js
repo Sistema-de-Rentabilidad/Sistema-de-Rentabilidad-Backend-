@@ -308,3 +308,29 @@ describe('Restricción eliminación proyectos', () => {
     );
 
 });
+
+describe('Testiny - Desactivacion proyecto inexistente', () => {
+
+    test('TC-520 - Proyecto inexistente desactivacion', async () => {
+        const auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+
+        const idResult = await pool.query(
+            `SELECT COALESCE(MAX(id_proyecto), 0) + 100000 AS id_proyecto
+             FROM proyecto`
+        );
+        const proyectoInexistenteId = idResult.rows[0].id_proyecto;
+
+        const response = await request(app)
+            .put(`/api/proyectos/${proyectoInexistenteId}/desactivar`)
+            .set('Cookie', auth.cookies);
+
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+        expect(response.body.message).toMatch(/proyecto.*no encontrado|no encontrado/i);
+    });
+
+});

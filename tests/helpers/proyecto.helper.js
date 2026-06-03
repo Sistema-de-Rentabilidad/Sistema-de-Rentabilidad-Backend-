@@ -52,6 +52,52 @@ const crearProyectoTemporal = async (overrides = {}) => {
 
 const eliminarProyectoTemporal = async (idProyecto) => {
 
+    if (!idProyecto) return;
+
+    await pool.query(
+        `
+        DELETE FROM registro_horas
+        WHERE id_proyecto = $1
+        `,
+        [idProyecto]
+    );
+
+    await pool.query(
+        `
+        DELETE FROM nota
+        WHERE id_proyecto = $1
+        `,
+        [idProyecto]
+    );
+
+    await pool.query(
+        `
+        DELETE FROM fase_empleado
+        WHERE id_fase IN (
+            SELECT id_fase
+            FROM fase
+            WHERE id_proyecto = $1
+        )
+        `,
+        [idProyecto]
+    );
+
+    await pool.query(
+        `
+        DELETE FROM fase
+        WHERE id_proyecto = $1
+        `,
+        [idProyecto]
+    );
+
+    await pool.query(
+        `
+        DELETE FROM proyecto_empleado
+        WHERE id_proyecto = $1
+        `,
+        [idProyecto]
+    );
+
     await pool.query(
         `
         DELETE FROM proyecto
