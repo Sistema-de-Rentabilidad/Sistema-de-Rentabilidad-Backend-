@@ -128,6 +128,13 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
     );
   }
 
+  if (proyecto.fecha_fin_real) {
+    throw Object.assign(
+      new Error('No se puede editar un proyecto finalizado'),
+      { status: 400 }
+    );
+  }
+
   const {
     nombre,
     id_servicio,
