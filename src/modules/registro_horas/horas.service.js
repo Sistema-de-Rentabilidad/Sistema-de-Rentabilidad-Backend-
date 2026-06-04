@@ -25,6 +25,16 @@ const crearErrorMarcajeRequerido = () => {
   return error;
 };
 
+const REGISTRO_HORAS_DUPLICADO_CONSTRAINTS = new Set([
+  'unique_registro',
+  'registro_horas_id_empleado_id_fase_fecha_key'
+]);
+
+const isRegistroHorasDuplicadoDbError = (error) => (
+  error.code === '23505' &&
+  REGISTRO_HORAS_DUPLICADO_CONSTRAINTS.has(error.constraint)
+);
+
 const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
 
   const horasActuales = idRegistroExcluir
@@ -138,10 +148,7 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
       descripcion
     });
   } catch (error) {
-    if (
-      error.code === '23505' &&
-      error.constraint === 'unique_registro'
-    ) {
+    if (isRegistroHorasDuplicadoDbError(error)) {
       const customError = new Error(
         'Ya registraste horas para esta fase en esta fecha'
       );
@@ -278,10 +285,7 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
       descripcion: descripcionRegistro
     });
   } catch (error) {
-    if (
-      error.code === '23505' &&
-      error.constraint === 'unique_registro'
-    ) {
+    if (isRegistroHorasDuplicadoDbError(error)) {
       const customError = new Error(
         'Ya existe un registro de horas para esta fase en esa fecha'
       );
