@@ -23,7 +23,10 @@ const getMarcajes = async (req, res, next) => {
 
 const marcarEntrada = async (req, res, next) => {
   try {
-    const marcaje = await marcajeService.marcarEntrada({ user: req.user });
+    const marcaje = await marcajeService.marcarEntrada({
+      user: req.user,
+      enforceHorario: true
+    });
 
     return res.status(200).json({
       success: true,

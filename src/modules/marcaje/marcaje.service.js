@@ -1,12 +1,61 @@
 const marcajeRepository = require('./marcaje.repository');
 const { getFechaActual } = require('../../utils/dateTime');
-const usuarioRepository = require('../usuario/usuario.repository');
+const {
+  MARCAJE_ENTRADA_HORA_INICIO,
+  MARCAJE_ENTRADA_HORA_FIN
+} = require('../../config/env');
+
+const BUSINESS_TIME_ZONE = 'America/Lima';
+
+const parseHoraMinutos = (hora) => {
+  const [horas, minutos] = hora.split(':').map(Number);
+  return horas * 60 + minutos;
+};
+
+const getHoraActualEnMinutos = (fechaHora = new Date(), timeZone = BUSINESS_TIME_ZONE) => {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    hourCycle: 'h23'
+  }).formatToParts(fechaHora);
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return Number(values.hour) * 60 + Number(values.minute);
+};
+
+const estaDentroDelRango = (actual, inicio, fin) => {
+  if (inicio <= fin) {
+    return actual >= inicio && actual <= fin;
+  }
+
+  return actual >= inicio || actual <= fin;
+};
+
+const validarHorarioEntrada = ({ fechaHora = new Date() } = {}) => {
+  const actual = getHoraActualEnMinutos(fechaHora);
+  const inicio = parseHoraMinutos(MARCAJE_ENTRADA_HORA_INICIO);
+  const fin = parseHoraMinutos(MARCAJE_ENTRADA_HORA_FIN);
+
+  if (!estaDentroDelRango(actual, inicio, fin)) {
+    const error = new Error('El registro de entrada solo está permitido dentro del horario establecido');
+    error.status = 400;
+    error.code = 'HORARIO_ENTRADA_NO_PERMITIDO';
+    throw error;
+  }
+};
 
 const getMarcajes = async ({ user }) => {
   return await marcajeRepository.findByUsuario(user.id_usuario);
 };
 
-const marcarEntrada = async ({ user }) => {
+const marcarEntrada = async ({ user, enforceHorario = false, fechaHora = new Date() }) => {
+  if (enforceHorario) {
+    validarHorarioEntrada({ fechaHora });
+  }
+
   const fecha = getFechaActual();
   const result = await marcajeRepository.registrarEntrada({
     id_usuario: user.id_usuario,
@@ -54,6 +103,13 @@ const marcarSalida = async ({ user }) => {
     throw error;
   }
 
+  if (result.error === 'HORA_SALIDA_INVALIDA') {
+    const error = new Error('La hora de salida debe ser posterior a la hora de entrada');
+    error.status = 400;
+    error.code = 'HORA_SALIDA_INVALIDA';
+    throw error;
+  }
+
   const response = {
     ...result.marcaje
   };
@@ -70,5 +126,6 @@ const marcarSalida = async ({ user }) => {
 module.exports = {
   getMarcajes,
   marcarEntrada,
-  marcarSalida
+  marcarSalida,
+  validarHorarioEntrada
 };
