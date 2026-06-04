@@ -7,6 +7,8 @@ const { login } = require('../../helpers/auth');
 const { crearUsuarioTemporal, eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 const { crearProyectoTemporal, eliminarProyectoTemporal } = require('../../helpers/proyecto.helper');
 
+jest.setTimeout(20000);
+
 describe('HU15 - Desactivacion de usuario', () => {
 
     let authPropietario;

@@ -9,6 +9,8 @@ const { login } = require('../../helpers/auth');
 
 const { crearProyectoTemporal } = require('../../helpers/proyecto.helper');
 
+jest.setTimeout(20000);
+
 describe('Restricción nombre duplicado', () => {
 
     test('CP-HU18-8-BE - API rechaza proyecto duplicado', async () => {

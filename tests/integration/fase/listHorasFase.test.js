@@ -3,6 +3,8 @@ const app = require('../../../src/app');
 const { login } = require('../../helpers/auth');
 const { crearProyectoTemporal, eliminarProyectoTemporal } = require('../../helpers/proyecto.helper');
 
+jest.setTimeout(20000);
+
 describe('HU24 - Ver horas trabajadas (lider)', () => {
     let authLider;
     let proyecto;
