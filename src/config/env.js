@@ -11,6 +11,9 @@ const REQUIRED_ENV_VARS = [
 const VALID_NODE_ENVS = new Set(['development', 'test', 'qa', 'production']);
 const VALID_RATE_LIMIT_STORES = new Set(['auto', 'memory', 'database']);
 const MIN_JWT_SECRET_LENGTH = 32;
+const TIME_24H_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_MARCAJE_ENTRADA_HORA_INICIO = '06:00';
+const DEFAULT_MARCAJE_ENTRADA_HORA_FIN = '10:00';
 
 const parseIntegerEnv = (name, defaultValue, { min, max }) => {
   const rawValue = process.env[name];
@@ -73,6 +76,14 @@ const validateEnv = () => {
   if (process.env.LOGIN_RATE_LIMIT_STORE && !VALID_RATE_LIMIT_STORES.has(process.env.LOGIN_RATE_LIMIT_STORE)) {
     throw new Error('LOGIN_RATE_LIMIT_STORE debe ser auto, memory o database');
   }
+
+  if (process.env.MARCAJE_ENTRADA_HORA_INICIO && !TIME_24H_PATTERN.test(process.env.MARCAJE_ENTRADA_HORA_INICIO)) {
+    throw new Error('MARCAJE_ENTRADA_HORA_INICIO debe usar formato HH:mm');
+  }
+
+  if (process.env.MARCAJE_ENTRADA_HORA_FIN && !TIME_24H_PATTERN.test(process.env.MARCAJE_ENTRADA_HORA_FIN)) {
+    throw new Error('MARCAJE_ENTRADA_HORA_FIN debe usar formato HH:mm');
+  }
 };
 
 validateEnv();
@@ -100,4 +111,6 @@ module.exports = {
     min: 1,
     max: 100,
   }),
+  MARCAJE_ENTRADA_HORA_INICIO: process.env.MARCAJE_ENTRADA_HORA_INICIO || DEFAULT_MARCAJE_ENTRADA_HORA_INICIO,
+  MARCAJE_ENTRADA_HORA_FIN: process.env.MARCAJE_ENTRADA_HORA_FIN || DEFAULT_MARCAJE_ENTRADA_HORA_FIN,
 };

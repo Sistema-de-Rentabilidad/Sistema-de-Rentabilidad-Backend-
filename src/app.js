@@ -19,6 +19,7 @@ const notasRoutes = require('./modules/nota/nota.routes');
 
 const csrfProtection = require('./modules/middlewares/csrfProtection');
 const errorHandler = require('./modules/middlewares/errorHandler');
+const pool = require('./config/db');
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -58,6 +59,26 @@ if (NODE_ENV !== 'production') {
     skip: (req, res) => res.statusCode < 400,
   }));
 }
+
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+
+    return res.status(200).json({
+      success: true,
+      status: 'ok',
+      database: 'ok',
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    return res.status(503).json({
+      success: false,
+      status: 'degraded',
+      database: 'unavailable',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
 
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');

@@ -13,6 +13,18 @@ const getRegistrosHoras = async ({ user, empresaId }) => {
   return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
 };
 
+const requiereMarcajeParaRegistrarHoras = (tipoPago) => {
+  // Los usuarios por hora no usan el modulo de marcaje; cualquier otro tipo de pago requiere entrada diaria.
+  return tipoPago !== 'por_hora';
+};
+
+const crearErrorMarcajeRequerido = () => {
+  const error = new Error('Debes registrar tu entrada antes de registrar horas');
+  error.status = 400;
+  error.code = 'MARCAJE_REQUERIDO';
+  return error;
+};
+
 const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
 
   const horasActuales = idRegistroExcluir
@@ -28,17 +40,14 @@ const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, t
     throw error;
   }
 
-  // SOLO EMPLEADOS MENSUALES
-  if (tipoPago !== 'mensual') {
+  if (!requiereMarcajeParaRegistrarHoras(tipoPago)) {
     return;
   }
 
   const horasTrabajadas = await registroHorasRepository.getHorasTrabajadasByEmpleadoYFecha(idEmpleado, fecha);
 
   if (horasTrabajadas === null) {
-    const error = new Error('Debes registrar tu entrada antes de registrar horas');
-    error.status = 400;
-    throw error;
+    throw crearErrorMarcajeRequerido();
   }
 
   if (total > Number(horasTrabajadas)) {
@@ -291,5 +300,6 @@ module.exports = {
   getRegistrosHoras,
   createRegistroHoras,
   getRegistroHorasById,
-  updateRegistroHoras
+  updateRegistroHoras,
+  requiereMarcajeParaRegistrarHoras
 };

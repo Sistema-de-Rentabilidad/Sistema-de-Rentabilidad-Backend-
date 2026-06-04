@@ -2,6 +2,16 @@ const faseRepository = require('./fase.repository');
 const verifyProyectoAccess = require('../../utils/verifyProyectoAccess')
 const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository');
 
+const faseDuplicadaError = () => Object.assign(
+  new Error('Ya existe una fase con ese nombre en este proyecto'),
+  { status: 400 }
+);
+
+const isFaseDuplicadaDbError = (error) => (
+  error.code === '23505' &&
+  error.constraint === 'unique_fase_proyecto_nombre_activo'
+);
+
 const getFasesByProyecto = async (proyectoId, empresaId, user) => {
   await verifyProyectoAccess(proyectoId, empresaId);
 
@@ -20,22 +30,34 @@ const getFasesByProyecto = async (proyectoId, empresaId, user) => {
 };
 
 const createFase = async (proyectoId, data, empresaId) => {
-  await verifyProyectoAccess(proyectoId, empresaId);
+  const proyecto = await verifyProyectoAccess(proyectoId, empresaId);
 
-  const duplicado = await faseRepository.findByNombreAndProyecto(data.nombre, proyectoId);
-
-  if (duplicado) {
+  if (proyecto.fecha_fin_real) {
     throw Object.assign(
-      new Error('Ya existe una fase con ese nombre en este proyecto'),
+      new Error('No se pueden crear fases en un proyecto finalizado'),
       { status: 400 }
     );
   }
 
-  return await faseRepository.create({
-    id_proyecto: proyectoId,
-    nombre: data.nombre,
-    horas_estimadas: data.horas_estimadas,
-  });
+  const duplicado = await faseRepository.findByNombreAndProyecto(data.nombre, proyectoId);
+
+  if (duplicado) {
+    throw faseDuplicadaError();
+  }
+
+  try {
+    return await faseRepository.create({
+      id_proyecto: proyectoId,
+      nombre: data.nombre,
+      horas_estimadas: data.horas_estimadas,
+    });
+  } catch (error) {
+    if (isFaseDuplicadaDbError(error)) {
+      throw faseDuplicadaError();
+    }
+
+    throw error;
+  }
 };
 
 const getFaseById = async (id, empresaId) => {
@@ -72,14 +94,19 @@ const updateFase = async (id, data, empresaId) => {
     const duplicado = await faseRepository.findByNombreAndProyecto(data.nombre, fase.id_proyecto);
 
     if (duplicado && duplicado.id_fase !== parseInt(id)) {
-      throw Object.assign(
-        new Error('Ya existe una fase con ese nombre en este proyecto'),
-        { status: 400 }
-      );
+      throw faseDuplicadaError();
     }
   }
 
-  return await faseRepository.update(id, data);
+  try {
+    return await faseRepository.update(id, data);
+  } catch (error) {
+    if (isFaseDuplicadaDbError(error)) {
+      throw faseDuplicadaError();
+    }
+
+    throw error;
+  }
 };
 
 const desactivarFase = async (id, empresaId) => {
