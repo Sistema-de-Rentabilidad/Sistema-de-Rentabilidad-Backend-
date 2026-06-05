@@ -4,7 +4,6 @@ const pool = require('../../../src/config/db');
 const jwt = require('jsonwebtoken');
 const marcajeRepository = require('../../../src/modules/marcaje/marcaje.repository');
 
-
 const { JWT_SECRET } = require('../../../src/config/env');
 const {
   cleanupContext,
@@ -328,5 +327,76 @@ describe('HU31 - Obtención de marcajes', () => {
     } finally {
       await cleanupContext(ctx);
     }
+  });
+
+  test("CP-HU31-1-BD - Integridad de marcajes almacenados", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
+
+    try {
+      // 1. Crear un marcaje conocido
+      const marcaje = await createMarcaje(ctx, {
+        idUsuario: ctx.empleado.id_usuario,
+        entradaHaceHoras: 4
+      });
+
+      // 2. Consultar directamente en la BD
+      const result = await pool.query(
+        'SELECT id_usuario, fecha, hora_entrada FROM marcaje WHERE id_marcaje = $1',
+        [marcaje.id_marcaje]
+      );
+
+      // 3. Resultado esperado: Los datos en BD coinciden con el marcaje creado
+      expect(result.rowCount).toBe(1);
+      expect(result.rows[0].id_usuario).toBe(ctx.empleado.id_usuario);
+
+      // Verificar formato de fecha/hora (comparando las partes, ignorando milisegundos o zonas si es necesario)
+      const fechaDB = new Date(result.rows[0].fecha).toISOString().split('T')[0];
+      const fechaEsperada = new Date().toISOString().split('T')[0];
+
+      expect(fechaDB).toBe(fechaEsperada);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU31-2-BE - Respuesta vacía marcajes", async () => {
+    // Creamos un usuario nuevo (sin marcajes) usando el contexto
+    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
+
+    try {
+      const auth = authFor(ctx.empleado);
+
+      const response = await request(app)
+        .get('/api/marcajes')
+        .set('Cookie', auth.cookies)
+        .send();
+
+      // Resultado esperado: 200 con data vacía
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(0);
+      expect(response.body.message).toBe('No hay marcajes disponibles');
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU31-4-BE - Validación token expirado marcajes", async () => {
+    // Creamos un token que expiró hace 1 hora
+    const expiredToken = jwt.sign(
+        { id: 1, rol: 'empleado' },
+        JWT_SECRET,
+        { expiresIn: '-1h' }
+    );
+
+    const response = await request(app)
+      .get('/api/marcajes')
+      .set('Cookie', [`token=${expiredToken}`])
+      .send();
+
+    // Resultado esperado: 401 (Unauthorized)
+    expect(response.status).toBe(401);
+    expect(response.body).toHaveProperty('success', false);
   });
 });
