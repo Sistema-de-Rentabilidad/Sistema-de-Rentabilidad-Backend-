@@ -1,4 +1,5 @@
 const marcajeService = require('./marcaje.service');
+const { NODE_ENV } = require('../../config/env');
 
 const getMarcajes = async (req, res, next) => {
   try {
