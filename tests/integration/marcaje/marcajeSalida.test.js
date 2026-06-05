@@ -1,6 +1,11 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
+const jwt = require('jsonwebtoken');
+const marcajeRepository = require('../../../src/modules/marcaje/marcaje.repository');
+
+
+const { JWT_SECRET } = require('../../../src/config/env');
 const {
   cleanupContext,
   createContext,
@@ -227,6 +232,99 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU25-7-BE - Validación token expirado salida", async () => {
+    // Creamos un token que expiró hace 1 hora
+    const expiredToken = jwt.sign(
+      { id: 1, rol: 'empleado' },
+      JWT_SECRET,
+      { expiresIn: '-1h' }
+    );
+    const response = await request(app)
+      .post('/api/marcajes/salida')
+      .set('Cookie', [`token=${expiredToken}`])
+      .send();
+
+    // Resultado esperado: 401 (Unauthorized)
+    expect(response.status).toBe(401);
+    expect(response.body).toHaveProperty('success', false);
+  });
+
+  test("CP-HU25-8-BE - Restricción backend usuario inactivo salida", async () => {
+    // 1. Crear un contexto con un empleado inactivo
+    const ctx = await createContext({ empleadoActivo: false });
+
+    try {
+      // 2. Intentar marcar salida con el empleado inactivo
+      const response = await request(app)
+        .post('/api/marcajes/salida')
+        .set('Cookie', tokenCookieForUser(ctx.empleado))
+        .send();
+
+      // 3. Resultado esperado: 401 (Unauthorized) ya que la sesión no es válida para un usuario inactivo
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU25-9-BE - Error interno registro salida", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
+
+    try {
+      await createMarcaje(ctx, { idUsuario: ctx.empleado.id_usuario, entradaHaceHoras: 4 });
+      await createRegistroHoras(ctx, {
+        idProyecto: ctx.proyecto.id_proyecto,
+        idFase: ctx.fase.id_fase,
+        idEmpleado: ctx.empleado.id_usuario,
+        horas: 1
+      });
+
+      // Espiar el repositorio de marcajes para simular una excepción interna
+      const spy = jest.spyOn(marcajeRepository, 'registrarSalida').mockRejectedValue(new Error('Error inesperado en BD'));
+
+      const auth = authFor(ctx.empleado);
+
+      const response = await request(app)
+        .post('/api/marcajes/salida')
+        .set('Cookie', auth.cookies)
+        .send();
+
+      // Resultado esperado: 500 (Internal Server Error) por excepción no controlada
+      expect(response.status).toBe(500);
+
+      spy.mockRestore();
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+});
+
+describe('HU31 - Obtención de marcajes', () => {
+  test("CP-HU31-1-BE - Obtención API marcajes diarios", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
+
+    try {
+      // Creamos un marcaje previo para tener datos que obtener
+      await createMarcaje(ctx, { idUsuario: ctx.empleado.id_usuario, entradaHaceHoras: 4 });
+
+      const auth = authFor(ctx.empleado);
+
+      const response = await request(app)
+        .get('/api/marcajes')
+        .set('Cookie', auth.cookies)
+        .send();
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(response.body.data[0]).toHaveProperty('id_marcaje');
     } finally {
       await cleanupContext(ctx);
     }

@@ -1,6 +1,8 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
+const registroHorasRepository = require('../../../src/modules/registro_horas/horas.repository');
+
 
 const { login } = require('../../helpers/auth');
 const { getRelacionValidaProyecto, createRegistroHoras, deleteRegistroHorasById } = require('../../helpers/registroHoras.helper');
@@ -218,5 +220,83 @@ describe('HU30 - Actualización de registro de horas', () => {
 
         // Limpieza
         await deleteRegistroHorasById(registroAntiguo.id_registro);
+    });
+
+    test('CP-HU30-8-BE - Restricción edición fase inactiva', async () => {
+        // 1. Crear una fase nueva y desactivarla en la BD
+        const nuevaFase = await pool.query(
+            'INSERT INTO fase (nombre, id_proyecto, horas_estimadas, is_active) VALUES ($1, $2, $3, $4) RETURNING *',
+            ['Fase Inactiva Test', registroTemporal.id_proyecto, 10, false]
+        );
+        const faseInactivaId = nuevaFase.rows[0].id_fase;
+
+        // 2. Intentar editar el registro temporal para cambiar su fase a la inactiva
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', authEmpleado.cookies)
+            .send({
+                id_fase: faseInactivaId
+            });
+
+        // 3. Resultado esperado: 404 (Fase no encontrada)
+        // El servicio intenta encontrar la fase, pero como está desactivada o filtrada,
+        // retorna 404 Fase no encontrada.
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe('Fase no encontrada');
+
+        // Limpieza
+        await pool.query('DELETE FROM fase WHERE id_fase = $1', [faseInactivaId]);
+    });
+
+    test('CP-HU30-10-BE - Validación horas negativas edición', async () => {
+        // Intentar enviar horas negativas
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', authEmpleado.cookies)
+            .send({
+                horas: -1
+            });
+
+        // Resultado esperado: 400 (Bad Request)
+        // El middleware updateHorasValidation en horas.validation.js valida esto con .isFloat({ min: 0.5 })
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('errors');
+        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
+    });
+
+    test('CP-HU30-11-BE - Error interno API edición horas', async () => {
+        // Espiamos el repositorio y forzamos un error
+        const spy = jest.spyOn(registroHorasRepository, 'update').mockRejectedValue(new Error('Error de BD simulado'));
+
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', authEmpleado.cookies)
+            .send({
+                horas: 3,
+                descripcion: 'Test error 500'
+            });
+
+        // Resultado esperado: 500 (Internal Server Error)
+        expect(response.status).toBe(500);
+
+        // Restauramos el espía
+        spy.mockRestore();
+    });
+
+    test('CP-HU30-12-BE - Registro inexistente API edición', async () => {
+        // ID que probablemente no existe (usamos un número muy grande)
+        const idInexistente = 99999999;
+
+        const response = await request(app)
+            .put(`/api/horas/${idInexistente}`)
+            .set('Cookie', authEmpleado.cookies)
+            .send({
+                horas: 2
+            });
+
+        // Resultado esperado: 404 (Not Found)
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toBe('Registro de horas no encontrado');
     });
 });
