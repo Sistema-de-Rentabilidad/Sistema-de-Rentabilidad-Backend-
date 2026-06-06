@@ -216,7 +216,7 @@ describe('HU16 - Edicion de empleado/lider', () => {
             .set('Cookie', authPropietario.cookies)
             .send({ email: duplicateEmail });
 
-        expect(response.status).toBe(400);
+        expect(response.status).toBe(409);
         expect(response.body).toHaveProperty('success', false);
         expect(response.body.message).toMatch(/email.*registrado|ya.*existe|duplicad/i);
 

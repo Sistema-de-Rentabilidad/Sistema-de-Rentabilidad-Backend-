@@ -256,7 +256,7 @@ const updateUsuario = async (id, data, currentUser) => {
 
     if (existente && existente.id_usuario !== usuario.id_usuario) {
       const error = new Error('El email ya está registrado');
-      error.status = 400;
+      error.status = 409;
       throw error;
     }
   }
