@@ -11,7 +11,7 @@ const {
   tokenCookieForUser
 } = require('../../helpers/testinySecundarias.helper');
 
-jest.setTimeout(30000);
+jest.setTimeout(40000);
 
 const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 

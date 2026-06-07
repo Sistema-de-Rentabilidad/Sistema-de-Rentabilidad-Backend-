@@ -15,6 +15,12 @@ const crearProyectoTemporal = async (overrides = {}) => {
         ...overrides
     };
 
+    // Si queremos que sea finalizado, forzamos NOW()
+    const fechaFin = overrides.fecha_fin_real || null;
+
+    proyecto.fecha_fin_real = fechaFin; // Asegúrate que este campo se use en el INSERT
+
+
     const result = await pool.query(
         `
         INSERT INTO proyecto (
@@ -26,10 +32,11 @@ const crearProyectoTemporal = async (overrides = {}) => {
             presupuesto,
             fecha_inicio,
             fecha_fin_estimada,
-            margen
+            margen,
+            fecha_fin_real
         )
         VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
         )
         RETURNING *
         `,
@@ -42,7 +49,8 @@ const crearProyectoTemporal = async (overrides = {}) => {
             proyecto.presupuesto,
             proyecto.fecha_inicio,
             proyecto.fecha_fin_estimada,
-            proyecto.margen
+            proyecto.margen,
+            proyecto.fecha_fin_real
         ]
     );
 
@@ -112,3 +120,4 @@ module.exports = {
     crearProyectoTemporal,
     eliminarProyectoTemporal
 };
+

@@ -2,6 +2,8 @@ const { hashPassword } = require('../../utils/hash');
 const usuarioRepository = require('./usuario.repository');
 const historialRepository = require('../historial_sueldo/historial.repository');
 const historialService = require('../historial_sueldo/historial.service');
+const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository'); // Importa esto
+const proyectoRepository = require('../proyecto/proyecto.repository');
 
 const getUsuarios = async (user) => {
   // admin ve todo
@@ -329,6 +331,21 @@ const desactivarUsuario = async (id, currentUser) => {
       error.status = 403;
       throw error;
     }
+
+    // NUEVA VALIDACIÓN: usuario con proyectos activos
+    const proyectosAsignados = await proyectoEmpleadoRepository.countProyectosActivosByUsuario(id);
+    let lideraProyectosActivos = false;
+
+    if (usuario.rol === 'lider') {
+      const proyectosLider = await proyectoRepository.findAllByLider({ empresaId: currentUser.id_empresa, liderId: id });
+      lideraProyectosActivos = proyectosLider.length > 0;
+    }
+
+    if (proyectosAsignados > 0 || lideraProyectosActivos) {
+      const error = new Error('No se puede desactivar un usuario con proyectos activos');
+      error.status = 400;
+      throw error;
+    }
   }
 
   if (!usuario.is_active) {
@@ -347,3 +364,4 @@ module.exports = {
   updateUsuario,
   desactivarUsuario
 };
+

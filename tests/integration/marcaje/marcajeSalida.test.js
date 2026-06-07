@@ -341,19 +341,18 @@ describe('HU31 - Obtención de marcajes', () => {
 
       // 2. Consultar directamente en la BD
       const result = await pool.query(
-        'SELECT id_usuario, fecha, hora_entrada FROM marcaje WHERE id_marcaje = $1',
+        'SELECT id_usuario, fecha::text AS fecha_str FROM marcaje WHERE id_marcaje = $1',
         [marcaje.id_marcaje]
       );
 
-      // 3. Resultado esperado: Los datos en BD coinciden con el marcaje creado
+      // 3. Resultado esperado
       expect(result.rowCount).toBe(1);
       expect(result.rows[0].id_usuario).toBe(ctx.empleado.id_usuario);
 
-      // Verificar formato de fecha/hora (comparando las partes, ignorando milisegundos o zonas si es necesario)
-      const fechaDB = new Date(result.rows[0].fecha).toISOString().split('T')[0];
-      const fechaEsperada = new Date().toISOString().split('T')[0];
-
-      expect(fechaDB).toBe(fechaEsperada);
+      // Normalizar fechaOriginal a string YYYY-MM-DD
+      const fechaDB = result.rows[0].fecha_str;
+      const fechaOriginal = new Date(marcaje.fecha).toISOString().split('T')[0];
+      expect(fechaDB).toBe(fechaOriginal);
     } finally {
       await cleanupContext(ctx);
     }
@@ -385,9 +384,9 @@ describe('HU31 - Obtención de marcajes', () => {
   test("CP-HU31-4-BE - Validación token expirado marcajes", async () => {
     // Creamos un token que expiró hace 1 hora
     const expiredToken = jwt.sign(
-        { id: 1, rol: 'empleado' },
-        JWT_SECRET,
-        { expiresIn: '-1h' }
+      { id: 1, rol: 'empleado' },
+      JWT_SECRET,
+      { expiresIn: '-1h' }
     );
 
     const response = await request(app)
@@ -400,3 +399,5 @@ describe('HU31 - Obtención de marcajes', () => {
     expect(response.body).toHaveProperty('success', false);
   });
 });
+
+

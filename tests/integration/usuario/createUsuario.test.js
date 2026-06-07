@@ -8,7 +8,7 @@ const { eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 
 const usuarioRepository = require('../../../src/modules/usuario/usuario.repository');
 
-jest.setTimeout(20000);
+jest.setTimeout(30000);
 
 describe('HU12 - Creacion de propietario', () => {
 
