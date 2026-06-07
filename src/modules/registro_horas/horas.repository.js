@@ -114,7 +114,7 @@ const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
   const result = await pool.query(
     `SELECT
         CASE
-          WHEN hora_entrada IS NULL THEN 0
+          WHEN hora_entrada IS NULL THEN NULL
           ELSE GREATEST(
             EXTRACT(EPOCH FROM (COALESCE(hora_salida, ${ahoraLimaSql})::timestamp - hora_entrada::timestamp)) / 3600,
             0

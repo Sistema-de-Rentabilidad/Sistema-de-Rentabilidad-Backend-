@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
+const morgan = require('morgan');
 const { FRONTEND_ORIGIN, NODE_ENV } = require('./config/env');
 const app = express();
 
@@ -18,6 +19,7 @@ const notasRoutes = require('./modules/nota/nota.routes');
 
 const csrfProtection = require('./modules/middlewares/csrfProtection');
 const errorHandler = require('./modules/middlewares/errorHandler');
+const pool = require('./config/db');
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -49,6 +51,34 @@ app.use(cors({
 
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
+
+if (NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', {
+    skip: (req, res) => res.statusCode < 400,
+  }));
+}
+
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+
+    return res.status(200).json({
+      success: true,
+      status: 'ok',
+      database: 'ok',
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    return res.status(503).json({
+      success: false,
+      status: 'degraded',
+      database: 'unavailable',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
 
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');

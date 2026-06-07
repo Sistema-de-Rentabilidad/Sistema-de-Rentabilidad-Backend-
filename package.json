@@ -6,19 +6,37 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "seed:qa": "cross-env NODE_ENV=qa node seed/index.js",
+    "dev:qa": "cross-env NODE_ENV=qa LOGIN_RATE_LIMIT_STORE=database nodemon src/server.js",
+    "qa:reset": "npm run seed:qa && npm run dev:qa",
+    "test": "cross-env NODE_ENV=qa jest --passWithNoTests",
+    "test:watch": "cross-env NODE_ENV=qa jest --watch --passWithNoTests",
+    "test:coverage": "cross-env NODE_ENV=qa jest --coverage --passWithNoTests",
+    "test:api": "cross-env NODE_ENV=qa jest --runInBand tests/integration --passWithNoTests",
+    "test:postman": "newman run postman/collections/backend-qa.postman_collection.json",
+    "test:postman:env": "newman run postman/collections/backend-qa.postman_collection.json -e postman/environments/qa.postman_environment.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "dayjs": "^1.11.21",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-validator": "^7.3.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.20.0",
+    "morgan": "^1.10.1",
+    "pg": "^8.21.0",
     "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.4.2",
+    "newman": "^6.2.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   }
 }

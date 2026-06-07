@@ -99,6 +99,7 @@ const getCurrentUserService = async (idUsuario) => {
         email: user.email,
         rol: user.rol,
         id_empresa: user.id_empresa,
+        empresa_nombre: user.empresa_nombre,
     };
 };
 

@@ -5,7 +5,8 @@ const MARCAJE_ERRORS = {
   ENTRADA_NO_REGISTRADA: 'ENTRADA_NO_REGISTRADA',
   SALIDA_DUPLICADA: 'SALIDA_DUPLICADA',
   REGISTRO_HORAS_NO_REGISTRADO: 'REGISTRO_HORAS_NO_REGISTRADO',
-  HORAS_EXCEDEN_MARCAJE: 'HORAS_EXCEDEN_MARCAJE'
+  HORAS_EXCEDEN_MARCAJE: 'HORAS_EXCEDEN_MARCAJE',
+  HORA_SALIDA_INVALIDA: 'HORA_SALIDA_INVALIDA'
 };
 
 const ahoraLimaSql = "timezone('America/Lima', now())";
@@ -96,6 +97,17 @@ const calcularHorasTrabajadas = async (client, id_empleado, fecha, horaEntrada) 
   };
 };
 
+const validarHoraSalidaPosterior = async (client, id_marcaje) => {
+  const result = await client.query(
+    `SELECT (${ahoraLimaSql} > hora_entrada) AS salida_valida
+     FROM marcaje
+     WHERE id_marcaje = $1`,
+    [id_marcaje]
+  );
+
+  return result.rows[0]?.salida_valida === true;
+};
+
 const create = async (client, id_usuario, fecha) => {
   const result = await client.query(
     `INSERT INTO marcaje (id_usuario, fecha, hora_entrada)
@@ -132,7 +144,22 @@ const registrarEntrada = async ({ id_usuario, fecha }) => {
       };
     }
 
-    const marcaje = await create(client, id_usuario, fecha);
+    let marcaje;
+
+    try {
+      marcaje = await create(client, id_usuario, fecha);
+    } catch (error) {
+      if (
+        error.code === '23505' &&
+        ['unique_marcaje_usuario_fecha', 'unico_marcaje_abierto'].includes(error.constraint)
+      ) {
+        return {
+          error: MARCAJE_ERRORS.ENTRADA_DUPLICADA
+        };
+      }
+
+      throw error;
+    }
 
     return { marcaje };
   });
@@ -173,6 +200,16 @@ const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true 
       return {
         error:
           MARCAJE_ERRORS.HORAS_EXCEDEN_MARCAJE,
+        resumenHoras
+      };
+    }
+
+    const salidaValida = await validarHoraSalidaPosterior(client, marcaje.id_marcaje);
+
+    if (!salidaValida) {
+      return {
+        error:
+          MARCAJE_ERRORS.HORA_SALIDA_INVALIDA,
         resumenHoras
       };
     }
