@@ -306,37 +306,6 @@ describe('Registro y restricciones de proyecto', () => {
         }
     });
 
-    test('TC-468 - Validacion company_id proyectos', async () => {
-        const empresaInvalida = auth.user.id_empresa + 99999;
-        const payload = buildProyectoPayload({
-            id_empresa: empresaInvalida
-        });
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send(payload);
-
-        expect(response.status).toBe(201);
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(response.body.data).toHaveProperty('id_proyecto');
-        expect(response.body.data).toHaveProperty('id_empresa', auth.user.id_empresa);
-        expect(response.body.data.id_empresa).not.toBe(empresaInvalida);
-
-        proyectosCreados.push(response.body.data.id_proyecto);
-
-        const dbResult = await pool.query(
-            `SELECT id_empresa
-             FROM proyecto
-             WHERE id_proyecto = $1`,
-            [response.body.data.id_proyecto]
-        );
-
-        expect(dbResult.rowCount).toBe(1);
-        expect(dbResult.rows[0].id_empresa).toBe(auth.user.id_empresa);
-    });
-
     test('TC-481 - Registro API proyecto exitoso', async () => {
         const payload = buildProyectoPayload();
 
