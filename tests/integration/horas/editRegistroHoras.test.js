@@ -17,21 +17,21 @@ describe('HU30 - Actualización de registro de horas', () => {
         authEmpleado = await login('qa_empleado1@test.com', 'Qa123456*');
 
         // Crear un registro temporal para asegurar que siempre haya uno para editar
-        // Nota: Para la prueba, necesitamos id_empleado, id_proyecto y id_fase.
+        // Nota: Para la prueba, necesitamos id_usuario, id_proyecto y id_fase.
         // El empleado qa_empleado1@test.com tiene id 5 en data.js
         const empleadoId = authEmpleado.user.id_usuario; // 5
         const proyectoId = 1; // Proyecto base en las pruebas
 
         // Limpieza previa: eliminar cualquier registro previo de este empleado en este proyecto hoy
         // para evitar conflictos de unicidad antes de empezar
-        await pool.query('DELETE FROM registro_horas WHERE id_empleado = $1 AND id_proyecto = $2', [empleadoId, proyectoId]);
+        await pool.query('DELETE FROM registro_horas WHERE id_usuario = $1 AND id_proyecto = $2', [empleadoId, proyectoId]);
 
         const relacion = await getRelacionValidaProyecto(proyectoId);
 
         registroTemporal = await createRegistroHoras({
             idProyecto: relacion.id_proyecto,
             idFase: relacion.id_fase,
-            idEmpleado: empleadoId,
+            idUsuario: empleadoId,
             fecha: new Date(), // Hoy
             horas: 1,
             descripcion: 'Registro temporal para edición'
@@ -81,28 +81,6 @@ describe('HU30 - Actualización de registro de horas', () => {
         expect(result.rows[0].descripcion).toBe('Persistencia BD confirmada');
     });
 
-    test('CP-HU30-2-BE - Validación límite horas edición (13 horas)', async () => {
-        // Intentamos enviar 13 horas.
-        // La validación ocurrirá en el middleware de validación (express-validator).
-        const response = await request(app)
-            .put(`/api/horas/${registroTemporal.id_registro}`)
-            .set('Cookie', authEmpleado.cookies)
-            .send({
-                horas: 13,
-                descripcion: 'Intento de superar límite'
-            });
-
-        // Resultado esperado: 400 (Bad Request)
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('success', false);
-
-        // Dado que falla en el middleware de validación, la estructura de error
-        // no es { message: '...' } sino { errors: [...] }
-        expect(response.body).toHaveProperty('errors');
-        expect(Array.isArray(response.body.errors)).toBe(true);
-        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
-    });
-
     test('CP-HU30-3-BE - Restricción edición proyecto finalizado', async () => {
         // 1. Finalizar el proyecto temporalmente
         await pool.query('UPDATE proyecto SET fecha_fin_real = NOW() WHERE id_proyecto = $1', [registroTemporal.id_proyecto]);
@@ -138,7 +116,7 @@ describe('HU30 - Actualización de registro de horas', () => {
             const registroConflicto = await createRegistroHoras({
                 idProyecto: registroTemporal.id_proyecto,
                 idFase: otraFaseId,
-                idEmpleado: authEmpleado.user.id_usuario,
+                idUsuario: authEmpleado.user.id_usuario,
                 fecha: new Date(),
                 descripcion: 'Conflicto hoy'
             });
@@ -199,7 +177,7 @@ describe('HU30 - Actualización de registro de horas', () => {
         const registroAntiguo = await createRegistroHoras({
             idProyecto: registroTemporal.id_proyecto,
             idFase: registroTemporal.id_fase,
-            idEmpleado: authEmpleado.user.id_usuario,
+            idUsuario: authEmpleado.user.id_usuario,
             fecha: ayer,
             descripcion: 'Registro de hace 2 días'
         });

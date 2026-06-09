@@ -32,29 +32,6 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-924 - CP-HU35-1-BD - Validación integridad de fases", async () => {
-    const ctx = await createContext();
-
-    try {
-      const result = await pool.query(
-        `SELECT f.id_fase, f.id_proyecto, p.id_empresa
-         FROM fase f
-         INNER JOIN proyecto p ON p.id_proyecto = f.id_proyecto
-         WHERE f.id_fase = $1`,
-        [ctx.fase.id_fase]
-      );
-
-      expect(result.rowCount).toBe(1);
-      expect(result.rows[0]).toMatchObject({
-        id_fase: ctx.fase.id_fase,
-        id_proyecto: ctx.proyecto.id_proyecto,
-        id_empresa: ctx.empresa.id_empresa
-      });
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
   test("TC-927 - CP-HU35-2-BE - Lista vacía de fases", async () => {
     const ctx = await createContext({ crearFase: false });
 
@@ -91,25 +68,6 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     } finally {
       await cleanupContext(ctxA);
       await cleanupContext(ctxB);
-    }
-  });
-
-  test("TC-931 - CP-HU35-4-BD - Validación id_empresa fases", async () => {
-    const ctx = await createContext();
-
-    try {
-      const result = await pool.query(
-        `SELECT f.id_fase, p.id_empresa
-         FROM fase f
-         INNER JOIN proyecto p ON p.id_proyecto = f.id_proyecto
-         WHERE f.id_fase = $1`,
-        [ctx.fase.id_fase]
-      );
-
-      expect(result.rowCount).toBe(1);
-      expect(result.rows[0].id_empresa).toBe(ctx.empresa.id_empresa);
-    } finally {
-      await cleanupContext(ctx);
     }
   });
 

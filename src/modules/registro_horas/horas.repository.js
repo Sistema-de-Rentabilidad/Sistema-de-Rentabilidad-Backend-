@@ -8,16 +8,16 @@ const findByLider = async (liderId) => {
       `SELECT
           rh.id_registro,
           rh.id_proyecto,
-          rh.id_empleado,
+          rh.id_usuario,
           rh.fecha,
           rh.horas_trabajadas AS horas,
           rh.descripcion,
           rh.created_at,
           p.nombre AS proyecto_nombre,
-          u.nombre AS empleado_nombre
+          u.nombre AS usuario_nombre
        FROM registro_horas rh
        INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
-       INNER JOIN usuario  u ON u.id_usuario  = rh.id_empleado
+       INNER JOIN usuario  u ON u.id_usuario  = rh.id_usuario
        WHERE EXISTS (
          SELECT 1 FROM proyecto_lider pl
          WHERE pl.id_proyecto = p.id_proyecto AND pl.id_lider = $1
@@ -32,16 +32,16 @@ const findByLider = async (liderId) => {
       `SELECT
           rh.id_registro,
           rh.id_proyecto,
-          rh.id_empleado,
+          rh.id_usuario,
           rh.fecha,
           rh.horas_trabajadas AS horas,
           rh.descripcion,
           rh.created_at,
           p.nombre AS proyecto_nombre,
-          u.nombre AS empleado_nombre
+          u.nombre AS usuario_nombre
        FROM registro_horas rh
        INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
-       INNER JOIN usuario  u ON u.id_usuario  = rh.id_empleado
+       INNER JOIN usuario  u ON u.id_usuario  = rh.id_usuario
        WHERE p.id_lider = $1
        ORDER BY rh.fecha DESC, rh.id_registro DESC`,
       [liderId]
@@ -67,8 +67,8 @@ const findByEmpleado = async (idEmpleado, empresaId) => {
     INNER JOIN fase f
       ON rh.id_fase = f.id_fase
     INNER JOIN usuario u
-      ON rh.id_empleado = u.id_usuario
-    WHERE rh.id_empleado = $1
+      ON rh.id_usuario = u.id_usuario
+    WHERE rh.id_usuario = $1
       AND u.id_empresa = $2
     ORDER BY rh.fecha DESC
     `,
@@ -83,14 +83,14 @@ const findByProyecto = async (proyectoId) => {
     `SELECT
         rh.id_registro,
         rh.id_proyecto,
-        rh.id_empleado,
+        rh.id_usuario,
         rh.fecha,
         rh.horas_trabajadas AS horas,
         rh.descripcion,
         rh.created_at,
-        u.nombre AS empleado_nombre
+        u.nombre AS usuario_nombre
      FROM registro_horas rh
-     INNER JOIN usuario u ON u.id_usuario = rh.id_empleado
+     INNER JOIN usuario u ON u.id_usuario = rh.id_usuario
      WHERE rh.id_proyecto = $1
      ORDER BY rh.fecha DESC`,
     [proyectoId]
@@ -98,19 +98,19 @@ const findByProyecto = async (proyectoId) => {
   return result.rows;
 };
 
-const getTotalHorasByEmpleadoYFecha = async (idEmpleado, fecha) => {
+const getTotalHorasByUsuarioYFecha = async (idUsuario, fecha) => {
   const result = await pool.query(
     `SELECT COALESCE(SUM(horas), 0) AS total
     FROM registro_horas
-    WHERE id_empleado = $1
+    WHERE id_usuario = $1
       AND fecha = $2`,
-    [idEmpleado, fecha]
+    [idUsuario, fecha]
   );
 
   return result.rows[0].total;
 };
 
-const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
+const getHorasTrabajadasByUsuarioYFecha = async (idUsuario, fecha) => {
   const result = await pool.query(
     `SELECT
         CASE
@@ -124,19 +124,19 @@ const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
      WHERE id_usuario = $1
        AND fecha = $2
      LIMIT 1`,
-    [idEmpleado, fecha]
+    [idUsuario, fecha]
   );
 
   return result.rows[0]?.horas_trabajadas ?? null;
 };
 
-const create = async ({ id_empleado, id_proyecto, id_fase, fecha, horas, descripcion }) => {
+const create = async ({ id_usuario, id_proyecto, id_fase, fecha, horas, descripcion }) => {
   const result = await pool.query(
     `INSERT INTO registro_horas
-    (id_empleado, id_proyecto, id_fase, fecha, horas, descripcion)
+    (id_usuario, id_proyecto, id_fase, fecha, horas, descripcion)
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *`,
-    [id_empleado, id_proyecto, id_fase, fecha, horas, descripcion]
+    [id_usuario, id_proyecto, id_fase, fecha, horas, descripcion]
   );
 
   return result.rows[0];
@@ -153,14 +153,14 @@ const findById = async (id) => {
   return result.rows[0];
 };
 
-const getTotalHorasSinRegistro = async (idEmpleado, fecha, id) => {
+const getTotalHorasSinRegistro = async (idUsuario, fecha, id) => {
   const result = await pool.query(
     `SELECT COALESCE(SUM(horas), 0) AS total
     FROM registro_horas
-    WHERE id_empleado = $1
+    WHERE id_usuario = $1
       AND fecha = $2
       AND id_registro != $3`,
-    [idEmpleado, fecha, id]
+    [idUsuario, fecha, id]
   );
 
   return result.rows[0].total;
@@ -186,8 +186,8 @@ module.exports = {
   findByLider,
   findByEmpleado,
   findByProyecto,
-  getTotalHorasByEmpleadoYFecha,
-  getHorasTrabajadasByEmpleadoYFecha,
+  getTotalHorasByUsuarioYFecha,
+  getHorasTrabajadasByUsuarioYFecha,
   create,
   findById,
   getTotalHorasSinRegistro,
