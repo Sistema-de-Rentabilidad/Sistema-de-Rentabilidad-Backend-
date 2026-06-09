@@ -1,6 +1,7 @@
 const faseRepository = require('./fase.repository');
 const verifyProyectoAccess = require('../../utils/verifyProyectoAccess')
 const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository');
+const proyectoRepository = require('../proyecto/proyecto.repository');
 
 const faseDuplicadaError = () => Object.assign(
   new Error('Ya existe una fase con ese nombre en este proyecto'),
@@ -83,6 +84,15 @@ const updateFase = async (id, data, empresaId) => {
     throw Object.assign(new Error('Fase no encontrada'), { status: 404 });
   }
 
+  const proyecto = await proyectoRepository.findBasicById(fase.id_proyecto);
+
+  if (proyecto && proyecto.fecha_fin_real) {
+    throw Object.assign(
+      new Error('No se pueden editar fases en un proyecto finalizado'),
+      { status: 400 }
+    );
+  }
+
   if (fase.id_empresa !== empresaId) {
     throw Object.assign(
       new Error('No tienes permisos para editar esta fase'),
@@ -116,6 +126,15 @@ const desactivarFase = async (id, empresaId) => {
     throw Object.assign(new Error('Fase no encontrada'), { status: 404 });
   }
 
+  const proyecto = await proyectoRepository.findBasicById(fase.id_proyecto);
+
+  if (proyecto && proyecto.fecha_fin_real) {
+    throw Object.assign(
+      new Error('No se pueden eliminar fases en un proyecto finalizado'),
+      { status: 400 }
+    );
+  }
+
   await verifyProyectoAccess(fase.id_proyecto, empresaId);
 
   if (!fase.is_active) {
@@ -135,3 +154,4 @@ module.exports = {
   updateFase,
   desactivarFase,
 };
+

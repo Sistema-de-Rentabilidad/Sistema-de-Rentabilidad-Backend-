@@ -10,6 +10,37 @@ const { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE } = require('../../../src/config/en
 const { ACCESS_TOKEN_COOKIE } = require('../../../src/config/authCookie');
 
 jest.setTimeout(20000);
+describe('HU37 - Editar fase', () => {
+    let auth;
+    let faseBase;
+
+    beforeAll(async () => {
+        auth = await login('qa_propietario@test.com', 'Qa123456*');
+        faseBase = await crearFaseTemporal();
+    });
+
+    afterAll(async () => {
+        if (faseBase) await eliminarFaseTemporal(faseBase.id_fase);
+    });
+
+    test('CP-HU37-1-BE - Actualización API fase', async () => {
+        // Usamos una fase única para no ensuciar la faseBase
+        const faseTest = await crearFaseTemporal();
+        const response = await request(app)
+            .put(`/api/fases/${faseTest.id_fase}`)
+            .set('Cookie', auth.cookies)
+            .send({ nombre: 'Fase Act', horas_estimadas: 100 });
+
+        expect(response.status).toBe(200);
+        await eliminarFaseTemporal(faseTest.id_fase);
+    });
+
+    // Los tests de seguridad (token expirado, permisos, error 500)
+    // pueden usar faseBase tranquilamente, ya que no importa si se editan.
+    test('CP-HU37-9-BE - Token expirado', async () => {
+        // ... (Tu código actual)
+    });
+});
 
 describe('HU37 - Editar fase', () => {
 

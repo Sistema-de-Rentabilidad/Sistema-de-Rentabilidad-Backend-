@@ -121,6 +121,10 @@ describe('Recalculo automático rentabilidad', () => {
             'QA_TEST_RENTABILIDAD'
         );
 
+        // OPCIONAL: También podrías limpiar por usuario/fecha si el problema persiste:
+        // const pool = require('../../../src/config/db');
+        // await pool.query('DELETE FROM registro_horas WHERE id_empleado = $1 AND fecha = CURRENT_DATE', [ID_EMPLEADO]);
+
     });
 
     afterEach(async () => {
@@ -177,15 +181,16 @@ describe('Recalculo automático rentabilidad', () => {
 
             /**
              * 2. Insertar nuevo costo
-             * mediante registro de horas
+             * AÑADE ESTO: Si quieres ser 100% seguro, puedes pasar una fecha única (ej. milisegundos)
+             * pero con la limpieza del beforeEach debería ser suficiente.
              */
             await createRegistroHoras({
                 idProyecto,
                 idFase: relacion.id_fase,
                 idEmpleado: relacion.id_empleado,
+                fecha: new Date(), // Asegúrate que el helper no use una fecha fija que cause conflicto
                 horas: 4,
-                descripcion:
-                    'QA_TEST_RENTABILIDAD'
+                descripcion: 'QA_TEST_RENTABILIDAD'
             });
 
             /**

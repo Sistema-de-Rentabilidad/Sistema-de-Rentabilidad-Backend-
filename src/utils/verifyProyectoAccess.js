@@ -1,7 +1,7 @@
 const proyectoRepository = require("../modules/proyecto/proyecto.repository");
 
 const verifyProyectoAccess = async (proyectoId, empresaId) => {
-  const proyecto = await proyectoRepository.findById(proyectoId);
+  const proyecto = await proyectoRepository.findBasicById(proyectoId);
 
   if (!proyecto) {
     throw Object.assign(

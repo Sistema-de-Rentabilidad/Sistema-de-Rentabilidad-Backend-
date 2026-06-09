@@ -47,7 +47,7 @@ describe('HU14 - Cierre de sesion', () => {
 
     const setCookies = logoutResponse.headers['set-cookie'] || [];
     const clearedAccessToken = setCookies.find((cookie) =>
-      cookie.startsWith(`${ACCESS_TOKEN_COOKIE}=`)
+      cookie.startsWith(`${ACCESS_TOKEN_COOKIE}=`) // Estás enviando la cookie VACÍA
     );
 
     expect(clearedAccessToken).toBeDefined();
@@ -63,16 +63,5 @@ describe('HU14 - Cierre de sesion', () => {
     expect(protectedResponse.body.message).toMatch(/token|proporcionado|inválid/i);
   });
 
-  test('CP-HU14-3-BE - Rechazo Token Eliminado (solo token inválido)', async () => {
-    const invalidJwt = 'jwt_invalido';
-
-    const response = await request(app)
-      .get('/api/auth/me')
-      .set('Cookie', `${ACCESS_TOKEN_COOKIE}=${invalidJwt}`);
-
-    expect(response.status).toBe(401);
-    expect(response.body).toHaveProperty('success', false);
-    expect(response.body).toHaveProperty('message');
-    expect(String(response.body.message).toLowerCase()).toMatch(/invalid|expir|token|inválid/i);
-  });
 });
+

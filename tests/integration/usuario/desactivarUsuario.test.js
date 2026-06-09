@@ -123,7 +123,7 @@ describe('HU15 - Desactivacion de usuario', () => {
         });
     });
 
-    test('CP-HU15-5-BE - Eliminación usuario inexistente', async () => {
+    test('CP-HU15-4-BE - Eliminación usuario inexistente', async () => {
         const invalidUsuarioId = 99999;
 
         const response = await request(app)
@@ -135,7 +135,7 @@ describe('HU15 - Desactivacion de usuario', () => {
         expect(response.body.message).toMatch(/no encontrado|not found/i);
     });
 
-    test('CP-HU15-6-BE - Restricción permisos eliminación', async () => {
+    test('CP-HU15-5-BE - Restricción permisos eliminación', async () => {
         const authEmpleado = await login('qa_empleado1@test.com', 'Qa123456*');
 
         const response = await request(app)
@@ -147,7 +147,7 @@ describe('HU15 - Desactivacion de usuario', () => {
         expect(response.body.message).toMatch(/permiso|autorizad|forbidden|denegad/i);
     });
 
-    test('CP-HU15-7-BE - Restricción usuario con proyectos', async () => {
+    test('CP-HU15-6-BE - Restricción usuario con proyectos', async () => {
         // Crear un proyecto y asignar el usuario temporal como empleado
         const proyecto = await crearProyectoTemporal({ id_empresa: authPropietario.user.id_empresa, id_lider: authPropietario.user.id_usuario });
 
@@ -230,7 +230,7 @@ describe('HU15 - Desactivacion de usuario', () => {
         await eliminarProyectoTemporal(proyecto.id_proyecto);
     });
 
-    test('CP-HU15-8-BE - Restricción autoeliminación', async () => {
+    test('CP-HU15-7-BE - Restricción autoeliminación', async () => {
         // Intentar desactivar su propio usuario
         const response = await request(app)
             .put(`/api/usuarios/${authPropietario.user.id_usuario}/desactivar`)

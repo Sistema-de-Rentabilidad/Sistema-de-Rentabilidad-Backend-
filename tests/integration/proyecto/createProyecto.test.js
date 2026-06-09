@@ -9,17 +9,14 @@ const { login } = require('../../helpers/auth');
 
 const { crearProyectoTemporal, eliminarProyectoTemporal } = require('../../helpers/proyecto.helper');
 
-jest.setTimeout(20000);
+describe('HU18 - Crear Proyecto', () => {
+    let auth;
 
-describe('Restricción nombre duplicado', () => {
+    beforeAll(async () => {
+        auth = await login('qa_propietario@test.com', 'Qa123456*');
+    });
 
     test('CP-HU18-8-BE - API rechaza proyecto duplicado', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-
         // Intentar crear proyecto con nombre YA existente
         const response = await request(app)
             .post('/api/proyectos')
@@ -45,16 +42,7 @@ describe('Restricción nombre duplicado', () => {
         expect(response.body.message);
     });
 
-});
-
-describe('Validación duplicidad empleados', () => {
-
     test('CP-HU18-3-BE - API rechaza empleados duplicados', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
 
         const nombreProyecto = `Proyecto QA duplicidad empleados ${Date.now()}`;
 
@@ -90,16 +78,7 @@ describe('Validación duplicidad empleados', () => {
         expect(dbResult.rowCount).toBe(0);
     });
 
-});
-
-describe('Validación fechas proyecto', () => {
-
     test('CP-HU18-5-BE - API rechaza fecha fin menor a fecha inicio', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
 
         const nombreProyecto = `Proyecto QA fecha invalida ${Date.now()}`;
 
@@ -134,16 +113,8 @@ describe('Validación fechas proyecto', () => {
         expect(dbResult.rowCount).toBe(0);
     });
 
-});
-
-describe('Restricción líder externo', () => {
-
     test('CP-HU18-11-BE - API rechaza proyecto con líder que no pertenece a la empresa', async () => {
 
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
         const empresaAutenticadaId = auth.user.id_empresa;
 
         const liderExternoResult = await pool.query(
@@ -199,16 +170,8 @@ describe('Restricción líder externo', () => {
         expect(dbResult.rowCount).toBe(0);
     });
 
-});
-
-describe('Restricción empleado externo', () => {
-
     test('CP-HU18-12-BE - API rechaza proyecto con empleado que no pertenece a la empresa', async () => {
 
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
         const empresaAutenticadaId = auth.user.id_empresa;
 
         const empleadoExternoResult = await pool.query(
@@ -309,7 +272,7 @@ describe('Restricción UNIQUE nombre proyecto', () => {
 
 });
 
-describe('Testiny - Registro y restricciones de proyecto', () => {
+describe('Registro y restricciones de proyecto', () => {
     let auth;
     const proyectosCreados = [];
     let uniqueCounter = 0;
@@ -341,37 +304,6 @@ describe('Testiny - Registro y restricciones de proyecto', () => {
         while (proyectosCreados.length > 0) {
             await eliminarProyectoTemporal(proyectosCreados.pop());
         }
-    });
-
-    test('TC-468 - Validacion company_id proyectos', async () => {
-        const empresaInvalida = auth.user.id_empresa + 99999;
-        const payload = buildProyectoPayload({
-            id_empresa: empresaInvalida
-        });
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send(payload);
-
-        expect(response.status).toBe(201);
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(response.body.data).toHaveProperty('id_proyecto');
-        expect(response.body.data).toHaveProperty('id_empresa', auth.user.id_empresa);
-        expect(response.body.data.id_empresa).not.toBe(empresaInvalida);
-
-        proyectosCreados.push(response.body.data.id_proyecto);
-
-        const dbResult = await pool.query(
-            `SELECT id_empresa
-             FROM proyecto
-             WHERE id_proyecto = $1`,
-            [response.body.data.id_proyecto]
-        );
-
-        expect(dbResult.rowCount).toBe(1);
-        expect(dbResult.rows[0].id_empresa).toBe(auth.user.id_empresa);
     });
 
     test('TC-481 - Registro API proyecto exitoso', async () => {

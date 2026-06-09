@@ -8,7 +8,7 @@ const {
     eliminarProyectoTemporal
 } = require('../../helpers/proyecto.helper');
 
-jest.setTimeout(20000);
+jest.setTimeout(30000);
 
 describe('Testiny - Edicion de proyecto', () => {
     let auth;

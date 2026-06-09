@@ -16,7 +16,7 @@ describe('Obtención proyectos por empresa', () => {
     let auth;
     let usuarioTemporal;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         auth = await login(
             'qa_propietario@test.com',
             'Qa123456*'
@@ -564,3 +564,4 @@ describe('Obtención proyectos empleado', () => {
     );
 
 });
+
