@@ -123,7 +123,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
       expect(response.body.data).toMatchObject({
         id_proyecto: ctx.proyecto.id_proyecto,
         id_fase: ctx.fase.id_fase,
-        id_usuario: ctx.empleado.id_usuario
+        id_empleado: ctx.empleado.id_usuario
       });
       ctx.ids.registros.push(response.body.data.id_registro);
     } finally {

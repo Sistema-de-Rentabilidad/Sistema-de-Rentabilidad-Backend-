@@ -5,7 +5,12 @@ const registroHorasRepository = require('../../../src/modules/registro_horas/hor
 
 
 const { login } = require('../../helpers/auth');
-const { getRelacionValidaProyecto, createRegistroHoras, deleteRegistroHorasById } = require('../../helpers/registroHoras.helper');
+const {
+    getRelacionValidaProyecto,
+    getRegistroHorasEmpleadoColumn,
+    createRegistroHoras,
+    deleteRegistroHorasById
+} = require('../../helpers/registroHoras.helper');
 
 jest.setTimeout(30000); // Aumentar el tiempo de espera para pruebas que involucran base de datos
 
@@ -17,21 +22,20 @@ describe('HU30 - Actualización de registro de horas', () => {
         authEmpleado = await login('qa_empleado1@test.com', 'Qa123456*');
 
         // Crear un registro temporal para asegurar que siempre haya uno para editar
-        // Nota: Para la prueba, necesitamos id_usuario, id_proyecto y id_fase.
-        // El empleado qa_empleado1@test.com tiene id 5 en data.js
-        const empleadoId = authEmpleado.user.id_usuario; // 5
+        const empleadoId = authEmpleado.user.id_usuario;
         const proyectoId = 1; // Proyecto base en las pruebas
 
         // Limpieza previa: eliminar cualquier registro previo de este empleado en este proyecto hoy
         // para evitar conflictos de unicidad antes de empezar
-        await pool.query('DELETE FROM registro_horas WHERE id_usuario = $1 AND id_proyecto = $2', [empleadoId, proyectoId]);
+        const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+        await pool.query(`DELETE FROM registro_horas WHERE ${empleadoColumn} = $1 AND id_proyecto = $2`, [empleadoId, proyectoId]);
 
         const relacion = await getRelacionValidaProyecto(proyectoId);
 
         registroTemporal = await createRegistroHoras({
             idProyecto: relacion.id_proyecto,
             idFase: relacion.id_fase,
-            idUsuario: empleadoId,
+            idEmpleado: empleadoId,
             fecha: new Date(), // Hoy
             horas: 1,
             descripcion: 'Registro temporal para edición'
@@ -116,7 +120,7 @@ describe('HU30 - Actualización de registro de horas', () => {
             const registroConflicto = await createRegistroHoras({
                 idProyecto: registroTemporal.id_proyecto,
                 idFase: otraFaseId,
-                idUsuario: authEmpleado.user.id_usuario,
+                idEmpleado: authEmpleado.user.id_usuario,
                 fecha: new Date(),
                 descripcion: 'Conflicto hoy'
             });
@@ -177,7 +181,7 @@ describe('HU30 - Actualización de registro de horas', () => {
         const registroAntiguo = await createRegistroHoras({
             idProyecto: registroTemporal.id_proyecto,
             idFase: registroTemporal.id_fase,
-            idUsuario: authEmpleado.user.id_usuario,
+            idEmpleado: authEmpleado.user.id_usuario,
             fecha: ayer,
             descripcion: 'Registro de hace 2 días'
         });
