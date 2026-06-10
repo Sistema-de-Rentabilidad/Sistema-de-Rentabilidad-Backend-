@@ -137,7 +137,7 @@ const findByProyecto = async (proyectoId) => {
   return result.rows.map(normalizeRegistroHorasRow);
 };
 
-const getTotalHorasByEmpleadoYFecha = async (idEmpleado, fecha) => {
+const getTotalHorasByEmpleadoYFecha = async (empleadoId, fecha) => {
   const empleadoColumn = await getRegistroHorasEmpleadoColumn();
 
   const result = await pool.query(
@@ -145,13 +145,13 @@ const getTotalHorasByEmpleadoYFecha = async (idEmpleado, fecha) => {
     FROM registro_horas
     WHERE ${empleadoColumn} = $1
       AND fecha = $2`,
-    [idEmpleado, fecha]
+    [empleadoId, fecha]
   );
 
   return result.rows[0].total;
 };
 
-const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
+const getHorasTrabajadasByEmpleadoYFecha = async (empleadoId, fecha) => {
   const result = await pool.query(
     `SELECT
         CASE
@@ -165,7 +165,7 @@ const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
      WHERE id_usuario = $1
        AND fecha = $2
      LIMIT 1`,
-    [idEmpleado, fecha]
+    [empleadoId, fecha]
   );
 
   return result.rows[0]?.horas_trabajadas ?? null;
@@ -173,13 +173,14 @@ const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
 
 const create = async ({ id_empleado, id_proyecto, id_fase, fecha, horas, descripcion }) => {
   const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+  const empleadoId = id_empleado;
 
   const result = await pool.query(
     `INSERT INTO registro_horas
     (${empleadoColumn}, id_proyecto, id_fase, fecha, horas, descripcion)
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *`,
-    [id_empleado, id_proyecto, id_fase, fecha, horas, descripcion]
+    [empleadoId, id_proyecto, id_fase, fecha, horas, descripcion]
   );
 
   return normalizeRegistroHorasRow(result.rows[0]);
@@ -196,7 +197,7 @@ const findById = async (id) => {
   return normalizeRegistroHorasRow(result.rows[0]);
 };
 
-const getTotalHorasSinRegistro = async (idEmpleado, fecha, id) => {
+const getTotalHorasSinRegistro = async (empleadoId, fecha, id) => {
   const empleadoColumn = await getRegistroHorasEmpleadoColumn();
 
   const result = await pool.query(
@@ -205,7 +206,7 @@ const getTotalHorasSinRegistro = async (idEmpleado, fecha, id) => {
     WHERE ${empleadoColumn} = $1
       AND fecha = $2
       AND id_registro != $3`,
-    [idEmpleado, fecha, id]
+    [empleadoId, fecha, id]
   );
 
   return result.rows[0].total;
@@ -228,13 +229,13 @@ const update = async ({ id, id_proyecto, id_fase, horas, descripcion }) => {
 };
 
 module.exports = {
-  findByLider,
-  findByEmpleado,
-  findByProyecto,
-  getTotalHorasByEmpleadoYFecha,
-  getHorasTrabajadasByEmpleadoYFecha,
-  create,
-  findById,
-  getTotalHorasSinRegistro,
-  update
+  findByLider: findByLider,
+  findByEmpleado: findByEmpleado,
+  findByProyecto: findByProyecto,
+  getTotalHorasByEmpleadoYFecha: getTotalHorasByEmpleadoYFecha,
+  getHorasTrabajadasByEmpleadoYFecha: getHorasTrabajadasByEmpleadoYFecha,
+  create: create,
+  findById: findById,
+  getTotalHorasSinRegistro: getTotalHorasSinRegistro,
+  update: update
 };
