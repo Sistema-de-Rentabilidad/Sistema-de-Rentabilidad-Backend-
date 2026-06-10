@@ -71,41 +71,11 @@ jobs:
           SET estado = 'activo'
           WHERE estado IS NULL;
 
-          UPDATE public.proyecto
-          SET estado = 'activo'
-          WHERE LOWER(TRIM(estado)) NOT IN (
-            'activo',
-            'inactivo',
-            'finalizado',
-            'pendiente',
-            'en_proceso',
-            'en curso',
-            'cancelado',
-            'pausado',
-            'planificado'
-          );
-
           ALTER TABLE public.proyecto
           ALTER COLUMN estado SET DEFAULT 'activo';
 
           ALTER TABLE public.proyecto
           ALTER COLUMN estado SET NOT NULL;
-
-          ALTER TABLE public.proyecto
-          ADD CONSTRAINT chk_proyecto_estado
-          CHECK (
-            LOWER(TRIM(estado)) IN (
-              'activo',
-              'inactivo',
-              'finalizado',
-              'pendiente',
-              'en_proceso',
-              'en curso',
-              'cancelado',
-              'pausado',
-              'planificado'
-            )
-          );
 
 
           -- ============================================================
