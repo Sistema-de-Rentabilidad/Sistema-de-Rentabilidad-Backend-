@@ -41,7 +41,7 @@ jobs:
           JWT_ISSUER=sistema-de-rentabilidad-backend
           JWT_AUDIENCE=sistema-de-rentabilidad-client
           JWT_REQUIRE_CLAIMS=false
-          FRONTEND_URL=http://localhost:3001
+          FRONTEND_URL=http://localhost:5173
           BCRYPT_SALT_ROUNDS=10
           LOGIN_RATE_LIMIT_STORE=memory
           LOGIN_RATE_LIMIT_WINDOW_MS=900000
@@ -56,6 +56,14 @@ jobs:
       - name: Alinear esquema QA antes de pruebas
         run: |
           psql "${{ secrets.DATABASE_URL_QA }}" <<'SQL'
+
+          -- ============================================================
+          -- Ajuste de columna estado en proyecto
+          -- ============================================================
+
+          ALTER TABLE public.proyecto
+          DROP CONSTRAINT IF EXISTS chk_proyecto_estado;
+
           ALTER TABLE public.proyecto
           ADD COLUMN IF NOT EXISTS estado VARCHAR(30);
 
@@ -63,11 +71,46 @@ jobs:
           SET estado = 'activo'
           WHERE estado IS NULL;
 
+          UPDATE public.proyecto
+          SET estado = 'activo'
+          WHERE LOWER(TRIM(estado)) NOT IN (
+            'activo',
+            'inactivo',
+            'finalizado',
+            'pendiente',
+            'en_proceso',
+            'en curso',
+            'cancelado',
+            'pausado',
+            'planificado'
+          );
+
           ALTER TABLE public.proyecto
           ALTER COLUMN estado SET DEFAULT 'activo';
 
           ALTER TABLE public.proyecto
           ALTER COLUMN estado SET NOT NULL;
+
+          ALTER TABLE public.proyecto
+          ADD CONSTRAINT chk_proyecto_estado
+          CHECK (
+            LOWER(TRIM(estado)) IN (
+              'activo',
+              'inactivo',
+              'finalizado',
+              'pendiente',
+              'en_proceso',
+              'en curso',
+              'cancelado',
+              'pausado',
+              'planificado'
+            )
+          );
+
+
+          -- ============================================================
+          -- Ajuste de columnas id_empleado / id_usuario en registro_horas
+          -- ============================================================
 
           ALTER TABLE public.registro_horas
           ADD COLUMN IF NOT EXISTS id_empleado INTEGER;
@@ -107,6 +150,7 @@ jobs:
 
           CREATE INDEX IF NOT EXISTS idx_registro_horas_id_usuario
           ON public.registro_horas(id_usuario);
+
           SQL
         env:
           PGSSLMODE: require
@@ -121,5 +165,86 @@ jobs:
             exit 1
           fi
 
+          if grep -q "Error ejecutando seeds" seed.log; then
+            echo "Los seeds QA fallaron"
+            exit 1
+          fi
+
       - name: Ejecutar pruebas Jest
         run: npx cross-env NODE_ENV=qa jest --runInBand --passWithNoTests
+
+  deploy-qa:
+    name: Despliegue automático en QA
+    runs-on: ubuntu-latest
+    needs: ci-backend
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/qa'
+
+    environment:
+      name: qa
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Descargar configuración de Vercel QA
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Desplegar backend en QA
+        run: vercel deploy --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  deploy-production:
+    name: Despliegue automático en producción
+    runs-on: ubuntu-latest
+    needs: ci-backend
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    environment:
+      name: production
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Descargar configuración de Vercel producción
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Desplegar backend en producción
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
