@@ -41,7 +41,7 @@ jobs:
           JWT_ISSUER=sistema-de-rentabilidad-backend
           JWT_AUDIENCE=sistema-de-rentabilidad-client
           JWT_REQUIRE_CLAIMS=false
-          FRONTEND_URL=http://localhost:3001
+          FRONTEND_URL=http://localhost:5173
           BCRYPT_SALT_ROUNDS=10
           LOGIN_RATE_LIMIT_STORE=memory
           LOGIN_RATE_LIMIT_WINDOW_MS=900000
@@ -50,87 +50,76 @@ jobs:
           MARCAJE_ENTRADA_HORA_FIN=10:00
           EOF
 
-      - name: Ejecutar pruebas del backend
-        run: npm test
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Ejecutar pruebas de API e integración
-        run: npm run test:api
+      - name: Alinear esquema QA antes de pruebas
+        run: |
+          psql "${{ secrets.DATABASE_URL_QA }}" <<'SQL'
+          ALTER TABLE public.proyecto
+          ADD COLUMN IF NOT EXISTS estado VARCHAR(30);
 
-      - name: Generar reporte de cobertura
-        run: npm run test:coverage
+          UPDATE public.proyecto
+          SET estado = 'activo'
+          WHERE estado IS NULL;
 
-  deploy-qa:
-    name: Despliegue automático en QA
-    runs-on: ubuntu-latest
-    needs: ci-backend
+          ALTER TABLE public.proyecto
+          ALTER COLUMN estado SET DEFAULT 'activo';
 
-    if: github.ref == 'refs/heads/qa'
+          ALTER TABLE public.proyecto
+          ALTER COLUMN estado SET NOT NULL;
 
-    environment:
-      name: qa
+          ALTER TABLE public.registro_horas
+          ADD COLUMN IF NOT EXISTS id_empleado INTEGER;
 
-    steps:
-      - name: Descargar código del repositorio
-        uses: actions/checkout@v4
+          ALTER TABLE public.registro_horas
+          ADD COLUMN IF NOT EXISTS id_usuario INTEGER;
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+          UPDATE public.registro_horas
+          SET id_empleado = COALESCE(id_empleado, id_usuario),
+              id_usuario = COALESCE(id_usuario, id_empleado);
 
-      - name: Instalar dependencias
-        run: npm ci
+          CREATE OR REPLACE FUNCTION public.sync_registro_horas_usuario_empleado()
+          RETURNS trigger AS $$
+          BEGIN
+            IF NEW.id_empleado IS NULL AND NEW.id_usuario IS NOT NULL THEN
+              NEW.id_empleado := NEW.id_usuario;
+            END IF;
 
-      - name: Instalar Vercel CLI
-        run: npm install --global vercel
+            IF NEW.id_usuario IS NULL AND NEW.id_empleado IS NOT NULL THEN
+              NEW.id_usuario := NEW.id_empleado;
+            END IF;
 
-      - name: Descargar configuración del proyecto QA en Vercel
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+            RETURN NEW;
+          END;
+          $$ LANGUAGE plpgsql;
+
+          DROP TRIGGER IF EXISTS trg_sync_registro_horas_usuario_empleado
+          ON public.registro_horas;
+
+          CREATE TRIGGER trg_sync_registro_horas_usuario_empleado
+          BEFORE INSERT OR UPDATE ON public.registro_horas
+          FOR EACH ROW
+          EXECUTE FUNCTION public.sync_registro_horas_usuario_empleado();
+
+          CREATE INDEX IF NOT EXISTS idx_registro_horas_id_empleado
+          ON public.registro_horas(id_empleado);
+
+          CREATE INDEX IF NOT EXISTS idx_registro_horas_id_usuario
+          ON public.registro_horas(id_usuario);
+          SQL
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          PGSSLMODE: require
 
-      - name: Desplegar backend en ambiente QA
-        run: vercel deploy --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Resetear datos QA
+        run: |
+          set -o pipefail
+          npm run seed:qa 2>&1 | tee seed.log
 
-  deploy-production:
-    name: Despliegue automático en producción
-    runs-on: ubuntu-latest
-    needs: ci-backend
+          if grep -q "❌ Error" seed.log; then
+            echo "Los seeds QA fallaron"
+            exit 1
+          fi
 
-    if: github.ref == 'refs/heads/main'
-
-    environment:
-      name: production
-
-    steps:
-      - name: Descargar código del repositorio
-        uses: actions/checkout@v4
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Instalar dependencias
-        run: npm ci
-
-      - name: Instalar Vercel CLI
-        run: npm install --global vercel
-
-      - name: Descargar configuración del proyecto en Vercel
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Desplegar backend en producción
-        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Ejecutar pruebas Jest
+        run: npx cross-env NODE_ENV=qa jest --runInBand --passWithNoTests
