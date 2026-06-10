@@ -41,7 +41,7 @@ jobs:
           JWT_ISSUER=sistema-de-rentabilidad-backend
           JWT_AUDIENCE=sistema-de-rentabilidad-client
           JWT_REQUIRE_CLAIMS=false
-          FRONTEND_URL=http://localhost:5173
+          FRONTEND_URL=http://localhost:3001
           BCRYPT_SALT_ROUNDS=10
           LOGIN_RATE_LIMIT_STORE=memory
           LOGIN_RATE_LIMIT_WINDOW_MS=900000
