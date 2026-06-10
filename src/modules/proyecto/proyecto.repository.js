@@ -15,7 +15,7 @@ const findAll = async (empresaId) => {
             END) AS costo_total
       FROM registro_horas rh
       INNER JOIN historial_sueldo hs
-        ON hs.id_usuario = rh.id_empleado
+        ON hs.id_usuario = rh.id_usuario
       INNER JOIN proyecto p2
         ON p2.id_proyecto = rh.id_proyecto
       WHERE (rh.fecha BETWEEN hs.fecha_inicio
