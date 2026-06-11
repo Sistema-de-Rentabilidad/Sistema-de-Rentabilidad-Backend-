@@ -1,23 +1,54 @@
 const pool = require('../../config/db');
 
 const ahoraLimaSql = "timezone('America/Lima', now())";
+let registroHorasEmpleadoColumnPromise;
+
+const getRegistroHorasEmpleadoColumn = async () => {
+  if (!registroHorasEmpleadoColumnPromise) {
+    registroHorasEmpleadoColumnPromise = pool.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'registro_horas'
+         AND column_name IN ('id_empleado', 'id_usuario')
+       ORDER BY CASE column_name WHEN 'id_empleado' THEN 0 ELSE 1 END
+       LIMIT 1`
+    ).then((result) => result.rows[0]?.column_name || 'id_empleado');
+  }
+
+  return registroHorasEmpleadoColumnPromise;
+};
+
+const normalizeRegistroHorasRow = (row) => {
+  if (!row) return row;
+
+  const empleadoId = row.id_empleado ?? row.id_usuario;
+  return {
+    ...row,
+    id_empleado: empleadoId,
+    id_usuario: empleadoId
+  };
+};
 
 const findByLider = async (liderId) => {
+  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+
   try {
     const result = await pool.query(
       `SELECT
           rh.id_registro,
           rh.id_proyecto,
-          rh.id_usuario,
+          rh.${empleadoColumn} AS id_empleado,
+          rh.${empleadoColumn} AS id_usuario,
           rh.fecha,
-          rh.horas_trabajadas AS horas,
+          rh.horas,
           rh.descripcion,
-          rh.created_at,
+          NULL::timestamp AS created_at,
           p.nombre AS proyecto_nombre,
           u.nombre AS usuario_nombre
        FROM registro_horas rh
        INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
-       INNER JOIN usuario  u ON u.id_usuario  = rh.id_usuario
+       INNER JOIN usuario  u ON u.id_usuario  = rh.${empleadoColumn}
        WHERE EXISTS (
          SELECT 1 FROM proyecto_lider pl
          WHERE pl.id_proyecto = p.id_proyecto AND pl.id_lider = $1
@@ -25,38 +56,43 @@ const findByLider = async (liderId) => {
        ORDER BY rh.fecha DESC, rh.id_registro DESC`,
       [liderId]
     );
-    return result.rows;
+    return result.rows.map(normalizeRegistroHorasRow);
   } catch {
     // Fallback cuando proyecto_lider aún no existe
     const result = await pool.query(
       `SELECT
           rh.id_registro,
           rh.id_proyecto,
-          rh.id_usuario,
+          rh.${empleadoColumn} AS id_empleado,
+          rh.${empleadoColumn} AS id_usuario,
           rh.fecha,
-          rh.horas_trabajadas AS horas,
+          rh.horas,
           rh.descripcion,
-          rh.created_at,
+          NULL::timestamp AS created_at,
           p.nombre AS proyecto_nombre,
           u.nombre AS usuario_nombre
        FROM registro_horas rh
        INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
-       INNER JOIN usuario  u ON u.id_usuario  = rh.id_usuario
+       INNER JOIN usuario  u ON u.id_usuario  = rh.${empleadoColumn}
        WHERE p.id_lider = $1
        ORDER BY rh.fecha DESC, rh.id_registro DESC`,
       [liderId]
     );
-    return result.rows;
+    return result.rows.map(normalizeRegistroHorasRow);
   }
 };
 
 const findByEmpleado = async (idEmpleado, empresaId) => {
+  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+
   const result = await pool.query(
     `SELECT
       rh.id_registro,
       rh.fecha,
       rh.horas,
       rh.descripcion,
+      rh.${empleadoColumn} AS id_empleado,
+      rh.${empleadoColumn} AS id_usuario,
       p.id_proyecto,
       p.nombre AS proyecto_nombre,
       f.id_fase,
@@ -67,50 +103,55 @@ const findByEmpleado = async (idEmpleado, empresaId) => {
     INNER JOIN fase f
       ON rh.id_fase = f.id_fase
     INNER JOIN usuario u
-      ON rh.id_usuario = u.id_usuario
-    WHERE rh.id_usuario = $1
+      ON rh.${empleadoColumn} = u.id_usuario
+    WHERE rh.${empleadoColumn} = $1
       AND u.id_empresa = $2
     ORDER BY rh.fecha DESC
     `,
     [idEmpleado, empresaId]
   );
 
-  return result.rows;
+  return result.rows.map(normalizeRegistroHorasRow);
 };
 
 const findByProyecto = async (proyectoId) => {
+  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+
   const result = await pool.query(
     `SELECT
         rh.id_registro,
         rh.id_proyecto,
-        rh.id_usuario,
+        rh.${empleadoColumn} AS id_empleado,
+        rh.${empleadoColumn} AS id_usuario,
         rh.fecha,
-        rh.horas_trabajadas AS horas,
+        rh.horas,
         rh.descripcion,
-        rh.created_at,
+        NULL::timestamp AS created_at,
         u.nombre AS usuario_nombre
      FROM registro_horas rh
-     INNER JOIN usuario u ON u.id_usuario = rh.id_usuario
+     INNER JOIN usuario u ON u.id_usuario = rh.${empleadoColumn}
      WHERE rh.id_proyecto = $1
      ORDER BY rh.fecha DESC`,
     [proyectoId]
   );
-  return result.rows;
+  return result.rows.map(normalizeRegistroHorasRow);
 };
 
-const getTotalHorasByUsuarioYFecha = async (idUsuario, fecha) => {
+const getTotalHorasByEmpleadoYFecha = async (empleadoId, fecha) => {
+  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+
   const result = await pool.query(
     `SELECT COALESCE(SUM(horas), 0) AS total
     FROM registro_horas
-    WHERE id_usuario = $1
+    WHERE ${empleadoColumn} = $1
       AND fecha = $2`,
-    [idUsuario, fecha]
+    [empleadoId, fecha]
   );
 
   return result.rows[0].total;
 };
 
-const getHorasTrabajadasByUsuarioYFecha = async (idUsuario, fecha) => {
+const getHorasTrabajadasByEmpleadoYFecha = async (empleadoId, fecha) => {
   const result = await pool.query(
     `SELECT
         CASE
@@ -124,22 +165,25 @@ const getHorasTrabajadasByUsuarioYFecha = async (idUsuario, fecha) => {
      WHERE id_usuario = $1
        AND fecha = $2
      LIMIT 1`,
-    [idUsuario, fecha]
+    [empleadoId, fecha]
   );
 
   return result.rows[0]?.horas_trabajadas ?? null;
 };
 
-const create = async ({ id_usuario, id_proyecto, id_fase, fecha, horas, descripcion }) => {
+const create = async ({ id_empleado, id_proyecto, id_fase, fecha, horas, descripcion }) => {
+  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+  const empleadoId = id_empleado;
+
   const result = await pool.query(
     `INSERT INTO registro_horas
-    (id_usuario, id_proyecto, id_fase, fecha, horas, descripcion)
+    (${empleadoColumn}, id_proyecto, id_fase, fecha, horas, descripcion)
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *`,
-    [id_usuario, id_proyecto, id_fase, fecha, horas, descripcion]
+    [empleadoId, id_proyecto, id_fase, fecha, horas, descripcion]
   );
 
-  return result.rows[0];
+  return normalizeRegistroHorasRow(result.rows[0]);
 };
 
 const findById = async (id) => {
@@ -150,17 +194,19 @@ const findById = async (id) => {
     [id]
   );
 
-  return result.rows[0];
+  return normalizeRegistroHorasRow(result.rows[0]);
 };
 
-const getTotalHorasSinRegistro = async (idUsuario, fecha, id) => {
+const getTotalHorasSinRegistro = async (empleadoId, fecha, id) => {
+  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
+
   const result = await pool.query(
     `SELECT COALESCE(SUM(horas), 0) AS total
     FROM registro_horas
-    WHERE id_usuario = $1
+    WHERE ${empleadoColumn} = $1
       AND fecha = $2
       AND id_registro != $3`,
-    [idUsuario, fecha, id]
+    [empleadoId, fecha, id]
   );
 
   return result.rows[0].total;
@@ -179,17 +225,17 @@ const update = async ({ id, id_proyecto, id_fase, horas, descripcion }) => {
     [id_proyecto, id_fase, horas, descripcion, id]
   );
 
-  return result.rows[0];
+  return normalizeRegistroHorasRow(result.rows[0]);
 };
 
 module.exports = {
-  findByLider,
-  findByEmpleado,
-  findByProyecto,
-  getTotalHorasByUsuarioYFecha,
-  getHorasTrabajadasByUsuarioYFecha,
-  create,
-  findById,
-  getTotalHorasSinRegistro,
-  update
+  findByLider: findByLider,
+  findByEmpleado: findByEmpleado,
+  findByProyecto: findByProyecto,
+  getTotalHorasByEmpleadoYFecha: getTotalHorasByEmpleadoYFecha,
+  getHorasTrabajadasByEmpleadoYFecha: getHorasTrabajadasByEmpleadoYFecha,
+  create: create,
+  findById: findById,
+  getTotalHorasSinRegistro: getTotalHorasSinRegistro,
+  update: update
 };

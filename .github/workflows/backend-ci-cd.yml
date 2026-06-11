@@ -1,0 +1,220 @@
+name: CI/CD Backend - Sistema de Rentabilidad
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - qa
+
+  pull_request:
+    branches:
+      - main
+      - develop
+      - qa
+
+jobs:
+  ci-backend:
+    name: Validación automática del backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Crear archivo .env.qa
+        run: |
+          cat > .env.qa <<EOF
+          DATABASE_URL=${{ secrets.DATABASE_URL_QA }}
+          NODE_ENV=qa
+          JWT_SECRET=${{ secrets.JWT_SECRET_QA }}
+          JWT_EXPIRES=1d
+          JWT_ISSUER=sistema-de-rentabilidad-backend
+          JWT_AUDIENCE=sistema-de-rentabilidad-client
+          JWT_REQUIRE_CLAIMS=false
+          FRONTEND_URL=http://localhost:5173
+          BCRYPT_SALT_ROUNDS=10
+          LOGIN_RATE_LIMIT_STORE=memory
+          LOGIN_RATE_LIMIT_WINDOW_MS=900000
+          LOGIN_RATE_LIMIT_MAX_ATTEMPTS=10
+          MARCAJE_ENTRADA_HORA_INICIO=06:00
+          MARCAJE_ENTRADA_HORA_FIN=10:00
+          EOF
+
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Alinear esquema QA antes de pruebas
+        run: |
+          psql "${{ secrets.DATABASE_URL_QA }}" <<'SQL'
+
+          -- ============================================================
+          -- Ajuste de columna estado en proyecto
+          -- ============================================================
+
+          ALTER TABLE public.proyecto
+          DROP CONSTRAINT IF EXISTS chk_proyecto_estado;
+
+          ALTER TABLE public.proyecto
+          ADD COLUMN IF NOT EXISTS estado VARCHAR(30);
+
+          UPDATE public.proyecto
+          SET estado = 'activo'
+          WHERE estado IS NULL;
+
+          ALTER TABLE public.proyecto
+          ALTER COLUMN estado SET DEFAULT 'activo';
+
+          ALTER TABLE public.proyecto
+          ALTER COLUMN estado SET NOT NULL;
+
+
+          -- ============================================================
+          -- Ajuste de columnas id_empleado / id_usuario en registro_horas
+          -- ============================================================
+
+          ALTER TABLE public.registro_horas
+          ADD COLUMN IF NOT EXISTS id_empleado INTEGER;
+
+          ALTER TABLE public.registro_horas
+          ADD COLUMN IF NOT EXISTS id_usuario INTEGER;
+
+          UPDATE public.registro_horas
+          SET id_empleado = COALESCE(id_empleado, id_usuario),
+              id_usuario = COALESCE(id_usuario, id_empleado);
+
+          CREATE OR REPLACE FUNCTION public.sync_registro_horas_usuario_empleado()
+          RETURNS trigger AS $$
+          BEGIN
+            IF NEW.id_empleado IS NULL AND NEW.id_usuario IS NOT NULL THEN
+              NEW.id_empleado := NEW.id_usuario;
+            END IF;
+
+            IF NEW.id_usuario IS NULL AND NEW.id_empleado IS NOT NULL THEN
+              NEW.id_usuario := NEW.id_empleado;
+            END IF;
+
+            RETURN NEW;
+          END;
+          $$ LANGUAGE plpgsql;
+
+          DROP TRIGGER IF EXISTS trg_sync_registro_horas_usuario_empleado
+          ON public.registro_horas;
+
+          CREATE TRIGGER trg_sync_registro_horas_usuario_empleado
+          BEFORE INSERT OR UPDATE ON public.registro_horas
+          FOR EACH ROW
+          EXECUTE FUNCTION public.sync_registro_horas_usuario_empleado();
+
+          CREATE INDEX IF NOT EXISTS idx_registro_horas_id_empleado
+          ON public.registro_horas(id_empleado);
+
+          CREATE INDEX IF NOT EXISTS idx_registro_horas_id_usuario
+          ON public.registro_horas(id_usuario);
+
+          SQL
+        env:
+          PGSSLMODE: require
+
+      - name: Resetear datos QA
+        run: |
+          set -o pipefail
+          npm run seed:qa 2>&1 | tee seed.log
+
+          if grep -q "❌ Error" seed.log; then
+            echo "Los seeds QA fallaron"
+            exit 1
+          fi
+
+          if grep -q "Error ejecutando seeds" seed.log; then
+            echo "Los seeds QA fallaron"
+            exit 1
+          fi
+
+      - name: Ejecutar pruebas Jest
+        run: npx cross-env NODE_ENV=qa jest --runInBand --passWithNoTests
+
+  deploy-qa:
+    name: Despliegue automático en QA
+    runs-on: ubuntu-latest
+    needs: ci-backend
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/qa'
+
+    environment:
+      name: qa
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Descargar configuración de Vercel QA
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Desplegar backend en QA
+        run: vercel deploy --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  deploy-production:
+    name: Despliegue automático en producción
+    runs-on: ubuntu-latest
+    needs: ci-backend
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    environment:
+      name: production
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Descargar configuración de Vercel producción
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Desplegar backend en producción
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
