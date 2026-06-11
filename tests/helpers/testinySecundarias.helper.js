@@ -51,24 +51,6 @@ const deleteByIds = async (table, column, ids) => {
   await pool.query(`DELETE FROM ${table} WHERE ${column} = ANY($1::int[])`, [ids]);
 };
 
-let registroHorasEmpleadoColumnPromise;
-
-const getRegistroHorasEmpleadoColumn = async () => {
-  if (!registroHorasEmpleadoColumnPromise) {
-    registroHorasEmpleadoColumnPromise = pool.query(
-      `SELECT column_name
-       FROM information_schema.columns
-       WHERE table_schema = 'public'
-         AND table_name = 'registro_horas'
-         AND column_name IN ('id_empleado', 'id_usuario')
-       ORDER BY CASE column_name WHEN 'id_empleado' THEN 0 ELSE 1 END
-       LIMIT 1`
-    ).then((result) => result.rows[0]?.column_name || 'id_empleado');
-  }
-
-  return registroHorasEmpleadoColumnPromise;
-};
-
 const cleanupContext = async (ctx) => {
   if (!ctx?.ids) return;
 
@@ -178,7 +160,6 @@ const createProyecto = async (ctx, {
   idServicio,
   idLider = null,
   finalizado = false,
-  estado = 'ejecucion',
   isActive = true
 } = {}) => {
   const result = await pool.query(
@@ -193,10 +174,9 @@ const createProyecto = async (ctx, {
         fecha_fin_estimada,
         fecha_fin_real,
         margen,
-        estado,
         is_active
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING *`,
     [
       idEmpresa,
@@ -209,7 +189,6 @@ const createProyecto = async (ctx, {
       '2027-12-31',
       finalizado ? '2026-01-01' : null,
       20,
-      finalizado ? 'finalizado' : estado,
       isActive
     ]
   );
@@ -247,19 +226,15 @@ const createRegistroHoras = async (ctx, {
   idProyecto,
   idFase,
   idEmpleado,
-  idUsuario,
   fecha = getFechaActual(),
   horas = 1,
   descripcion = uniqueText('QA_TESTINY_HORAS')
 } = {}) => {
-  const empleadoId = idEmpleado ?? idUsuario;
-  const empleadoColumn = await getRegistroHorasEmpleadoColumn();
-
   const result = await pool.query(
-    `INSERT INTO registro_horas (id_proyecto, id_fase, ${empleadoColumn}, fecha, horas, descripcion)
+    `INSERT INTO registro_horas (id_proyecto, id_fase, id_empleado, fecha, horas, descripcion)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [idProyecto, idFase, empleadoId, fecha, horas, descripcion]
+    [idProyecto, idFase, idEmpleado, fecha, horas, descripcion]
   );
 
   pushId(ctx, 'registros', result.rows[0].id_registro);

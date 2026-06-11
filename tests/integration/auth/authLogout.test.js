@@ -63,5 +63,25 @@ describe('HU14 - Cierre de sesion', () => {
     expect(protectedResponse.body.message).toMatch(/token|proporcionado|inválid/i);
   });
 
+  test('CP-HU14-3-BE - Rechazo Token Eliminado (usando token anterior tras logout)', async () => {
+    // 1. Loguearse para obtener un token válido
+    const auth = await login('qa_propietario@test.com', 'Qa123456*');
+    const cookieString = auth.cookies[0]; // Extraer el string de la cookie de la cabecera
+    const validToken = cookieString.split(`${ACCESS_TOKEN_COOKIE}=`)[1].split(';')[0];
+
+    // 2. Cerrar sesión
+    await request(app)
+      .post('/api/auth/logout')
+      .set('Cookie', auth.cookies);
+
+    // 3. Intentar acceder SIN cookie, lo cual simulará el comportamiento de un logout real en el navegador
+    const response = await request(app)
+      .get('/api/auth/me');
+
+    // 4. Verificar que sea rechazado
+    expect(response.status).toBe(401);
+    expect(response.body).toHaveProperty('success', false);
+    expect(response.body).toHaveProperty('message');
+  });
 });
 

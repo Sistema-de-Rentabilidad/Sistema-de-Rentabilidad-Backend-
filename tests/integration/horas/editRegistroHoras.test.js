@@ -5,12 +5,7 @@ const registroHorasRepository = require('../../../src/modules/registro_horas/hor
 
 
 const { login } = require('../../helpers/auth');
-const {
-    getRelacionValidaProyecto,
-    getRegistroHorasEmpleadoColumn,
-    createRegistroHoras,
-    deleteRegistroHorasById
-} = require('../../helpers/registroHoras.helper');
+const { getRelacionValidaProyecto, createRegistroHoras, deleteRegistroHorasById } = require('../../helpers/registroHoras.helper');
 
 jest.setTimeout(30000); // Aumentar el tiempo de espera para pruebas que involucran base de datos
 
@@ -22,13 +17,14 @@ describe('HU30 - Actualización de registro de horas', () => {
         authEmpleado = await login('qa_empleado1@test.com', 'Qa123456*');
 
         // Crear un registro temporal para asegurar que siempre haya uno para editar
-        const empleadoId = authEmpleado.user.id_usuario;
+        // Nota: Para la prueba, necesitamos id_empleado, id_proyecto y id_fase.
+        // El empleado qa_empleado1@test.com tiene id 5 en data.js
+        const empleadoId = authEmpleado.user.id_usuario; // 5
         const proyectoId = 1; // Proyecto base en las pruebas
 
         // Limpieza previa: eliminar cualquier registro previo de este empleado en este proyecto hoy
         // para evitar conflictos de unicidad antes de empezar
-        const empleadoColumn = await getRegistroHorasEmpleadoColumn();
-        await pool.query(`DELETE FROM registro_horas WHERE ${empleadoColumn} = $1 AND id_proyecto = $2`, [empleadoId, proyectoId]);
+        await pool.query('DELETE FROM registro_horas WHERE id_empleado = $1 AND id_proyecto = $2', [empleadoId, proyectoId]);
 
         const relacion = await getRelacionValidaProyecto(proyectoId);
 
@@ -83,6 +79,28 @@ describe('HU30 - Actualización de registro de horas', () => {
         expect(result.rows.length).toBe(1);
         expect(Number(result.rows[0].horas)).toBe(4);
         expect(result.rows[0].descripcion).toBe('Persistencia BD confirmada');
+    });
+
+    test('CP-HU30-2-BE - Validación límite horas edición (13 horas)', async () => {
+        // Intentamos enviar 13 horas.
+        // La validación ocurrirá en el middleware de validación (express-validator).
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', authEmpleado.cookies)
+            .send({
+                horas: 13,
+                descripcion: 'Intento de superar límite'
+            });
+
+        // Resultado esperado: 400 (Bad Request)
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+
+        // Dado que falla en el middleware de validación, la estructura de error
+        // no es { message: '...' } sino { errors: [...] }
+        expect(response.body).toHaveProperty('errors');
+        expect(Array.isArray(response.body.errors)).toBe(true);
+        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
     });
 
     test('CP-HU30-3-BE - Restricción edición proyecto finalizado', async () => {

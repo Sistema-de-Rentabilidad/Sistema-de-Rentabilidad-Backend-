@@ -1,25 +1,5 @@
 const pool = require('../../src/config/db');
 
-let registroHorasEmpleadoColumnPromise;
-
-const getRegistroHorasEmpleadoColumn = async () => {
-    if (!registroHorasEmpleadoColumnPromise) {
-        registroHorasEmpleadoColumnPromise = pool.query(
-            `
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'registro_horas'
-              AND column_name IN ('id_empleado', 'id_usuario')
-            ORDER BY CASE column_name WHEN 'id_empleado' THEN 0 ELSE 1 END
-            LIMIT 1
-            `
-        ).then((result) => result.rows[0]?.column_name || 'id_empleado');
-    }
-
-    return registroHorasEmpleadoColumnPromise;
-};
-
 // Obtiene datos válidos para un proyecto
 const getRelacionValidaProyecto = async (
     idProyecto
@@ -101,14 +81,12 @@ const createRegistroHoras = async ({
 
     }
 
-    const empleadoColumn = await getRegistroHorasEmpleadoColumn();
-
     const result = await pool.query(
         `
         INSERT INTO registro_horas (
             id_proyecto,
             id_fase,
-            ${empleadoColumn},
+            id_empleado,
             fecha,
             horas,
             descripcion
@@ -175,7 +153,6 @@ const deleteRegistroHorasByDescripcion = async (
 
 module.exports = {
     getRelacionValidaProyecto,
-    getRegistroHorasEmpleadoColumn,
     createRegistroHoras,
     deleteRegistroHorasById,
     deleteRegistroHorasByDescripcion
