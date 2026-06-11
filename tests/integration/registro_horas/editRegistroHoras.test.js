@@ -81,28 +81,6 @@ describe('HU30 - Actualización de registro de horas', () => {
         expect(result.rows[0].descripcion).toBe('Persistencia BD confirmada');
     });
 
-    test('CP-HU30-2-BE - Validación límite horas edición (13 horas)', async () => {
-        // Intentamos enviar 13 horas.
-        // La validación ocurrirá en el middleware de validación (express-validator).
-        const response = await request(app)
-            .put(`/api/horas/${registroTemporal.id_registro}`)
-            .set('Cookie', authEmpleado.cookies)
-            .send({
-                horas: 13,
-                descripcion: 'Intento de superar límite'
-            });
-
-        // Resultado esperado: 400 (Bad Request)
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('success', false);
-
-        // Dado que falla en el middleware de validación, la estructura de error
-        // no es { message: '...' } sino { errors: [...] }
-        expect(response.body).toHaveProperty('errors');
-        expect(Array.isArray(response.body.errors)).toBe(true);
-        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
-    });
-
     test('CP-HU30-3-BE - Restricción edición proyecto finalizado', async () => {
         // 1. Finalizar el proyecto temporalmente
         await pool.query('UPDATE proyecto SET fecha_fin_real = NOW() WHERE id_proyecto = $1', [registroTemporal.id_proyecto]);

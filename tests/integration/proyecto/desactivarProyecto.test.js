@@ -31,7 +31,6 @@ describe('Eliminación lógica proyecto', () => {
         );
 
     });
-
     test('CP-HU20-1-BE - API desactiva proyecto correctamente', async () => {
 
         // Login
@@ -53,30 +52,7 @@ describe('Eliminación lógica proyecto', () => {
         // Opcional
         expect(response.body.message);
 
-    },15000);
-
-});
-
-describe('Persistencia eliminación lógica proyecto', () => {
-
-    let proyecto;
-
-    beforeEach(async () => {
-
-        // Crear proyecto temporal ACTIVO
-        proyecto = await crearProyectoTemporal();
-
-    });
-
-    afterEach(async () => {
-
-        // Eliminar proyecto temporal
-        await eliminarProyectoTemporal(
-            proyecto.id_proyecto
-        );
-
-    });
-
+    }, 15000);
 
     test('CP-HU20-1-BD - Proyecto queda inactivo en BD', async () => {
 
@@ -109,6 +85,62 @@ describe('Persistencia eliminación lógica proyecto', () => {
 
     });
 
+    test('CP-HU20-4-BE - Proyecto inexistente desactivacion', async () => {
+        const auth = await login(
+            'qa_propietario@test.com',
+            'Qa123456*'
+        );
+
+        const idResult = await pool.query(
+            `SELECT COALESCE(MAX(id_proyecto), 0) + 100000 AS id_proyecto
+             FROM proyecto`
+        );
+        const proyectoInexistenteId = idResult.rows[0].id_proyecto;
+
+        const response = await request(app)
+            .put(`/api/proyectos/${proyectoInexistenteId}/desactivar`)
+            .set('Cookie', auth.cookies);
+
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+        expect(response.body.message).toMatch(/proyecto.*no encontrado|no encontrado/i);
+    });
+
+    test('CP-HU20-6-BE - API responde 403 para empleado',
+        async () => {
+
+            // Proyecto existente en BD
+            const idProyecto = 1;
+
+            // Login usuario EMPLEADO
+            const auth = await login(
+                'qa_empleado1@test.com',
+                'Qa123456*'
+            );
+
+            // Intentar eliminación lógica
+            const response = await request(app)
+                .put(
+                    `/api/proyectos/${idProyecto}/desactivar`
+                )
+                .set('Cookie', auth.cookies);
+
+            // Debe denegar acceso
+            expect(response.status).toBe(403);
+
+            // Validar estructura
+            expect(response.body).toHaveProperty(
+                'success',
+                false
+            );
+
+            // Opcional
+            expect(response.body.message);
+
+        }
+
+    );
 });
 
 describe('Eliminación lógica con registros asociados', () => {
@@ -196,8 +228,7 @@ describe('Eliminación lógica con registros asociados', () => {
 
     });
 
-    test(
-        'CP-HU20-5-BE - API mantiene trazabilidad',
+    test('CP-HU20-5-BE - API mantiene trazabilidad',
         async () => {
 
             // Login
@@ -269,68 +300,3 @@ describe('Eliminación lógica con registros asociados', () => {
 
 });
 
-describe('Restricción eliminación proyectos', () => {
-
-    test(
-        'CP-HU20-6-BE - API responde 403 para empleado',
-        async () => {
-
-            // Proyecto existente en BD
-            const idProyecto = 1;
-
-            // Login usuario EMPLEADO
-            const auth = await login(
-                'qa_empleado1@test.com',
-                'Qa123456*'
-            );
-
-            // Intentar eliminación lógica
-            const response = await request(app)
-                .put(
-                    `/api/proyectos/${idProyecto}/desactivar`
-                )
-                .set('Cookie', auth.cookies);
-
-            // Debe denegar acceso
-            expect(response.status).toBe(403);
-
-            // Validar estructura
-            expect(response.body).toHaveProperty(
-                'success',
-                false
-            );
-
-            // Opcional
-            expect(response.body.message);
-
-        }
-
-    );
-
-});
-
-describe('Testiny - Desactivacion proyecto inexistente', () => {
-
-    test('TC-520 - Proyecto inexistente desactivacion', async () => {
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-
-        const idResult = await pool.query(
-            `SELECT COALESCE(MAX(id_proyecto), 0) + 100000 AS id_proyecto
-             FROM proyecto`
-        );
-        const proyectoInexistenteId = idResult.rows[0].id_proyecto;
-
-        const response = await request(app)
-            .put(`/api/proyectos/${proyectoInexistenteId}/desactivar`)
-            .set('Cookie', auth.cookies);
-
-        expect(response.status).toBe(404);
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('message');
-        expect(response.body.message).toMatch(/proyecto.*no encontrado|no encontrado/i);
-    });
-
-});

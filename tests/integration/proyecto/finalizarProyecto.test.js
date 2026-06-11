@@ -41,8 +41,7 @@ describe('Actualización fecha finalización', () => {
 
     });
 
-    test(
-        'CP-HU33-1-BE - API registra fecha actual',
+    test('CP-HU33-1-BE - API registra fecha actual',
         async () => {
 
             /**
@@ -133,8 +132,7 @@ describe('Validación: proyecto ya finalizado/proyecto inexistente al finalizar'
 
     });
 
-    test(
-        'CP-HU33-3-BE - API rechaza finalizar proyecto ya cerrado',
+    test('CP-HU33-3-BE - API rechaza finalizar proyecto ya cerrado',
         async () => {
 
             /**
@@ -198,8 +196,7 @@ describe('Validación: proyecto ya finalizado/proyecto inexistente al finalizar'
         10000
     );
 
-    test(
-        'CP-HU33-5-BE - API retorna 404 si el proyecto no existe',
+    test('CP-HU33-5-BE - API retorna 404 si el proyecto no existe',
         async () => {
 
             /**
@@ -262,8 +259,7 @@ describe('Seguridad: líder no asignado', () => {
 
     });
 
-    test(
-        'CP-HU33-6-BE - API rechaza finalizar si no es líder del proyecto',
+    test('CP-HU33-6-BE - API rechaza finalizar si no es líder del proyecto',
         async () => {
 
             const response = await request(app)

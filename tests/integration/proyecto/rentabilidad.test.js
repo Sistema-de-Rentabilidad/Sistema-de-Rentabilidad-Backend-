@@ -13,8 +13,7 @@ const {
 
 describe('Rentabilidad proyecto', () => {
 
-    test(
-        'CP-HU23-1-BE - API retorna métricas financieras',
+    test('CP-HU23-1-BE - API retorna métricas financieras',
         async () => {
 
             // Login propietario
@@ -81,8 +80,7 @@ describe('Rentabilidad proyecto', () => {
 
     );
 
-    test(
-        'CP-HU23-3-BE - empleado no visualiza rentabilidad',
+    test('CP-HU23-3-BE - empleado no visualiza rentabilidad',
         async () => {
 
             const auth = await login(
@@ -136,8 +134,7 @@ describe('Recalculo automático rentabilidad', () => {
 
     });
 
-    test(
-        'CP-HU23-4-BE - rentabilidad se recalcula automáticamente',
+    test('CP-HU23-4-BE - rentabilidad se recalcula automáticamente',
         async () => {
 
             // Login propietario

@@ -48,7 +48,7 @@ describe('Testiny - Edicion de proyecto', () => {
         }
     });
 
-    test('TC-502 - Actualizacion API proyecto', async () => {
+    test('CP-HU19-1-BE - Actualizacion API proyecto', async () => {
         const payload = {
             nombre: `Proyecto QA Editado ${Date.now()}`,
             descripcion: 'Proyecto editado testing',
@@ -74,7 +74,7 @@ describe('Testiny - Edicion de proyecto', () => {
         expect(Number(response.body.data.margen)).toBe(payload.margen);
     });
 
-    test('TC-503 - Persistencia edicion proyecto', async () => {
+    test('CP-HU19-1-BD - Persistencia edicion proyecto', async () => {
         const payload = {
             nombre: `Proyecto QA Persistido ${Date.now()}`,
             presupuesto: 3000,
@@ -117,7 +117,21 @@ describe('Testiny - Edicion de proyecto', () => {
         expect(Number(dbResult.rows[0].margen)).toBe(payload.margen);
     });
 
-    test('TC-513 - Restriccion edicion proyecto finalizado', async () => {
+    test('CP-HU19-10-BE - Proyecto inexistente edicion', async () => {
+        const proyectoInexistenteId = await getProyectoIdInexistente();
+
+        const response = await request(app)
+            .put(`/api/proyectos/${proyectoInexistenteId}`)
+            .set('Cookie', auth.cookies)
+            .send({ nombre: 'Proyecto Inexistente' });
+
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+        expect(response.body.message).toMatch(/proyecto.*no encontrado|no encontrado/i);
+    });
+
+    test('CP-HU19-11-BE - Restriccion edicion proyecto finalizado', async () => {
         const finalizarResponse = await request(app)
             .put(`/api/proyectos/${proyecto.id_proyecto}/finalizar`)
             .set('Cookie', authLider.cookies);
@@ -157,21 +171,7 @@ describe('Testiny - Edicion de proyecto', () => {
         expect(dbResult.rows[0].fecha_fin_real).not.toBeNull();
     });
 
-    test('TC-512 - Proyecto inexistente edicion', async () => {
-        const proyectoInexistenteId = await getProyectoIdInexistente();
-
-        const response = await request(app)
-            .put(`/api/proyectos/${proyectoInexistenteId}`)
-            .set('Cookie', auth.cookies)
-            .send({ nombre: 'Proyecto Inexistente' });
-
-        expect(response.status).toBe(404);
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('message');
-        expect(response.body.message).toMatch(/proyecto.*no encontrado|no encontrado/i);
-    });
-
-    test('TC-514 - Lider invalido edicion', async () => {
+    test('CP-HU19-12-BE - Lider invalido edicion', async () => {
         const liderExternoResult = await pool.query(
             `SELECT id_usuario, id_empresa
              FROM usuario

@@ -30,8 +30,7 @@ describe('Obtención proyectos por empresa', () => {
         }
     });
 
-    test(
-        'CP-HU17-1-BE - API retorna proyectos de la empresa',
+    test('CP-HU17-1-BE - API retorna proyectos de la empresa',
         async () => {
 
             /**
@@ -91,8 +90,34 @@ describe('Obtención proyectos por empresa', () => {
         }
     );
 
-    test(
-        'CP-HU17-3-BE - API retorna arreglo vacío cuando no existen proyectos',
+    test('CP-HU17-2-BE - API responde 403 para usuario sin permiso en proyectos',
+        async () => {
+
+            const auth = await login(
+                'qa_admin@test.com',
+                'Qa123456*'
+            );
+
+            const response = await request(app)
+                .get('/api/proyectos')
+                .set('Cookie', auth.cookies);
+
+            expect(response.status)
+                .toBe(403);
+
+            expect(response.body)
+                .toHaveProperty('success', false);
+
+            expect(response.body)
+                .toHaveProperty('message');
+
+            expect(response.body.message)
+                .toMatch(/permisos|acción/i);
+
+        }
+    );
+
+    test('CP-HU17-3-BE - API retorna arreglo vacío cuando no existen proyectos',
         async () => {
 
             usuarioTemporal = await crearUsuarioTemporal({
@@ -142,8 +167,7 @@ describe('Obtención proyectos por empresa', () => {
         }
     );
 
-    test(
-        'CP-HU17-5-BE - API no retorna proyectos externos de otra empresa',
+    test('CP-HU17-5-BE - API no retorna proyectos externos de otra empresa',
         async () => {
 
             const proyectosExternos = await pool.query(
@@ -210,38 +234,6 @@ describe('Obtención proyectos por empresa', () => {
 
 });
 
-describe('Restricción backend módulo proyectos', () => {
-
-    test(
-        'CP-HU17-2-BE - API responde 403 para usuario sin permiso en proyectos',
-        async () => {
-
-            const auth = await login(
-                'qa_admin@test.com',
-                'Qa123456*'
-            );
-
-            const response = await request(app)
-                .get('/api/proyectos')
-                .set('Cookie', auth.cookies);
-
-            expect(response.status)
-                .toBe(403);
-
-            expect(response.body)
-                .toHaveProperty('success', false);
-
-            expect(response.body)
-                .toHaveProperty('message');
-
-            expect(response.body.message)
-                .toMatch(/permisos|acción/i);
-
-        }
-    );
-
-});
-
 describe('Obtención proyectos asignados líder', () => {
 
     let auth;
@@ -278,8 +270,7 @@ describe('Obtención proyectos asignados líder', () => {
 
     });
 
-    test(
-        'CP-HU34-1-BE - API retorna proyectos asignados al líder',
+    test('CP-HU34-1-BE - API retorna proyectos asignados al líder',
         async () => {
 
             /**
@@ -404,8 +395,7 @@ describe('Restricción proyectos otros líderes', () => {
 
     }, 15000);
 
-    test(
-        'CP-HU34-4-BE - API no retorna proyectos externos',
+    test('CP-HU34-4-BE - API no retorna proyectos externos',
         async () => {
 
             /**
@@ -461,8 +451,7 @@ describe('Obtención proyectos empleado', () => {
 
     });
 
-    test(
-        'CP-HU28-1-BE - API retorna proyectos asignados al empleado',
+    test('CP-HU28-1-BE - API retorna proyectos asignados al empleado',
         async () => {
 
             /**
@@ -508,8 +497,7 @@ describe('Obtención proyectos empleado', () => {
         }
     );
 
-    test(
-        'CP-HU28-5-BE - API retorna solo proyectos asignados al empleado (seguridad)',
+    test('CP-HU28-5-BE - API retorna solo proyectos asignados al empleado (seguridad)',
         async () => {
 
             /**
@@ -564,4 +552,3 @@ describe('Obtención proyectos empleado', () => {
     );
 
 });
-

@@ -133,7 +133,7 @@ describe('HU1 - Inicio de sesion', () => {
   });
 });
 
-describe('Testiny - Restriccion backend por intentos fallidos', () => {
+describe('Restriccion backend por intentos fallidos', () => {
   let usuarioTemporal = null;
 
   afterEach(async () => {
@@ -152,7 +152,7 @@ describe('Testiny - Restriccion backend por intentos fallidos', () => {
     }
   });
 
-  test('TC-432 - Restriccion backend por intentos fallidos', async () => {
+  test('CP-HU1-7-BE - Restriccion backend por intentos fallidos', async () => {
     usuarioTemporal = await crearUsuarioTemporal({ rol: 'propietario' });
 
     const wrongPassword = `${usuarioTemporal.passwordPlano}x`;

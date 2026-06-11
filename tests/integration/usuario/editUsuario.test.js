@@ -48,7 +48,7 @@ describe('HU2 - Edicion de mi usuario', () => {
         expect(dbResult.rows[0].nombre).toBe(nuevoNombre);
     });
 
-    test('TC-442 - Persistencia cambios perfil', async () => {
+    test('CP-HU2-1-BD - Persistencia cambios perfil', async () => {
         const nuevoNombre = 'Perfil Persistido';
 
         const updateResponse = await request(app)

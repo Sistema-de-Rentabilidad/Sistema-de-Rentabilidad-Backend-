@@ -17,8 +17,8 @@ jest.setTimeout(30000);
 
 const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 
-describe('Pruebas secundarias Testiny - Marcaje entrada', () => {
-  test("TC-705 - CP-HU21-1-BE - Registro API entrada exitoso", async () => {
+describe('Marcaje entrada', () => {
+  test("CP-HU21-1-BE - Registro API entrada exitoso", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -41,7 +41,7 @@ describe('Pruebas secundarias Testiny - Marcaje entrada', () => {
     }
   });
 
-  test("TC-706 - CP-HU21-1-BD - Persistencia de hora de entrada", async () => {
+  test("CP-HU21-1-BD - Persistencia de hora de entrada", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
