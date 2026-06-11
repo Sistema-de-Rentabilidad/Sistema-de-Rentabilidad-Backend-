@@ -65,8 +65,8 @@ const cleanupContext = async (ctx) => {
   }
 
   if (ctx.ids.usuarios.length) {
-    await pool.query('DELETE FROM fase_empleado WHERE id_usuario = ANY($1::int[])', [ctx.ids.usuarios]);
-    await pool.query('DELETE FROM proyecto_empleado WHERE id_usuario = ANY($1::int[])', [ctx.ids.usuarios]);
+    await pool.query('DELETE FROM fase_empleado WHERE id_empleado = ANY($1::int[])', [ctx.ids.usuarios]);
+    await pool.query('DELETE FROM proyecto_empleado WHERE id_empleado = ANY($1::int[])', [ctx.ids.usuarios]);
   }
 
   await deleteByIds('marcaje', 'id_marcaje', ctx.ids.marcajes);
@@ -199,7 +199,7 @@ const createProyecto = async (ctx, {
 
 const assignEmpleado = async (idProyecto, idEmpleado) => {
   await pool.query(
-    `INSERT INTO proyecto_empleado (id_proyecto, id_usuario)
+    `INSERT INTO proyecto_empleado (id_proyecto, id_empleado)
      VALUES ($1, $2)`,
     [idProyecto, idEmpleado]
   );
@@ -225,16 +225,16 @@ const createFase = async (ctx, {
 const createRegistroHoras = async (ctx, {
   idProyecto,
   idFase,
-  idUsuario,
+  idEmpleado,
   fecha = getFechaActual(),
   horas = 1,
   descripcion = uniqueText('QA_TESTINY_HORAS')
 } = {}) => {
   const result = await pool.query(
-    `INSERT INTO registro_horas (id_proyecto, id_fase, id_usuario, fecha, horas, descripcion)
+    `INSERT INTO registro_horas (id_proyecto, id_fase, id_empleado, fecha, horas, descripcion)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [idProyecto, idFase, idUsuario, fecha, horas, descripcion]
+    [idProyecto, idFase, idEmpleado, fecha, horas, descripcion]
   );
 
   pushId(ctx, 'registros', result.rows[0].id_registro);
