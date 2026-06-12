@@ -9,7 +9,7 @@ const {
   createContext,
   createMarcaje,
   tokenCookieForUser
-} = require('../../helpers/testinySecundarias.helper');
+} = require('../../helpers/integration.helper');
 
 jest.setTimeout(40000);
 
