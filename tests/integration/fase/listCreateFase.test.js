@@ -8,7 +8,7 @@ const {
   createFase,
   tokenCookieForUser,
   uniquePhaseName
-} = require('../../helpers/testinySecundarias.helper');
+} = require('../../helpers/integration.helper');
 
 jest.setTimeout(30000);
 

@@ -273,11 +273,17 @@ const createContext = async ({
   proyectoFinalizado = false,
   asignarEmpleado = true,
   crearFase = true,
-  faseActiva = true
+  faseActiva = true,
+  incluirAdmin = false // Nuevo parámetro
 } = {}) => {
   const ctx = createTracker();
   const empresa = await createEmpresa(ctx);
   const servicio = await createServicio(ctx, empresa.id_empresa);
+
+  const admin = incluirAdmin
+    ? await createUsuario(ctx, { idEmpresa: null, rol: 'admin' })
+    : null;
+
   const propietario = await createUsuario(ctx, { idEmpresa: empresa.id_empresa, rol: 'propietario' });
   const lider = await createUsuario(ctx, { idEmpresa: empresa.id_empresa, rol: 'lider', isActive: liderActivo });
   const empleado = await createUsuario(ctx, {
@@ -305,6 +311,7 @@ const createContext = async ({
     ...ctx,
     empresa,
     servicio,
+    admin,
     propietario,
     lider,
     empleado,
@@ -332,6 +339,11 @@ const tokenCookieForUser = (user, expiresIn = '1h') => {
   return [`${ACCESS_TOKEN_COOKIE}=${token}`];
 };
 
+const resetDatabase = async () => {
+  // Orden crítico para evitar errores de Foreign Key
+  await pool.query('TRUNCATE TABLE registro_horas, marcaje, fase_empleado, proyecto_empleado, historial_sueldo, fase, proyecto, servicio, usuario, empresa RESTART IDENTITY CASCADE');
+};
+
 module.exports = {
   cleanupContext,
   createContext,
@@ -346,5 +358,7 @@ module.exports = {
   createTracker,
   tokenCookieForUser,
   uniquePhaseName,
-  uniqueText
+  uniqueText,
+  resetDatabase
 };
+
