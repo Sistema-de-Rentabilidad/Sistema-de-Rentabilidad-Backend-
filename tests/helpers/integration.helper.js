@@ -42,7 +42,8 @@ const createTracker = () => ({
     proyectos: [],
     usuarios: [],
     servicios: [],
-    empresas: []
+    empresas: [],
+    notas: [] // Nueva categoría para notas
   }
 });
 
@@ -90,6 +91,7 @@ const cleanupContext = async (ctx) => {
   await deleteByIds('usuario', 'id_usuario', ctx.ids.usuarios);
   await deleteByIds('servicio', 'id_servicio', ctx.ids.servicios);
   await deleteByIds('empresa', 'id_empresa', ctx.ids.empresas);
+  await deleteByIds('nota', 'id_nota', ctx.ids.notas);
 };
 
 const createEmpresa = async (ctx, nombre = uniqueText('QA Empresa Testiny')) => {
@@ -266,6 +268,23 @@ const createMarcaje = async (ctx, {
   return result.rows[0];
 };
 
+const createNota = async (ctx, {
+  idProyecto,
+  idLider,
+  descripcion = uniqueText('QA Nota'),
+  fecha = getFechaActual()
+} = {}) => {
+  const result = await pool.query(
+    `INSERT INTO nota (id_proyecto, id_lider, descripcion, fecha, is_active)
+     VALUES ($1, $2, $3, $4, true)
+     RETURNING *`,
+    [idProyecto, idLider, descripcion, fecha]
+  );
+
+  pushId(ctx, 'notas', result.rows[0].id_nota);
+  return result.rows[0];
+};
+
 const createContext = async ({
   empleadoTipoPago = 'mensual',
   empleadoActivo = true,
@@ -355,10 +374,10 @@ module.exports = {
   createFase,
   createRegistroHoras,
   createMarcaje,
+  createNota,
   createTracker,
   tokenCookieForUser,
   uniquePhaseName,
   uniqueText,
   resetDatabase
 };
-

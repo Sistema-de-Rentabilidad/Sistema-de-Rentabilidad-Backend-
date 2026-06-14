@@ -16,7 +16,7 @@ const {
 
 jest.setTimeout(20000);
 
-describe('HU3 - Gestión de empresas', () => {
+describe('HU3, HU4, HU5, HU6 - Gestión, creación y edición de empresas', () => {
     test('CP-HU3-1-BE - API retorna empresas registradas correctamente', async () => {
         const ctx = await createContext({ incluirAdmin: true });
 
@@ -210,7 +210,7 @@ describe('HU3 - Gestión de empresas', () => {
             // 1. Creamos una empresa inicial para actualizar
             const empresa = await createEmpresa(ctx, 'Empresa Original');
             const cookies = tokenCookieForUser(ctx.admin);
-            
+
             const datosActualizados = { nombre: 'Empresa Actualizada' };
 
             // 2. Realizamos el PUT al endpoint
@@ -235,5 +235,284 @@ describe('HU3 - Gestión de empresas', () => {
             await cleanupContext(ctx);
         }
     });
-});
 
+    test('CP-HU5-2-BE - API retorna datos de empresa para edición', async () => {
+        const ctx = await createContext({ incluirAdmin: true });
+
+        try {
+            // 1. Creamos una empresa para consultar
+            const empresa = await createEmpresa(ctx, 'Empresa para Edición');
+            const cookies = tokenCookieForUser(ctx.admin);
+
+            // 2. Realizamos el GET al endpoint de edición
+            const response = await request(app)
+                .get(`/api/empresas/${empresa.id_empresa}`)
+                .set('Cookie', cookies);
+
+            // 3. Validaciones
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            expect(response.body.data).toHaveProperty('id_empresa', empresa.id_empresa);
+            expect(response.body.data).toHaveProperty('empresa_nombre', 'Empresa para Edición');
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU5-3-BE - Restricción nombre duplicado al editar', async () => {
+        const ctx = await createContext({ incluirAdmin: true });
+
+        try {
+            const cookies = tokenCookieForUser(ctx.admin);
+
+            // 1. Creamos dos empresas
+            const empresa1 = await createEmpresa(ctx, 'Empresa Original');
+            const empresa2 = await createEmpresa(ctx, 'Empresa A Renombrar');
+
+            // 2. Intentamos renombrar la segunda empresa con el nombre de la primera
+            const response = await request(app)
+                .put(`/api/empresas/${empresa2.id_empresa}`)
+                .set('Cookie', cookies)
+                .send({ nombre: empresa1.nombre });
+
+            // 3. Validamos que el sistema responde un error de conflicto (400)
+            expect(response.status).toBe(400);
+            expect(response.body.success).toBe(false);
+            expect(response.body.message).toMatch(/existe|duplicado/i);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU5-3-BD - Restricción UNIQUE nombre BD al actualizar', async () => {
+        const ctx = await createContext({ incluirAdmin: true });
+
+        try {
+            // 1. Creamos dos empresas
+            const empresa1 = await createEmpresa(ctx, 'Empresa A');
+            const empresa2 = await createEmpresa(ctx, 'Empresa B');
+
+            // 2. Intentamos actualizar el nombre de la empresa 2 al de la empresa 1 usando SQL directo
+            // Esto debería lanzar un error de violación de restricción UNIQUE (código 23505)
+            await expect(pool.query(
+                'UPDATE empresa SET nombre = $1 WHERE id_empresa = $2',
+                [empresa1.nombre, empresa2.id_empresa]
+            )).rejects.toMatchObject({ code: '23505' });
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU5-7-BE - API informa sin cambios al actualizar con mismo nombre', async () => {
+        const ctx = await createContext({ incluirAdmin: true });
+
+        try {
+            // 1. Creamos una empresa
+            const nombre = 'Empresa Fija';
+            const empresa = await createEmpresa(ctx, nombre);
+            const cookies = tokenCookieForUser(ctx.admin);
+
+            // 2. Realizamos el PUT con el mismo nombre
+            const response = await request(app)
+                .put(`/api/empresas/${empresa.id_empresa}`)
+                .set('Cookie', cookies)
+                .send({ nombre: nombre });
+
+            // 3. Validamos (puede ser un 200 con éxito o un mensaje indicando que no hubo cambios)
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            // Si la API tiene un mensaje específico para "sin cambios", se puede validar aquí
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU5-8-BE - Empresa no encontrada (ID inválido)', async () => {
+        const ctx = await createContext({ incluirAdmin: true });
+
+        try {
+            const cookies = tokenCookieForUser(ctx.admin);
+            const idInvalido = 999999;
+
+            // 1. Test GET con ID inexistente
+            const getResponse = await request(app)
+                .get(`/api/empresas/${idInvalido}`)
+                .set('Cookie', cookies);
+
+            expect(getResponse.status).toBe(404);
+
+            // 2. Test PUT con ID inexistente
+            const putResponse = await request(app)
+                .put(`/api/empresas/${idInvalido}`)
+                .set('Cookie', cookies)
+                .send({ nombre: 'Nombre nuevo' });
+
+            expect(putResponse.status).toBe(404);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU5-9-BE - Restricción endpoint edición (Usuario sin permisos)', async () => {
+        const ctx = await createContext({ incluirAdmin: true });
+
+        try {
+            // 1. Creamos una empresa
+            const empresa = await createEmpresa(ctx, 'Empresa Restringida');
+
+            // 2. Usamos el token de un empleado (sin permisos de admin)
+            const cookies = tokenCookieForUser(ctx.empleado);
+
+            // 3. Intentamos realizar el PUT al endpoint
+            const response = await request(app)
+                .put(`/api/empresas/${empresa.id_empresa}`)
+                .set('Cookie', cookies)
+                .send({ nombre: 'Intento Ilegal' });
+
+            // 4. Validamos que el acceso sea denegado (403)
+            expect(response.status).toBe(403);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU6-1-BE - API actualiza empresa exitosamente (propietario)', async () => {
+        const ctx = await createContext();
+
+        try {
+            // El contexto 'createContext' ya crea una empresa y un propietario vinculado a ella.
+            const empresa = ctx.empresa;
+            const cookies = tokenCookieForUser(ctx.propietario);
+
+            const nuevosDatos = { nombre: 'Empresa Propietario Actualizada' };
+
+            // 2. Realizamos la actualización
+            const response = await request(app)
+                .put(`/api/empresas/${empresa.id_empresa}`)
+                .set('Cookie', cookies)
+                .send(nuevosDatos);
+
+            // 3. Validaciones
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            expect(response.body.data.nombre).toBe(nuevosDatos.nombre);
+
+            // 4. Verificación en BD
+            const dbResult = await pool.query(
+                'SELECT nombre FROM empresa WHERE id_empresa = $1',
+                [empresa.id_empresa]
+            );
+            expect(dbResult.rows[0].nombre).toBe(nuevosDatos.nombre);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU6-2-BE - Obtención datos empresa propia (propietario)', async () => {
+        const ctx = await createContext();
+
+        try {
+            // 1. Utilizamos la empresa del contexto y el propietario del mismo
+            const empresa = ctx.empresa;
+            const cookies = tokenCookieForUser(ctx.propietario);
+
+            // 2. Consultamos la empresa mediante el endpoint
+            const response = await request(app)
+                .get(`/api/empresas/${empresa.id_empresa}`)
+                .set('Cookie', cookies);
+
+            // 3. Validaciones
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            expect(response.body.data.id_empresa).toBe(empresa.id_empresa);
+            expect(response.body.data.empresa_nombre).toBe(empresa.nombre);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU6-3-BE - Restricción duplicidad al actualizar (propietario)', async () => {
+        const ctx = await createContext();
+
+        try {
+            // Creamos empresas con nombres válidos
+            const nombreUnico1 = 'Empresa Alpha';
+            const nombreUnico2 = 'Empresa Beta';
+            const empresa1 = await createEmpresa(ctx, nombreUnico1);
+            const empresa2 = await createEmpresa(ctx, nombreUnico2);
+            // Creamos propietario vinculado explícitamente a la empresa 2
+            const propietario2 = await createUsuario(ctx, {
+                idEmpresa: empresa2.id_empresa,
+                rol: 'propietario'
+            });
+            const cookies = tokenCookieForUser(propietario2);
+
+            // 3. Intentamos actualizar el nombre de la empresa 2 al de la empresa 1
+            const response = await request(app)
+                .put(`/api/empresas/${empresa2.id_empresa}`)
+                .set('Cookie', cookies)
+                .send({ nombre: nombreUnico1 });
+
+            // 4. Validamos que el sistema responde con conflicto (400) por duplicidad
+            expect(response.status).toBe(400);
+            expect(response.body.success).toBe(false);
+
+            // Validamos que el mensaje es el esperado por la lógica de negocio
+            // Si el error viene de la validación o del servicio, ajustamos el path
+            const mensaje = response.body.errors ? response.body.errors[0].msg : response.body.message;
+            expect(mensaje).toMatch(/existe|duplicado/i);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU6-9-BE - Restricción acceso a empresa ajena (propietario)', async () => {
+        const ctx = await createContext(); // Crea Empresa1 y Propietario1
+
+        try {
+            // 1. Creamos una segunda empresa (Empresa2)
+            const empresa2 = await createEmpresa(ctx, 'Empresa Ajena');
+
+            // 2. Usamos el token del propietario de la Empresa1 para intentar acceder a Empresa2
+            const cookies = tokenCookieForUser(ctx.propietario);
+
+            // 3. GET a empresa ajena
+            const getResponse = await request(app)
+                .get(`/api/empresas/${empresa2.id_empresa}`)
+                .set('Cookie', cookies);
+
+            expect(getResponse.status).toBe(403);
+
+            // 4. PUT a empresa ajena
+            const putResponse = await request(app)
+                .put(`/api/empresas/${empresa2.id_empresa}`)
+                .set('Cookie', cookies)
+                .send({ nombre: 'Intento de robo' });
+
+            expect(putResponse.status).toBe(403);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+
+    test('CP-HU6-10-BE - Token expirado al intentar editar empresa', async () => {
+        const ctx = await createContext();
+
+        try {
+            // 1. Creamos empresa y generamos un token expirado para su propietario
+            const empresa = ctx.empresa;
+            const cookies = tokenCookieForUser(ctx.propietario, '-1h');
+
+            // 2. Intentamos editar la empresa con el token expirado
+            const response = await request(app)
+                .put(`/api/empresas/${empresa.id_empresa}`)
+                .set('Cookie', cookies)
+                .send({ nombre: 'Nombre expirado' });
+
+            // 3. Validamos que el acceso es denegado (401)
+            expect(response.status).toBe(401);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
+});
