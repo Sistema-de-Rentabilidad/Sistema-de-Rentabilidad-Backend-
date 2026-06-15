@@ -121,7 +121,7 @@ describe('HU39 - Gestión de notas', () => {
             await cleanupContext(ctx2);
         }
     });
-    
+
     test('CP-HU39-7-BE - Validación token expirado al consultar notas', async () => {
         const ctx = await createContext();
 
@@ -220,4 +220,22 @@ describe('HU39 - Gestión de notas', () => {
             await cleanupContext(ctx);
         }
     });
+
+    // test('CP-HU26-6-BE - Restricción registro notas proyecto finalizado', async () => {
+    //     const ctx = await createContext({ proyectoFinalizado: true });
+
+    //     try {
+    //         const cookies = tokenCookieForUser(ctx.lider);
+    //         const response = await request(app)
+    //             .post(`/api/proyectos/${ctx.proyecto.id_proyecto}/notas`)
+    //             .set('Cookie', cookies)
+    //             .send({ descripcion: 'Nota en proyecto finalizado' });
+
+    //         expect(response.status).toBe(403);
+    //         expect(response.body.success).toBe(false);
+    //         expect(response.body.message).toMatch(/proyecto finalizado|cerrado/i);
+    //     } finally {
+    //         await cleanupContext(ctx);
+    //     }
+    // });
 });
