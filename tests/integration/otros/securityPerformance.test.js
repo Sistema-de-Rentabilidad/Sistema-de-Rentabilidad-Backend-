@@ -17,21 +17,24 @@ const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 
 describe('Performance y Seguridad', () => {
   test("CP-NF1 - Tiempo de respuesta del login", async () => {
-    const startTime = Date.now();
+    const ctx = await createContext();
+    try {
+      const startTime = Date.now();
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: ctx.propietario.email,
+          password: ctx.propietario.passwordPlano
+        });
+      const endTime = Date.now();
+      const duration = endTime - startTime;
 
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'qa_propietario@test.com',
-        password: 'Qa123456*'
-      });
-
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-
-    expect(response.status).toBe(200);
-    // Umbral de aceptación: ≤ 2 segundos
-    expect(duration).toBeLessThan(2000);
+      expect(response.status).toBe(200);
+      // Umbral de aceptación: ≤ 2 segundos
+      expect(duration).toBeLessThan(2000);
+    } finally {
+      await cleanupContext(ctx);
+    }
   });
 
   test("CP-NF3 - Tiempo de registro de horas", async () => {

@@ -1,230 +1,85 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 
+const {
+    createContext,
+    cleanupContext,
+    tokenCookieForUser,
+    createRegistroHoras
+} = require('../../helpers/integration.helper');
+
 jest.setTimeout(30000);
 
-const { login } = require('../../helpers/auth');
-
-const {
-    getRelacionValidaProyecto,
-    createRegistroHoras,
-    deleteRegistroHorasByDescripcion
-} = require('../../helpers/registroHoras.helper');
-
 describe('Rentabilidad proyecto', () => {
-
-    test('CP-HU23-1-BE - API retorna métricas financieras',
-        async () => {
-
-            // Login propietario
-            const auth = await login(
-                'qa_propietario@test.com',
-                'Qa123456*'
-            );
-
-            // Consumir endpoint
-            const response = await request(app)
-                .get('/api/proyectos')
-                .set('Cookie', auth.cookies);
-
-            // API OK
-            expect(response.status).toBe(200);
-
-            expect(response.body).toHaveProperty(
-                'success',
-                true
-            );
-
-            expect(Array.isArray(response.body.data))
-                .toBe(true);
-
-            // Buscar proyecto existente
-            const proyecto = response.body.data.find(
-                p => p.id_proyecto === 1
-            );
-
-            expect(proyecto).toBeDefined();
-
-            // Validar métricas
-            expect(proyecto)
-                .toHaveProperty('rentabilidad');
-
-            expect(proyecto)
-                .toHaveProperty('costo_real');
-
-            expect(
-                Number(proyecto.rentabilidad)
-            ).not.toBeNaN();
-
-            // Convertir strings NUMERIC
-            const presupuesto = Number(
-                proyecto.presupuesto
-            );
-
-            const costoReal = Number(
-                proyecto.costo_real
-            );
-
-            const rentabilidad = Number(
-                proyecto.rentabilidad
-            );
-
-            // Fórmula esperada
-            const rentabilidadEsperada =
-                presupuesto - costoReal;
-
-            expect(rentabilidad)
-                .toBe(rentabilidadEsperada);
-
-        },
-
-    );
-
-    test('CP-HU23-3-BE - empleado no visualiza rentabilidad',
-        async () => {
-
-            const auth = await login(
-                'qa_empleado1@test.com',
-                'Qa123456*'
-            );
-
-            const response = await request(app)
-                .get('/api/proyectos')
-                .set('Cookie', auth.cookies);
-
-            expect(response.status).toBe(200);
-
-            response.body.data.forEach(proyecto => {
-
-                expect(proyecto)
-                    .not
-                    .toHaveProperty('rentabilidad');
-
-            });
-
-        }
-    );
-
-});
-
-describe('Recalculo automático rentabilidad', () => {
-
-    // Proyecto ACTIVO existente
-    const idProyecto = 1;
+    let ctx;
 
     beforeEach(async () => {
-
-        // Limpiar registros temporales previos
-        await deleteRegistroHorasByDescripcion(
-            'QA_TEST_RENTABILIDAD'
-        );
-
-        // OPCIONAL: También podrías limpiar por usuario/fecha si el problema persiste:
-        // const pool = require('../../../src/config/db');
-        // await pool.query('DELETE FROM registro_horas WHERE id_empleado = $1 AND fecha = CURRENT_DATE', [ID_EMPLEADO]);
-
+        ctx = await createContext();
     });
 
     afterEach(async () => {
-
-        // Limpiar registros temporales creados
-        await deleteRegistroHorasByDescripcion(
-            'QA_TEST_RENTABILIDAD'
-        );
-
+        await cleanupContext(ctx);
     });
 
-    test('CP-HU23-4-BE - rentabilidad se recalcula automáticamente',
-        async () => {
+    test('CP-HU23-1-BE - API retorna métricas financieras', async () => {
+        const response = await request(app)
+            .get('/api/proyectos')
+            .set('Cookie', tokenCookieForUser(ctx.propietario));
 
-            // Login propietario
-            const auth = await login(
-                'qa_propietario@test.com',
-                'Qa123456*'
-            );
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
 
-            /**
-             * Obtener:
-             * - empleado válido
-             * - fase válida
-             * para el proyecto
-             */
-            const relacion =
-                await getRelacionValidaProyecto(
-                    idProyecto
-                );
+        const proyecto = response.body.data.find(p => p.id_proyecto === ctx.proyecto.id_proyecto);
+        expect(proyecto).toBeDefined();
+        expect(proyecto).toHaveProperty('rentabilidad');
+        expect(proyecto).toHaveProperty('costo_real');
+        expect(Number(proyecto.rentabilidad)).not.toBeNaN();
 
-            /**
-             * 1. Obtener rentabilidad inicial
-             */
-            const responseInicial = await request(app)
-                .get('/api/proyectos')
-                .set('Cookie', auth.cookies);
+        const presupuesto = Number(proyecto.presupuesto);
+        const costoReal = Number(proyecto.costo_real);
+        const rentabilidad = Number(proyecto.rentabilidad);
 
-            expect(responseInicial.status)
-                .toBe(200);
+        expect(rentabilidad).toBe(presupuesto - costoReal);
+    });
 
-            const proyectoInicial =
-                responseInicial.body.data.find(
-                    p => p.id_proyecto === idProyecto
-                );
+    test('CP-HU23-3-BE - empleado no visualiza rentabilidad', async () => {
+        const response = await request(app)
+            .get('/api/proyectos')
+            .set('Cookie', tokenCookieForUser(ctx.empleado));
 
-            expect(proyectoInicial)
-                .toBeDefined();
+        expect(response.status).toBe(200);
+        response.body.data.forEach(proyecto => {
+            expect(proyecto).not.toHaveProperty('rentabilidad');
+        });
+    });
 
-            const rentabilidadInicial = Number(
-                proyectoInicial.rentabilidad
-            );
+    test('CP-HU23-4-BE - rentabilidad se recalcula automáticamente', async () => {
+        // 1. Obtener rentabilidad inicial
+        const responseInicial = await request(app)
+            .get('/api/proyectos')
+            .set('Cookie', tokenCookieForUser(ctx.propietario));
 
-            /**
-             * 2. Insertar nuevo costo
-             * AÑADE ESTO: Si quieres ser 100% seguro, puedes pasar una fecha única (ej. milisegundos)
-             * pero con la limpieza del beforeEach debería ser suficiente.
-             */
-            await createRegistroHoras({
-                idProyecto,
-                idFase: relacion.id_fase,
-                idEmpleado: relacion.id_empleado,
-                fecha: new Date(), // Asegúrate que el helper no use una fecha fija que cause conflicto
-                horas: 4,
-                descripcion: 'QA_TEST_RENTABILIDAD'
-            });
+        const proyectoInicial = responseInicial.body.data.find(p => p.id_proyecto === ctx.proyecto.id_proyecto);
+        const rentabilidadInicial = Number(proyectoInicial.rentabilidad);
 
-            /**
-             * 3. Consultar nuevamente
-             */
-            const responseFinal = await request(app)
-                .get('/api/proyectos')
-                .set('Cookie', auth.cookies);
+        // 2. Insertar nuevo costo mediante registro de horas
+        await createRegistroHoras(ctx, {
+            idProyecto: ctx.proyecto.id_proyecto,
+            idFase: ctx.fase.id_fase,
+            idEmpleado: ctx.empleado.id_usuario,
+            horas: 4,
+            descripcion: 'QA_TEST_RENTABILIDAD'
+        });
 
-            expect(responseFinal.status)
-                .toBe(200);
+        // 3. Consultar nuevamente
+        const responseFinal = await request(app)
+            .get('/api/proyectos')
+            .set('Cookie', tokenCookieForUser(ctx.propietario));
 
-            const proyectoFinal =
-                responseFinal.body.data.find(
-                    p => p.id_proyecto === idProyecto
-                );
+        const proyectoFinal = responseFinal.body.data.find(p => p.id_proyecto === ctx.proyecto.id_proyecto);
+        const rentabilidadFinal = Number(proyectoFinal.rentabilidad);
 
-            expect(proyectoFinal)
-                .toBeDefined();
-
-            const rentabilidadFinal = Number(
-                proyectoFinal.rentabilidad
-            );
-
-            /**
-             * 4. Validar recalculo
-             *
-             * Al aumentar costos,
-             * la rentabilidad debe disminuir
-             */
-            expect(rentabilidadFinal)
-                .toBeLessThan(
-                    rentabilidadInicial
-                );
-
-        }
-
-    );
-
+        // 4. Validar recalculo
+        expect(rentabilidadFinal).toBeLessThan(rentabilidadInicial);
+    });
 });

@@ -1,55 +1,61 @@
 const request = require('supertest');
 const app = require('../../../src/app');
-const { login } = require('../../helpers/auth');
-const { crearProyectoTemporal, eliminarProyectoTemporal } = require('../../helpers/proyecto.helper');
+
+const {
+    createContext,
+    cleanupContext,
+    tokenCookieForUser,
+    createRegistroHoras,
+    createFase,
+    createUsuario
+} = require('../../helpers/integration.helper');
 
 jest.setTimeout(20000);
 
 describe('HU24 - Ver horas trabajadas (lider)', () => {
-    let authLider;
-    let proyecto;
+    let ctx = null;
 
-    beforeAll(async () => {
-        authLider = await login('qa_lider@test.com', 'Qa123456*');
+    beforeEach(async () => {
+        ctx = await createContext();
+    });
+
+    afterEach(async () => {
+        if (ctx) {
+            await cleanupContext(ctx);
+        }
     });
 
     test('CP-HU24-1-BE - Obtención horas por fase', async () => {
-        // Usamos el id_proyecto: 1 que tiene fases y registros de horas en data.js
+        // 1. Crear horas en la fase
+        await createRegistroHoras(ctx, {
+            idProyecto: ctx.proyecto.id_proyecto,
+            idFase: ctx.fase.id_fase,
+            idEmpleado: ctx.empleado.id_usuario,
+            horas: 5
+        });
+
+        const cookies = tokenCookieForUser(ctx.lider);
+
+        // 2. Consultar fases del proyecto
         const response = await request(app)
-            .get('/api/proyectos/1/fases')
-            .set('Cookie', authLider.cookies);
+            .get(`/api/proyectos/${ctx.proyecto.id_proyecto}/fases`)
+            .set('Cookie', cookies);
 
         expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('success', true);
+        expect(response.body.success).toBe(true);
         expect(Array.isArray(response.body.data)).toBe(true);
 
-        // El Proyecto 1 en data.js tiene fases asociadas
-        expect(response.body.data.length).toBeGreaterThan(0);
-
-        // Verificamos que al menos una fase tenga horas_trabajadas > 0
-        const fasesConHoras = response.body.data.filter(item => Number(item.horas_trabajadas) > 0);
-        expect(fasesConHoras.length).toBeGreaterThan(0);
-
-        response.body.data.forEach((item) => {
-            expect(item).toHaveProperty('id_fase');
-            expect(item).toHaveProperty('nombre');
-            expect(item).toHaveProperty('horas_trabajadas');
-        });
-        
+        const faseConHoras = response.body.data.find(f => f.id_fase === ctx.fase.id_fase);
+        expect(Number(faseConHoras.horas_trabajadas)).toBe(5);
     });
 
-    test('CP-HU24-3-BE - Acceso restringido cuando el usuario no está asignado al proyecto', async () => {
-        // Necesitamos un usuario que no esté en el Proyecto 1. 
-        // Según data.js, el usuario con id_usuario: 6 (demo_lider) no está en el proyecto 1.
-        const authDemo = await login('demo_lider@test.com', 'Qa123456*');
-
+    test('CP-HU24-3-BE - Restricción backend consulta horas por fase', async () => {
+        // Creamos otro empleado que no está asignado al proyecto
+        const otroEmpleado = await createUsuario(ctx, { idEmpresa: ctx.empresa.id_empresa, rol: 'empleado' });
         const response = await request(app)
-            .get('/api/proyectos/1/fases')
-            .set('Cookie', authDemo.cookies);
+            .get(`/api/proyectos/${ctx.proyecto.id_proyecto}/fases`)
+            .set('Cookie', tokenCookieForUser(otroEmpleado));
 
-        // El resultado esperado según el caso de prueba es 403
         expect(response.status).toBe(403);
-
     });
-
 });

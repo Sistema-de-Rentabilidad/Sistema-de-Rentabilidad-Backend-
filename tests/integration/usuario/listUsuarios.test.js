@@ -5,7 +5,7 @@ const pool = require('../../../src/config/db');
 
 const { ACCESS_TOKEN_COOKIE } = require('../../../src/config/authCookie');
 const { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE, JWT_REQUIRE_CLAIMS } = require('../../../src/config/env');
-const { login } = require('../../helpers/auth');
+const { login } = require('../../helpers/auth.helper');
 const { crearUsuarioTemporal, eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 const { crearEmpresaTemporal, eliminarEmpresaTemporal } = require('../../helpers/empresa.helper');
 

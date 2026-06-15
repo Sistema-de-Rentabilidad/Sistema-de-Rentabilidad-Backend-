@@ -1,6 +1,3 @@
-process.env.MARCAJE_ENTRADA_HORA_INICIO = '00:00';
-process.env.MARCAJE_ENTRADA_HORA_FIN = '23:59';
-
 const request = require('supertest');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
