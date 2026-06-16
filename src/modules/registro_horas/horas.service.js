@@ -5,24 +5,8 @@ const faseRepository = require('../fase/fase.repository');
 const faseEmpleadoRepository = require('../fase_empleado/fase_empleado.repository')
 const { getFechaActual, toFechaString } = require('../../utils/dateTime');
 
-const getHorasByLider = async (liderId) => {
-  return await registroHorasRepository.findByLider(liderId);
-};
-
 const getRegistrosHoras = async ({ user, empresaId }) => {
   return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
-};
-
-const requiereMarcajeParaRegistrarHoras = (tipoPago) => {
-  // Los usuarios por hora no usan el modulo de marcaje; cualquier otro tipo de pago requiere entrada diaria.
-  return tipoPago !== 'por_hora';
-};
-
-const crearErrorMarcajeRequerido = () => {
-  const error = new Error('Debes registrar tu entrada antes de registrar horas');
-  error.status = 400;
-  error.code = 'MARCAJE_REQUERIDO';
-  return error;
 };
 
 const REGISTRO_HORAS_DUPLICADO_CONSTRAINTS = new Set([
@@ -35,8 +19,7 @@ const isRegistroHorasDuplicadoDbError = (error) => (
   REGISTRO_HORAS_DUPLICADO_CONSTRAINTS.has(error.constraint)
 );
 
-const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
-
+const validarHoras = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
   const horasActuales = idRegistroExcluir
     ? await registroHorasRepository.getTotalHorasSinRegistro(idEmpleado, fecha, idRegistroExcluir)
     : await registroHorasRepository.getTotalHorasByEmpleadoYFecha(idEmpleado, fecha);
@@ -48,16 +31,6 @@ const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, t
     const error = new Error('No puedes registrar más de 12 horas diarias');
     error.status = 400;
     throw error;
-  }
-
-  if (!requiereMarcajeParaRegistrarHoras(tipoPago)) {
-    return;
-  }
-
-  const horasTrabajadas = await registroHorasRepository.getHorasTrabajadasByEmpleadoYFecha(idEmpleado, fecha);
-
-  if (horasTrabajadas === null) {
-    throw crearErrorMarcajeRequerido();
   }
 };
 
@@ -72,7 +45,7 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
 
   if (proyecto.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error('No tienes permisos para acceder a esta proyecto'),
+      new Error('No tienes permisos para acceder a este proyecto'),
       { status: 403 }
     );
   }
@@ -108,7 +81,7 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
 
   const fases = await faseRepository.findByProyecto(id_proyecto);
 
-  const faseValida = fases.some(fase => fase.id_fase === id_fase);
+  const faseValida = fases && fases.some(fase => fase.id_fase === id_fase);
 
   if (!faseValida) {
     const error = new Error('La fase no pertenece al proyecto');
@@ -117,7 +90,7 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
   }
 
   // VALIDAR LIMITE DIARIO Y TIEMPO TRABAJADO SEGUN MARCAJE
-  await validarHorasContraMarcaje({
+  await validarHoras({
     idEmpleado: user.id_usuario,
     fecha,
     horasARegistrar: horas,
@@ -253,7 +226,7 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
 
   const fases = await faseRepository.findByProyecto(proyectoId);
 
-  const faseValida = fases.some(fase => fase.id_fase === faseId);
+  const faseValida = fases && fases.some(fase => fase.id_fase === faseId);
 
   if (!faseValida) {
     const error = new Error('La fase no pertenece al proyecto');
@@ -261,8 +234,8 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     throw error;
   }
 
-  // VALIDAR LIMITE DIARIO Y TIEMPO TRABAJADO SEGUN MARCAJE
-  await validarHorasContraMarcaje({
+  // VALIDAR LIMITE DIARIO
+  await validarHoras({
     idEmpleado: user.id_usuario,
     fecha: registro.fecha,
     horasARegistrar: horasRegistro,
@@ -294,11 +267,8 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
 };
 
 module.exports = {
-  getHorasByLider,
   getRegistrosHoras,
   createRegistroHoras,
   getRegistroHorasById,
-  updateRegistroHoras,
-  requiereMarcajeParaRegistrarHoras
+  updateRegistroHoras
 };
-
