@@ -231,7 +231,7 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   // VALIDAR ASIGNACION EMPLEADO
   const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, proyectoId);
 
-  if (process.env.NODE_ENV !== 'test' && !perteneceProyecto) {
+  if (!perteneceProyecto) {
     const error = new Error('No estás asignado a este proyecto');
     error.status = 403;
     throw error;
