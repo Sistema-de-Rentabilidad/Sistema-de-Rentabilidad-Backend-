@@ -125,24 +125,6 @@ describe('horas.service', () => {
         })).rejects.toThrow('Debes registrar tu entrada antes de registrar horas');
     });
 
-    it('createRegistroHoras lanza si excede el tiempo trabajado del dia', async () => {
-        mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
-        mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
-        mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
-        mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
-        mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(3);
-        mockRegistroHorasRepo.getHorasTrabajadasByEmpleadoYFecha.mockResolvedValue(4);
-
-        await expect(horasService.createRegistroHoras({
-            id_proyecto: 1,
-            id_fase: 2,
-            horas: 2,
-            descripcion: 'x',
-            user: { id_usuario: 4, tipo_pago: 'mensual' },
-            empresaId: 1
-        })).rejects.toThrow('Las horas registradas exceden el tiempo trabajado del dia');
-    });
-
     it('createRegistroHoras lanza si proyecto no existe', async () => {
         mockProyectoRepo.findById.mockResolvedValue(null);
         await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('Proyecto no encontrado');

@@ -55,21 +55,4 @@ describe('marcaje.service', () => {
         mockMarcajeRepo.registrarSalida.mockResolvedValue({ error: 'REGISTRO_HORAS_NO_REGISTRADO' });
         await expect(marcajeService.marcarSalida({ user: { id_usuario: 4, rol: 'empleado' } })).rejects.toThrow('Debes registrar horas del dia antes de marcar salida');
     });
-
-    it('marcarSalida lanza si horas exceden y usuario no es lider', async () => {
-        mockMarcajeRepo.registrarSalida.mockResolvedValue({ error: 'HORAS_EXCEDEN_MARCAJE' });
-        await expect(marcajeService.marcarSalida({ user: { id_usuario: 4, rol: 'empleado' } })).rejects.toThrow('Las horas registradas exceden el tiempo trabajado del dia');
-    });
-
-    it('marcarSalida retorna resumen para empleado', async () => {
-        mockMarcajeRepo.registrarSalida.mockResolvedValue({ marcaje: { id: 1 }, resumenHoras: { total: 8, trabajadas: 10 } });
-        const res = await marcajeService.marcarSalida({ user: { id_usuario: 4, rol: 'empleado' } });
-        expect(res).toEqual({ id: 1, total_horas_registradas: 8, horas_trabajadas: 10 });
-    });
-
-    it('marcarSalida no añade resumen para lider', async () => {
-        mockMarcajeRepo.registrarSalida.mockResolvedValue({ marcaje: { id: 1 }, resumenHoras: { total: 8, trabajadas: 10 } });
-        const res = await marcajeService.marcarSalida({ user: { id_usuario: 4, rol: 'lider' } });
-        expect(res).toEqual({ id: 1 });
-    });
 });

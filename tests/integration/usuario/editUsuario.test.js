@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
 
-const { login } = require('../../helpers/auth');
+const { login } = require('../../helpers/auth.helper');
 
 const { crearUsuarioTemporal, eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 

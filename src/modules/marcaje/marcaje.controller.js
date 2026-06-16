@@ -25,8 +25,7 @@ const getMarcajes = async (req, res, next) => {
 const marcarEntrada = async (req, res, next) => {
   try {
     const marcaje = await marcajeService.marcarEntrada({
-      user: req.user,
-      enforceHorario: true
+      user: req.user
     });
 
     return res.status(200).json({

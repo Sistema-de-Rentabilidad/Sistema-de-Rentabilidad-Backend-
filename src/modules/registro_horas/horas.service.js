@@ -59,12 +59,6 @@ const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, t
   if (horasTrabajadas === null) {
     throw crearErrorMarcajeRequerido();
   }
-
-  if (total > Number(horasTrabajadas)) {
-    const error = new Error('Las horas registradas exceden el tiempo trabajado del dia');
-    error.status = 400;
-    throw error;
-  }
 };
 
 const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, user, empresaId }) => {

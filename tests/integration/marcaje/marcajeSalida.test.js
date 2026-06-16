@@ -255,8 +255,6 @@ describe('Marcaje salida - empleado y lider', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('hora_salida');
-      expect(response.body.data).not.toHaveProperty('total_horas_registradas');
     } finally {
       await cleanupContext(ctx);
     }

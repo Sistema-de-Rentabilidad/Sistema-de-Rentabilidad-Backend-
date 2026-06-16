@@ -5,7 +5,6 @@ const MARCAJE_ERRORS = {
   ENTRADA_NO_REGISTRADA: 'ENTRADA_NO_REGISTRADA',
   SALIDA_DUPLICADA: 'SALIDA_DUPLICADA',
   REGISTRO_HORAS_NO_REGISTRADO: 'REGISTRO_HORAS_NO_REGISTRADO',
-  HORAS_EXCEDEN_MARCAJE: 'HORAS_EXCEDEN_MARCAJE',
   HORA_SALIDA_INVALIDA: 'HORA_SALIDA_INVALIDA'
 };
 
@@ -196,14 +195,6 @@ const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true 
       };
     }
 
-    if (resumenHoras.total > resumenHoras.trabajadas) {
-      return {
-        error:
-          MARCAJE_ERRORS.HORAS_EXCEDEN_MARCAJE,
-        resumenHoras
-      };
-    }
-
     const salidaValida = await validarHoraSalidaPosterior(client, marcaje.id_marcaje);
 
     if (!salidaValida) {
@@ -219,7 +210,6 @@ const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true 
     return { marcaje: marcajeActualizado, resumenHoras };
   });
 };
-
 
 module.exports = {
   findByUsuario,
