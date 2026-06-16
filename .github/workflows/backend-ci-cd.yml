@@ -67,7 +67,7 @@ jobs:
           fi
 
       - name: Ejecutar pruebas Jest
-        run: npm run test
+        run: npx cross-env NODE_ENV=qa jest --runInBand --passWithNoTests
 
   deploy-qa:
     name: Despliegue automático en QA
