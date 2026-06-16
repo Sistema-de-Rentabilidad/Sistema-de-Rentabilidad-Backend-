@@ -24,7 +24,7 @@ const ayer = () => {
   return date.toISOString().slice(0, 10);
 };
 
-describe('Pruebas secundarias Testiny - Horas', () => {
+describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
   test("CP-HU27-1-BE - Obtención de registros de horas", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
