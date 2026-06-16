@@ -33,7 +33,7 @@ describe('HU2 - Edicion de mi usuario', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('success', true);
-        
+
         // Verificación de seguridad para evitar "null nor undefined"
         expect(response.body).toHaveProperty('data');
         expect(response.body.data).not.toBeNull();
@@ -208,6 +208,34 @@ describe('HU16 - Edicion de empleado/lider', () => {
         });
     });
 
+    test('CP-HU16-3-BE - Error al editar sueldo con valor negativo (empleado/lider)', async () => {
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const user = await crearUsuarioTemporal({
+                rol: rol,
+                idEmpresa: authPropietario.user.id_empresa
+            });
+
+            // Creamos un historial salarial inicial para poder actualizarlo
+            await pool.query(
+                `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+                [user.id_usuario, 'mensual', 1000, 40]
+            );
+
+            const response = await request(app)
+                .put(`/api/usuarios/${user.id_usuario}`)
+                .set('Cookie', authPropietario.cookies)
+                .send({ monto: -500 });
+
+            expect(response.status).toBe(400); // O el status que aplique en la validación
+            expect(response.body).toHaveProperty('success', false);
+            // El mensaje de error dependerá de tu lógica de validación
+
+            await eliminarUsuarioTemporal(user.id_usuario);
+        }
+    });
+
     test('CP-HU16-5-BE - Restricción correo duplicado edición empleado', async () => {
         const duplicateEmail = 'qa_admin@test.com';
 
@@ -280,7 +308,45 @@ describe('HU16 - Edicion de empleado/lider', () => {
 
         expect(dbResult.rowCount).toBe(1);
         expect(dbResult.rows[0].nombre).toBe(empleadoOtraEmpresa.nombre);
-    }, 15000);
+    });
+
+    test('CP-HU16-12-BE - Actualización API de sueldo exitosa (empleado/lider)', async () => {
+        const roles = ['empleado', 'lider'];
+        const nuevoMonto = 3500;
+
+        for (const rol of roles) {
+            const user = await crearUsuarioTemporal({
+                rol: rol,
+                idEmpresa: authPropietario.user.id_empresa
+            });
+
+            // Creamos un historial salarial inicial (hace un día para evitar conflicto de "hoy")
+            await pool.query(
+                `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) 
+                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP - INTERVAL '1 day')`,
+                [user.id_usuario, 'mensual', 1000, 40]
+            );
+
+            const response = await request(app)
+                .put(`/api/usuarios/${user.id_usuario}`)
+                .set('Cookie', authPropietario.cookies)
+                .send({ monto: nuevoMonto });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toHaveProperty('success', true);
+
+            // Verificar en BD que se creó un nuevo historial con el monto actualizado
+            const dbResult = await pool.query(
+                `SELECT monto FROM historial_sueldo WHERE id_usuario = $1 ORDER BY id_historial DESC LIMIT 1`,
+                [user.id_usuario]
+            );
+
+            // Comparar convirtiendo a número para evitar problemas de formato de decimales (ej: "3500" vs "3500.00")
+            expect(parseFloat(dbResult.rows[0].monto)).toBe(parseFloat(nuevoMonto));
+
+            await eliminarUsuarioTemporal(user.id_usuario);
+        }
+    });
 
 });
 
