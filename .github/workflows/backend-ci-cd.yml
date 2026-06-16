@@ -67,8 +67,7 @@ jobs:
           fi
 
       - name: Ejecutar pruebas Jest
-
-        run: npx cross-env TZ=UTC NODE_ENV=qa jest --runInBand --passWithNoTests
+        run: npx cross-env NODE_ENV=qa jest --runInBand --passWithNoTests
 
   deploy-qa:
     name: Despliegue automático en QA
@@ -145,4 +144,3 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
