@@ -86,24 +86,24 @@ const createUsuario = async (data, currentUser) => {
   }
 
   // reglas de sueldo
-  if (rolFinal === 'empleado') {
+  if (['empleado', 'lider'].includes(rolFinal)) {
     if (!monto || !tipo_pago) {
       throw Object.assign(
-        new Error('Empleado requiere monto y tipo de pago'),
+        new Error('Empleado/Lider requiere monto y tipo de pago'),
         { status: 400 }
       );
     }
 
     if (tipo_pago === 'mensual' && (!horas_mensuales || horas_mensuales <= 0)) {
       throw Object.assign(
-        new Error('Empleado mensual requiere horas mensuales'),
+        new Error('Empleado/Lider mensual requiere horas mensuales'),
         { status: 400 }
       );
     }
   } else {
     if (monto || tipo_pago || horas_mensuales) {
       throw Object.assign(
-        new Error('Solo empleados pueden tener información salarial'),
+        new Error('Solo empleados y lideres pueden tener información salarial'),
         { status: 400 }
       );
     }
@@ -121,8 +121,8 @@ const createUsuario = async (data, currentUser) => {
     id_empresa: empresaFinal
   });
 
-  // historial si empleado
-  if (rolFinal === 'empleado') {
+  // historial si empleado o lider
+  if (['empleado', 'lider'].includes(rolFinal)) {
     await historialService.createHistorial({
       id_usuario: usuario.id_usuario,
       tipo_pago,
@@ -275,7 +275,7 @@ const updateUsuario = async (id, data, currentUser) => {
     password: data.password
   });
 
-  const quiereActualizarSueldo = usuario.rol === 'empleado' && (data.monto || data.tipo_pago || data.horas_mensuales);
+  const quiereActualizarSueldo = ['empleado', 'lider'].includes(usuario.rol) && (data.monto || data.tipo_pago || data.horas_mensuales);
 
   if (quiereActualizarSueldo) {
     const sueldoActual = await historialRepository.findActivo(usuario.id_usuario);
