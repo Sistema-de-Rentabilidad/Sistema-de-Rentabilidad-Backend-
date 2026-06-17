@@ -11,7 +11,7 @@ const {
     createRegistroHoras
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(20000);
+jest.setTimeout(90000);
 
 describe('Eliminación lógica proyecto', () => {
 

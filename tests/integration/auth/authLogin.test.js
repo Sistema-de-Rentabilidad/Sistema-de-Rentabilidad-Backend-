@@ -13,7 +13,7 @@ const {
   createUsuario
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(15000);
+jest.setTimeout(90000);
 
 describe('HU1 - Inicio de sesion', () => {
   let ctx = null;

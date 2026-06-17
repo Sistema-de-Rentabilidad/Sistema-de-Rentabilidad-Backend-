@@ -104,4 +104,99 @@ describe('proyecto.service', () => {
         const res = await proyectoService.createProyecto(1, { nombre: 'P', id_servicio: 1, id_lider: 3, empleados: [4] });
         expect(res).toEqual({ id_proyecto: 10, nombre: 'P' });
     });
+
+    it('createProyecto permite crear cotizado sin lider ni fechas', async () => {
+        mockProyectoRepo.findByNombreAndEmpresa.mockResolvedValue(null);
+        mockServicioRepo.findById.mockResolvedValue({ id_empresa: 1 });
+        mockProyectoRepo.create.mockResolvedValue({ id_proyecto: 11, estado: 'Cotizado' });
+
+        const res = await proyectoService.createProyecto(1, { nombre: 'P', id_servicio: 1 });
+
+        expect(res).toEqual({ id_proyecto: 11, estado: 'Cotizado' });
+        expect(mockUsuarioRepo.findById).not.toHaveBeenCalled();
+        expect(mockProyectoRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+            estado: 'Cotizado',
+            id_lider: undefined,
+            fecha_inicio: undefined,
+            fecha_fin_estimada: undefined
+        }));
+    });
+
+    it('updateProyecto rechaza aprobar sin lider', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({
+            id_proyecto: 1,
+            id_empresa: 1,
+            estado: 'Cotizado',
+            id_lider: null,
+            fecha_inicio: '2025-01-01',
+            fecha_fin_estimada: '2025-12-31'
+        });
+
+        await expect(proyectoService.updateProyecto(1, 1, { estado: 'Aprobado' }))
+            .rejects.toThrow('El lider es obligatorio para aprobar el proyecto');
+    });
+
+    it('updateProyecto permite aprobar con lider y fechas', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({
+            id_proyecto: 1,
+            id_empresa: 1,
+            estado: 'Cotizado',
+            id_lider: null,
+            fecha_inicio: null,
+            fecha_fin_estimada: null
+        });
+        mockUsuarioRepo.findById.mockResolvedValue({ id_empresa: 1, rol: 'lider' });
+        mockProyectoRepo.update.mockResolvedValue({ id_proyecto: 1, estado: 'Aprobado' });
+
+        const res = await proyectoService.updateProyecto(1, 1, {
+            estado: 'Aprobado',
+            id_lider: 3,
+            fecha_inicio: '2025-01-01',
+            fecha_fin_estimada: '2025-12-31'
+        });
+
+        expect(res).toEqual({ id_proyecto: 1, estado: 'Aprobado' });
+    });
+
+    it('updateProyecto permite pasar de aprobado a ejecucion', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({
+            id_proyecto: 1,
+            id_empresa: 1,
+            estado: 'Aprobado',
+            fecha_fin_real: null
+        });
+        mockProyectoRepo.update.mockResolvedValue({ id_proyecto: 1, estado: 'Ejecución' });
+
+        const res = await proyectoService.updateProyecto(1, 1, { estado: 'Ejecución' });
+
+        expect(res).toEqual({ id_proyecto: 1, estado: 'Ejecución' });
+    });
+
+    it('finalizarProyecto rechaza estado distinto de ejecucion', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({
+            id_proyecto: 1,
+            id_empresa: 1,
+            id_lider: 3,
+            estado: 'Cotizado',
+            fecha_fin_real: null
+        });
+
+        await expect(proyectoService.finalizarProyecto({ proyectoId: 1, empresaId: 1, liderId: 3 }))
+            .rejects.toThrow('Solo los proyectos en ejecucion pueden finalizarse');
+    });
+
+    it('finalizarProyecto permite finalizar proyecto en ejecucion', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({
+            id_proyecto: 1,
+            id_empresa: 1,
+            id_lider: 3,
+            estado: 'Ejecución',
+            fecha_fin_real: null
+        });
+        mockProyectoRepo.finalizar.mockResolvedValue({ id_proyecto: 1, estado: 'Finalizado' });
+
+        const res = await proyectoService.finalizarProyecto({ proyectoId: 1, empresaId: 1, liderId: 3 });
+
+        expect(res).toEqual({ id_proyecto: 1, estado: 'Finalizado' });
+    });
 });

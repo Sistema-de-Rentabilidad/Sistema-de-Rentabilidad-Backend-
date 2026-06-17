@@ -12,6 +12,7 @@ const crearProyectoTemporal = async (overrides = {}) => {
         fecha_inicio: '2025-01-01',
         fecha_fin_estimada: '2025-12-31',
         margen: 20,
+        estado: 'Ejecución',
         ...overrides
     };
 
@@ -33,10 +34,11 @@ const crearProyectoTemporal = async (overrides = {}) => {
             fecha_inicio,
             fecha_fin_estimada,
             margen,
-            fecha_fin_real
+            fecha_fin_real,
+            estado
         )
         VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
         )
         RETURNING *
         `,
@@ -50,7 +52,8 @@ const crearProyectoTemporal = async (overrides = {}) => {
             proyecto.fecha_inicio,
             proyecto.fecha_fin_estimada,
             proyecto.margen,
-            proyecto.fecha_fin_real
+            proyecto.fecha_fin_real,
+            proyecto.estado
         ]
     );
 

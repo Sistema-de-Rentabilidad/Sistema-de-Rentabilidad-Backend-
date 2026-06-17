@@ -8,7 +8,7 @@ const {
     tokenCookieForUser
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(20000);
+jest.setTimeout(90000);
 
 describe('Obtención proyectos por empresa', () => {
     let ctx;

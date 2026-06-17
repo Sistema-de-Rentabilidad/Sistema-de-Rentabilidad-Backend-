@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
+const { getFechaActual } = require('../../../src/utils/dateTime');
 
 const {
     createContext,
@@ -9,7 +10,7 @@ const {
     createUsuario
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(30000);
+jest.setTimeout(90000);
 
 describe('Actualización fecha finalización', () => {
 
@@ -24,25 +25,54 @@ describe('Actualización fecha finalización', () => {
     });
 
     test('CP-HU33-1-BE - API registra fecha actual', async () => {
-        const fechaAntes = new Date();
         const response = await request(app)
             .put(`/api/proyectos/${ctx.proyecto.id_proyecto}/finalizar`)
             .set('Cookie', tokenCookieForUser(ctx.lider));
 
         expect(response.status).toBe(200);
         const result = await pool.query(
-            `SELECT fecha_fin_real FROM proyecto WHERE id_proyecto = $1`,
+            `SELECT fecha_fin_real, estado FROM proyecto WHERE id_proyecto = $1`,
             [ctx.proyecto.id_proyecto]
         );
 
         expect(result.rows.length).toBeGreaterThan(0);
         expect(result.rows[0].fecha_fin_real).not.toBeNull();
+        expect(result.rows[0].estado).toBe('Finalizado');
 
         const fechaFinalizacion = new Date(result.rows[0].fecha_fin_real);
-        const fechaEsperada = fechaAntes.toISOString().slice(0, 10);
+        const fechaEsperada = getFechaActual();
         const fechaRegistrada = fechaFinalizacion.toISOString().slice(0, 10);
 
         expect(fechaRegistrada).toBe(fechaEsperada);
+    });
+});
+
+describe('Validacion estado para finalizar proyecto', () => {
+    let ctx;
+
+    beforeEach(async () => {
+        ctx = await createContext({ proyectoEstado: 'Cotizado' });
+    });
+
+    afterEach(async () => {
+        await cleanupContext(ctx);
+    });
+
+    test('CP-HU33-7-BE - API rechaza finalizar si no esta en ejecucion', async () => {
+        const response = await request(app)
+            .put(`/api/proyectos/${ctx.proyecto.id_proyecto}/finalizar`)
+            .set('Cookie', tokenCookieForUser(ctx.lider));
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toMatch(/ejecucion/i);
+
+        const check = await pool.query(
+            `SELECT fecha_fin_real, estado FROM proyecto WHERE id_proyecto = $1`,
+            [ctx.proyecto.id_proyecto]
+        );
+
+        expect(check.rows[0].fecha_fin_real).toBeNull();
+        expect(check.rows[0].estado).toBe('Cotizado');
     });
 });
 

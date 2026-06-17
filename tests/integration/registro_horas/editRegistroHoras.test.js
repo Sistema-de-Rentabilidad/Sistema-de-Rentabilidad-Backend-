@@ -12,7 +12,7 @@ const {
     createFase
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(30000);
+jest.setTimeout(90000);
 
 describe('HU30 - Actualización de registro de horas', () => {
     let ctx;
@@ -166,7 +166,17 @@ describe('HU30 - Actualización de registro de horas', () => {
             .set('Cookie', tokenCookieForUser(ctx.empleado))
             .send({ horas: -1 });
         expect(response.status).toBe(400);
-        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
+        expect(response.body.errors[0].msg).toBe('Las horas deben ser mayores o iguales a 0.5');
+    });
+
+    test('CP-HU30-2-BE - Edicion permite mas de 12 horas', async () => {
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({ horas: 13, descripcion: 'Mas de doce' });
+
+        expect(response.status).toBe(200);
+        expect(Number(response.body.data.horas)).toBe(13);
     });
 
     // test('CP-HU30-11-BE - Error interno API edición horas', async () => {

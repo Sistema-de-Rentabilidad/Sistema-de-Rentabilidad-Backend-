@@ -13,9 +13,12 @@ describe('horas.service', () => {
         jest.resetModules();
 
         mockRegistroHorasRepo = {
+            findByLider: jest.fn(),
             findByEmpleado: jest.fn(),
+            findByEmpresa: jest.fn(),
             getTotalHorasByEmpleadoYFecha: jest.fn(),
             getTotalHorasSinRegistro: jest.fn(),
+            getHorasTrabajadasByEmpleadoYFecha: jest.fn(),
             create: jest.fn(),
             findById: jest.fn(),
             update: jest.fn()
@@ -53,28 +56,49 @@ describe('horas.service', () => {
 
         horasService = require('../../src/modules/registro_horas/horas.service');
     });
-    
-    it('getRegistrosHoras delega al repositorio', async () => {
-        mockRegistroHorasRepo.findByEmpleado.mockResolvedValue(['Y']);
-        const res = await horasService.getRegistrosHoras({ user: { id_usuario: 7 }, empresaId: 2 });
-        expect(res).toEqual(['Y']);
+
+    it('getHorasByLider delega al repositorio', async () => {
+        mockRegistroHorasRepo.findByLider.mockResolvedValue(['X']);
+        const res = await horasService.getHorasByLider(10);
+        expect(res).toEqual(['X']);
     });
 
-    it('createRegistroHoras lanza si total mayor a 12 horas diarias', async () => {
+    it('getRegistrosHoras delega al repositorio para empleado', async () => {
+        mockRegistroHorasRepo.findByEmpleado.mockResolvedValue(['Y']);
+        const filters = { fecha_desde: '2025-06-01' };
+        const res = await horasService.getRegistrosHoras({ user: { id_usuario: 7, rol: 'empleado' }, empresaId: 2, filters });
+        expect(res).toEqual(['Y']);
+        expect(mockRegistroHorasRepo.findByEmpleado).toHaveBeenCalledWith(7, 2, filters);
+    });
+
+    it('getRegistrosHoras delega al repositorio por empresa para lider', async () => {
+        mockRegistroHorasRepo.findByEmpresa.mockResolvedValue(['Z']);
+        const filters = { fecha_hasta: '2025-06-02' };
+        const res = await horasService.getRegistrosHoras({ user: { id_usuario: 7, rol: 'lider' }, empresaId: 2, filters });
+        expect(res).toEqual(['Z']);
+        expect(mockRegistroHorasRepo.findByEmpresa).toHaveBeenCalledWith(2, filters);
+    });
+
+    it('createRegistroHoras permite total mayor a 12 horas diarias', async () => {
         mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
         mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
         mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
         mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
         mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(8);
+        mockRegistroHorasRepo.getHorasTrabajadasByEmpleadoYFecha.mockResolvedValue(12);
+        mockFaseEmpleadoRepo.exists.mockResolvedValue(true);
+        mockRegistroHorasRepo.create.mockResolvedValue({ id_registro: 9, horas: 13 });
 
-        await expect(horasService.createRegistroHoras({
+        const res = await horasService.createRegistroHoras({
             id_proyecto: 1,
             id_fase: 2,
-            horas: 5,
+            horas: 13,
             descripcion: 'x',
-            user: { id_usuario: 4, tipo_pago: 'mensual' },
+            user: { id_usuario: 4, rol: 'empleado', tipo_pago: 'mensual' },
             empresaId: 1
-        })).rejects.toThrow('No puedes registrar más de 12 horas diarias');
+        });
+
+        expect(res).toEqual({ id_registro: 9, horas: 13 });
     });
 
     it('createRegistroHoras retorna sin error si tipo_pago no es mensual', async () => {
@@ -98,6 +122,48 @@ describe('horas.service', () => {
         expect(res).toEqual({ id_registro: 6 });
     });
 
+    it('createRegistroHoras permite registrar sin marcaje para mensual', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
+        mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
+        mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
+        mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
+        mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(2);
+        mockRegistroHorasRepo.getHorasTrabajadasByEmpleadoYFecha.mockResolvedValue(null);
+        mockFaseEmpleadoRepo.exists.mockResolvedValue(true);
+        mockRegistroHorasRepo.create.mockResolvedValue({ id_registro: 10, horas: 2 });
+
+        const res = await horasService.createRegistroHoras({
+            id_proyecto: 1,
+            id_fase: 2,
+            horas: 2,
+            descripcion: 'x',
+            user: { id_usuario: 4, rol: 'empleado', tipo_pago: 'mensual' },
+            empresaId: 1
+        });
+
+        expect(res).toEqual({ id_registro: 10, horas: 2 });
+    });
+
+    it('createRegistroHoras permite al lider registrar en proyecto propio', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null, id_lider: 4 });
+        mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
+        mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
+        mockFaseEmpleadoRepo.exists.mockResolvedValue(true);
+        mockRegistroHorasRepo.create.mockResolvedValue({ id_registro: 11, id_empleado: 4 });
+
+        const res = await horasService.createRegistroHoras({
+            id_proyecto: 1,
+            id_fase: 2,
+            horas: 2,
+            descripcion: 'x',
+            user: { id_usuario: 4, rol: 'lider', tipo_pago: 'mensual' },
+            empresaId: 1
+        });
+
+        expect(res).toEqual({ id_registro: 11, id_empleado: 4 });
+        expect(mockProyectoEmpleadoRepo.exists).not.toHaveBeenCalled();
+    });
+
     it('createRegistroHoras lanza si proyecto no existe', async () => {
         mockProyectoRepo.findById.mockResolvedValue(null);
         await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('Proyecto no encontrado');
@@ -105,7 +171,7 @@ describe('horas.service', () => {
 
     it('createRegistroHoras lanza si proyecto es de otra empresa', async () => {
         mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 2, fecha_fin_real: null });
-        await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('No tienes permisos para acceder a este proyecto');
+        await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('No tienes permisos para acceder a esta proyecto');
     });
 
     it('createRegistroHoras lanza si proyecto finalizado', async () => {
@@ -137,6 +203,7 @@ describe('horas.service', () => {
         mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
         mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
         mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 99 });
+        mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 100 }]);
         await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('La fase no pertenece al proyecto');
     });
 
@@ -146,6 +213,7 @@ describe('horas.service', () => {
         mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
         mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
         mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(2);
+        mockRegistroHorasRepo.getHorasTrabajadasByEmpleadoYFecha.mockResolvedValue(8);
         mockFaseEmpleadoRepo.exists.mockResolvedValue(false);
         mockRegistroHorasRepo.create.mockResolvedValue({ id_registro: 5 });
 
@@ -176,6 +244,7 @@ describe('horas.service', () => {
         mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
         mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
         mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(2);
+        mockRegistroHorasRepo.getHorasTrabajadasByEmpleadoYFecha.mockResolvedValue(8);
         mockRegistroHorasRepo.update.mockResolvedValue({ id_registro: 7, horas: 4, descripcion: 'Actualizado' });
 
         const res = await horasService.updateRegistroHoras({

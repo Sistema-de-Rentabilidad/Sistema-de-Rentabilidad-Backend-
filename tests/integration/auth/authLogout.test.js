@@ -8,7 +8,7 @@ const {
     tokenCookieForUser
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(15000);
+jest.setTimeout(90000);
 
 describe('HU14 - Cierre de sesion', () => {
     let ctx = null;

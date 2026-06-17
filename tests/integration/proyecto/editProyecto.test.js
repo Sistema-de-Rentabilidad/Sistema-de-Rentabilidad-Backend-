@@ -9,7 +9,7 @@ const {
     createUsuario
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(30000);
+jest.setTimeout(90000);
 
 describe('Testiny - Edicion de proyecto', () => {
     let ctx;

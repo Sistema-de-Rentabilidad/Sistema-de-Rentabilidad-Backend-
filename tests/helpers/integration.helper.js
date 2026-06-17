@@ -162,8 +162,10 @@ const createProyecto = async (ctx, {
   idServicio,
   idLider = null,
   finalizado = false,
-  isActive = true
+  isActive = true,
+  estado = null
 } = {}) => {
+  const estadoProyecto = estado || (finalizado ? 'Finalizado' : 'Ejecución');
   const result = await pool.query(
     `INSERT INTO proyecto (
         id_empresa,
@@ -176,9 +178,10 @@ const createProyecto = async (ctx, {
         fecha_fin_estimada,
         fecha_fin_real,
         margen,
+        estado,
         is_active
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING *`,
     [
       idEmpresa,
@@ -191,6 +194,7 @@ const createProyecto = async (ctx, {
       '2027-12-31',
       finalizado ? '2026-01-01' : null,
       20,
+      estadoProyecto,
       isActive
     ]
   );
@@ -290,6 +294,7 @@ const createContext = async ({
   empleadoActivo = true,
   liderActivo = true,
   proyectoFinalizado = false,
+  proyectoEstado = null,
   asignarEmpleado = true,
   crearFase = true,
   faseActiva = true,
@@ -315,7 +320,8 @@ const createContext = async ({
     idEmpresa: empresa.id_empresa,
     idServicio: servicio.id_servicio,
     idLider: lider.id_usuario,
-    finalizado: proyectoFinalizado
+    finalizado: proyectoFinalizado,
+    estado: proyectoEstado
   });
 
   if (asignarEmpleado) {

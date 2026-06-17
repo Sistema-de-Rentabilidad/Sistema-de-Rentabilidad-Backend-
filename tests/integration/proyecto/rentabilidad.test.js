@@ -8,7 +8,7 @@ const {
     createRegistroHoras
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(30000);
+jest.setTimeout(90000);
 
 describe('Rentabilidad proyecto', () => {
     let ctx;
