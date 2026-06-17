@@ -261,4 +261,25 @@ describe('HU45 - Gestion de usuarios (empleados y lideres)', () => {
             });
         }
     });
+
+    test('CP-HU45-8-BE - Validación JWT expirado usuarios empresa', async () => {
+        const expiredToken = jwt.sign(
+            { id_usuario: authPropietario.user.id_usuario },
+            JWT_SECRET,
+            {
+                expiresIn: -10,
+                issuer: JWT_ISSUER,
+                audience: JWT_AUDIENCE,
+                subject: String(authPropietario.user.id_usuario),
+            }
+        );
+
+        const response = await request(app)
+            .get('/api/usuarios')
+            .set('Cookie', `${ACCESS_TOKEN_COOKIE}=${expiredToken}`);
+
+        expect(response.status).toBe(401);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/token.*expir|token inválid|Token inválido o expirado/i);
+    });
 });

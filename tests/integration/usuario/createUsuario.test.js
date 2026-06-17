@@ -140,6 +140,89 @@ describe('HU12 - Creacion de propietario', () => {
         ).rejects.toMatchObject({ code: '23505' }); // Postgres unique_violation
     });
 
+    test('CP-HU12-4-BE - Validación contraseña insegura', async () => {
+        const payload = {
+            nombre: 'Usuario Contraseña Debil',
+            email: `qa_debil_${Date.now()}@test.com`,
+            password: '123', // Contraseña muy corta y débil
+            id_empresa: ctx.empresa.id_empresa
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        // El middleware devuelve un array de errores
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/contraseña|8/i);
+    });
+
+    test('CP-HU12-6-BE - Validación correo inválido', async () => {
+        const payload = {
+            nombre: 'Usuario Correo Mal',
+            email: 'test@@',
+            password: 'Password123*',
+            id_empresa: ctx.empresa.id_empresa
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/email|inválido/i);
+    });
+
+    test('CP-HU12-8-BE - Validación nombre inválido', async () => {
+        const payload = {
+            nombre: '@@##',
+            email: 'qa_nombre_invalido@test.com',
+            password: 'Password123*',
+            id_empresa: ctx.empresa.id_empresa
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/nombre/i);
+
+        // Verificamos que no se guardó en BD
+        const dbResult = await pool.query(
+            'SELECT * FROM usuario WHERE email = $1',
+            [payload.email]
+        );
+        expect(dbResult.rowCount).toBe(0);
+    });
+
+    test('CP-HU12-9-BE - Validación empresa obligatoria para admin', async () => {
+        const payload = {
+            nombre: 'Propietario Sin Empresa',
+            email: 'qa_sin_empresa@test.com',
+            password: 'Password123*',
+            // id_empresa omitido
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/empresa/i);
+    });
+
     test('CP-HU12-10-BE - Error interno registro propietario', async () => {
         const payload = {
             nombre: `Propietario Error Test`,

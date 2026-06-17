@@ -221,21 +221,21 @@ describe('HU39 - Gestión de notas', () => {
         }
     });
 
-    // test('CP-HU26-6-BE - Restricción registro notas proyecto finalizado', async () => {
-    //     const ctx = await createContext({ proyectoFinalizado: true });
+    test('CP-HU26-6-BE - Restricción registro notas proyecto finalizado', async () => {
+        const ctx = await createContext({ proyectoFinalizado: true });
 
-    //     try {
-    //         const cookies = tokenCookieForUser(ctx.lider);
-    //         const response = await request(app)
-    //             .post(`/api/proyectos/${ctx.proyecto.id_proyecto}/notas`)
-    //             .set('Cookie', cookies)
-    //             .send({ descripcion: 'Nota en proyecto finalizado' });
+        try {
+            const cookies = tokenCookieForUser(ctx.lider);
+            const response = await request(app)
+                .post(`/api/proyectos/${ctx.proyecto.id_proyecto}/notas`)
+                .set('Cookie', cookies)
+                .send({ descripcion: 'Nota en proyecto finalizado' });
 
-    //         expect(response.status).toBe(403);
-    //         expect(response.body.success).toBe(false);
-    //         expect(response.body.message).toMatch(/proyecto finalizado|cerrado/i);
-    //     } finally {
-    //         await cleanupContext(ctx);
-    //     }
-    // });
+            expect(response.status).toBe(400);
+            expect(response.body.success).toBe(false);
+            expect(response.body.message).toMatch(/proyecto finalizado|cerrado/i);
+        } finally {
+            await cleanupContext(ctx);
+        }
+    });
 });

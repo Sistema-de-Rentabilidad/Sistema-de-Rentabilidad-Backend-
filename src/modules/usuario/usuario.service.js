@@ -50,7 +50,10 @@ const createUsuario = async (data, currentUser) => {
   if (currentUser.rol === 'admin') {
     // admin debe indicar empresa
     if (!id_empresa) {
-      throw new Error('Admin debe especificar la empresa');
+      throw Object.assign(
+        new Error('Admin debe especificar la empresa'),
+        { status: 400 }
+      );
     }
 
     // admin SOLO crea propietario
