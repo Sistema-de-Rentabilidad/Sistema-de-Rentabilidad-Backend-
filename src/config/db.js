@@ -1,6 +1,8 @@
 // src/config/db.js
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const { DATABASE_URL } = require('./env');
+
+types.setTypeParser(1082, (value) => value);
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
