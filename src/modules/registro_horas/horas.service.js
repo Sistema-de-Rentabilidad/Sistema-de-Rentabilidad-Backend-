@@ -60,7 +60,9 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
   // VALIDAR ASIGNACION EMPLEADO
   const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, id_proyecto);
 
-  if (!perteneceProyecto) {
+  // Si es lider, validar si es el lider del proyecto
+  const esLiderProyecto = proyecto.id_lider === user.id_usuario;
+  if (!perteneceProyecto && !esLiderProyecto) {
     const error = new Error('No estás asignado a este proyecto');
     error.status = 403;
     throw error;
@@ -204,7 +206,9 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   // VALIDAR ASIGNACION EMPLEADO
   const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, proyectoId);
 
-  if (!perteneceProyecto) {
+  // Si es lider, validar si es el lider del proyecto
+  const esLiderProyecto = proyecto.id_lider === user.id_usuario;
+  if (!perteneceProyecto && !esLiderProyecto) {
     const error = new Error('No estás asignado a este proyecto');
     error.status = 403;
     throw error;
