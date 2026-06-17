@@ -1,6 +1,6 @@
 // src/config/db.js
 const { Pool } = require('pg');
-const { DATABASE_URL } = require('./env');
+const { DATABASE_URL, DB_CONNECTION_TIMEOUT_MS } = require('./env');
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -11,7 +11,7 @@ const pool = new Pool({
   // ⚡ configuración del pool (optimización)
   max: 10, // máximo conexiones
   idleTimeoutMillis: 30000, // 30s
-  connectionTimeoutMillis: 5000 // timeout conexión
+  connectionTimeoutMillis: DB_CONNECTION_TIMEOUT_MS // timeout conexión
 });
 
 pool.on('error', (err) => {

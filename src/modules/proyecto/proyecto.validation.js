@@ -1,6 +1,8 @@
 const { body, param } = require('express-validator');
 const { handleValidationErrors } = require('../middlewares/validationMiddleware');
 
+const ESTADOS_PROYECTO = ['Cotizado', 'Aprobado', 'Ejecución', 'Desestimado', 'Finalizado'];
+
 const createProyectoValidation = [
   // nombre
   body('nombre')
@@ -32,14 +34,16 @@ const createProyectoValidation = [
 
   // fechas
   body('fecha_inicio')
+    .optional({ checkFalsy: true })
     .notEmpty().withMessage('La fecha de inicio es obligatoria')
     .isISO8601().withMessage('Fecha de inicio inválida'),
 
   body('fecha_fin_estimada')
+    .optional({ checkFalsy: true })
     .notEmpty().withMessage('La fecha fin estimada es obligatoria')
     .isISO8601().withMessage('Fecha fin estimada inválida')
     .custom((value, { req }) => {
-      if (new Date(value) < new Date(req.body.fecha_inicio)) {
+      if (req.body.fecha_inicio && new Date(value) < new Date(req.body.fecha_inicio)) {
         throw new Error('La fecha fin no puede ser menor a la fecha de inicio');
       }
       return true;
@@ -52,6 +56,7 @@ const createProyectoValidation = [
 
   // líder
   body('id_lider')
+    .optional({ checkFalsy: true })
     .notEmpty().withMessage('El líder es obligatorio')
     .isInt({ min: 1 }).withMessage('ID de líder inválido'),
 
@@ -66,9 +71,9 @@ const createProyectoValidation = [
 
   // al menos un campo clave presente
   (req, res, next) => {
-    const { nombre, id_servicio, id_lider, fecha_inicio, fecha_fin_estimada, presupuesto } = req.body;
+    const { nombre, id_servicio, presupuesto, margen } = req.body;
 
-    if (!nombre || !id_servicio || !id_lider || !fecha_inicio || !fecha_fin_estimada || !presupuesto) {
+    if (!nombre || !id_servicio || presupuesto === undefined || presupuesto === null || margen === undefined || margen === null) {
       return res.status(400).json({
         success: false,
         message: 'Faltan campos obligatorios'
@@ -156,6 +161,11 @@ const updateProyectoValidation = [
     .optional()
     .isInt({ min: 1 })
     .withMessage('ID de líder inválido'),
+
+  body('estado')
+    .optional()
+    .isIn(ESTADOS_PROYECTO)
+    .withMessage('Estado de proyecto invalido'),
 
   // empleados
   body('empleados')

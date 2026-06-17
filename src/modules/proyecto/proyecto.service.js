@@ -3,6 +3,61 @@ const servicioRepository = require('../servicio/servicio.repository');
 const usuarioRepository = require('../usuario/usuario.repository');
 const pool = require('../../config/db');
 
+const ESTADO_PROYECTO = {
+  COTIZADO: 'Cotizado',
+  APROBADO: 'Aprobado',
+  EJECUCION: 'Ejecución',
+  DESESTIMADO: 'Desestimado',
+  FINALIZADO: 'Finalizado'
+};
+
+const validarTransicionEstado = (proyecto, data) => {
+  if (!data.estado || data.estado === proyecto.estado) {
+    return;
+  }
+
+  const estadoActual = proyecto.estado || ESTADO_PROYECTO.COTIZADO;
+  const estadoDestino = data.estado;
+
+  if (estadoDestino === ESTADO_PROYECTO.APROBADO) {
+    if (estadoActual !== ESTADO_PROYECTO.COTIZADO) {
+      throw Object.assign(new Error('Solo proyectos cotizados pueden aprobarse'), { status: 400 });
+    }
+
+    const liderFinal = data.id_lider ?? proyecto.id_lider;
+    const fechaInicioFinal = data.fecha_inicio ?? proyecto.fecha_inicio;
+    const fechaFinEstimadaFinal = data.fecha_fin_estimada ?? proyecto.fecha_fin_estimada;
+
+    if (!liderFinal) {
+      throw Object.assign(new Error('El lider es obligatorio para aprobar el proyecto'), { status: 400 });
+    }
+
+    if (!fechaInicioFinal || !fechaFinEstimadaFinal) {
+      throw Object.assign(new Error('Las fechas son obligatorias para aprobar el proyecto'), { status: 400 });
+    }
+
+    return;
+  }
+
+  if (estadoDestino === ESTADO_PROYECTO.EJECUCION) {
+    if (estadoActual !== ESTADO_PROYECTO.APROBADO) {
+      throw Object.assign(new Error('Solo proyectos aprobados pueden pasar a ejecucion'), { status: 400 });
+    }
+
+    return;
+  }
+
+  if (estadoDestino === ESTADO_PROYECTO.DESESTIMADO) {
+    if (![ESTADO_PROYECTO.COTIZADO, ESTADO_PROYECTO.APROBADO].includes(estadoActual)) {
+      throw Object.assign(new Error('Solo proyectos cotizados o aprobados pueden desestimarse'), { status: 400 });
+    }
+
+    return;
+  }
+
+  throw Object.assign(new Error('Transicion de estado no permitida'), { status: 400 });
+};
+
 const getProyectos = async (empresaId) => {
   return await proyectoRepository.findAll(empresaId);
 };
@@ -51,8 +106,8 @@ const createProyecto = async (empresaId, data) => {
   }
 
   // Validar líder pertenece a empresa
-  const lider = await usuarioRepository.findById(id_lider);
-  if (!lider || lider.id_empresa !== empresaId || lider.rol !== 'lider') {
+  const lider = id_lider ? await usuarioRepository.findById(id_lider) : null;
+  if (id_lider && (!lider || lider.id_empresa !== empresaId || lider.rol !== 'lider')) {
     throw Object.assign(new Error('Líder no válido'), { status: 400 });
   }
 
@@ -92,6 +147,7 @@ const createProyecto = async (empresaId, data) => {
     id_servicio,
     id_lider,
     empresaId,
+    estado: ESTADO_PROYECTO.COTIZADO,
     empleados
   });
 };
@@ -128,7 +184,7 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
     );
   }
 
-  if (proyecto.fecha_fin_real) {
+  if (proyecto.fecha_fin_real || proyecto.estado === ESTADO_PROYECTO.FINALIZADO) {
     throw Object.assign(
       new Error('No se puede editar un proyecto finalizado'),
       { status: 400 }
@@ -141,6 +197,8 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
     id_lider,
     empleados
   } = data;
+
+  validarTransicionEstado(proyecto, data);
 
   if (nombre) {
     const nombreLimpio = nombre.trim();
@@ -264,6 +322,13 @@ const finalizarProyecto = async ({ proyectoId, empresaId, liderId }) => {
     );
   }
 
+  if (proyecto.estado !== ESTADO_PROYECTO.EJECUCION) {
+    throw Object.assign(
+      new Error('Solo los proyectos en ejecucion pueden finalizarse'),
+      { status: 400 }
+    );
+  }
+
   return await proyectoRepository.finalizar(proyectoId);
 };
 
@@ -287,4 +352,5 @@ module.exports = {
   desactivarProyecto,
   finalizarProyecto,
   getHorasResumenByProyecto,
+  ESTADO_PROYECTO,
 };

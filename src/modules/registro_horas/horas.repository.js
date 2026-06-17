@@ -2,7 +2,76 @@ const pool = require('../../config/db');
 
 const ahoraLimaSql = "timezone('America/Lima', now())";
 
-const findByEmpleado = async (idEmpleado, empresaId) => {
+const buildFechaFilter = ({ fecha_desde, fecha_hasta } = {}, startIndex = 1) => {
+  const conditions = [];
+  const values = [];
+
+  if (fecha_desde) {
+    values.push(fecha_desde);
+    conditions.push(`rh.fecha >= $${startIndex + values.length - 1}`);
+  }
+
+  if (fecha_hasta) {
+    values.push(fecha_hasta);
+    conditions.push(`rh.fecha <= $${startIndex + values.length - 1}`);
+  }
+
+  return {
+    sql: conditions.length ? ` AND ${conditions.join(' AND ')}` : '',
+    values
+  };
+};
+
+const findByLider = async (liderId) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+          rh.id_registro,
+          rh.id_proyecto,
+          rh.id_empleado,
+          rh.fecha,
+          rh.horas,
+          rh.descripcion,
+          rh.created_at,
+          p.nombre AS proyecto_nombre,
+          u.nombre AS empleado_nombre
+       FROM registro_horas rh
+       INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
+       INNER JOIN usuario  u ON u.id_usuario  = rh.id_empleado
+       WHERE EXISTS (
+         SELECT 1 FROM proyecto_lider pl
+         WHERE pl.id_proyecto = p.id_proyecto AND pl.id_lider = $1
+       )
+       ORDER BY rh.fecha DESC, rh.id_registro DESC`,
+      [liderId]
+    );
+    return result.rows;
+  } catch {
+    // Fallback cuando proyecto_lider aún no existe
+    const result = await pool.query(
+      `SELECT
+          rh.id_registro,
+          rh.id_proyecto,
+          rh.id_empleado,
+          rh.fecha,
+          rh.horas,
+          rh.descripcion,
+          rh.created_at,
+          p.nombre AS proyecto_nombre,
+          u.nombre AS empleado_nombre
+       FROM registro_horas rh
+       INNER JOIN proyecto p ON p.id_proyecto = rh.id_proyecto
+       INNER JOIN usuario  u ON u.id_usuario  = rh.id_empleado
+       WHERE p.id_lider = $1
+       ORDER BY rh.fecha DESC, rh.id_registro DESC`,
+      [liderId]
+    );
+    return result.rows;
+  }
+};
+
+const findByEmpleado = async (idEmpleado, empresaId, filters = {}) => {
+  const fechaFilter = buildFechaFilter(filters, 3);
   const result = await pool.query(
     `SELECT
       rh.id_registro,
@@ -22,11 +91,65 @@ const findByEmpleado = async (idEmpleado, empresaId) => {
       ON rh.id_empleado = u.id_usuario
     WHERE rh.id_empleado = $1
       AND u.id_empresa = $2
+      ${fechaFilter.sql}
     ORDER BY rh.fecha DESC
     `,
-    [idEmpleado, empresaId]
+    [idEmpleado, empresaId, ...fechaFilter.values]
   );
 
+  return result.rows;
+};
+
+const findByEmpresa = async (empresaId, filters = {}) => {
+  const fechaFilter = buildFechaFilter(filters, 2);
+  const result = await pool.query(
+    `SELECT
+      rh.id_registro,
+      rh.fecha,
+      rh.horas,
+      rh.descripcion,
+      rh.id_empleado,
+      u.nombre AS empleado_nombre,
+      p.id_proyecto,
+      p.nombre AS proyecto_nombre,
+      f.id_fase,
+      f.nombre AS fase_nombre
+    FROM registro_horas rh
+    INNER JOIN usuario u
+      ON rh.id_empleado = u.id_usuario
+    INNER JOIN proyecto p
+      ON rh.id_proyecto = p.id_proyecto
+    INNER JOIN fase f
+      ON rh.id_fase = f.id_fase
+    WHERE u.id_empresa = $1
+      AND p.id_empresa = $1
+      AND u.rol = 'empleado'
+      ${fechaFilter.sql}
+    ORDER BY rh.fecha DESC, rh.id_registro DESC
+    `,
+    [empresaId, ...fechaFilter.values]
+  );
+
+  return result.rows;
+};
+
+const findByProyecto = async (proyectoId) => {
+  const result = await pool.query(
+    `SELECT
+        rh.id_registro,
+        rh.id_proyecto,
+        rh.id_empleado,
+        rh.fecha,
+        rh.horas,
+        rh.descripcion,
+        rh.created_at,
+        u.nombre AS empleado_nombre
+     FROM registro_horas rh
+     INNER JOIN usuario u ON u.id_usuario = rh.id_empleado
+     WHERE rh.id_proyecto = $1
+     ORDER BY rh.fecha DESC`,
+    [proyectoId]
+  );
   return result.rows;
 };
 
@@ -40,6 +163,26 @@ const getTotalHorasByEmpleadoYFecha = async (idEmpleado, fecha) => {
   );
 
   return result.rows[0].total;
+};
+
+const getHorasTrabajadasByEmpleadoYFecha = async (idEmpleado, fecha) => {
+  const result = await pool.query(
+    `SELECT
+        CASE
+          WHEN hora_entrada IS NULL THEN NULL
+          ELSE GREATEST(
+            EXTRACT(EPOCH FROM (COALESCE(hora_salida, ${ahoraLimaSql})::timestamp - hora_entrada::timestamp)) / 3600,
+            0
+          )
+        END AS horas_trabajadas
+     FROM marcaje
+     WHERE id_usuario = $1
+       AND fecha = $2
+     LIMIT 1`,
+    [idEmpleado, fecha]
+  );
+
+  return result.rows[0]?.horas_trabajadas ?? null;
 };
 
 const create = async ({ id_empleado, id_proyecto, id_fase, fecha, horas, descripcion }) => {
@@ -95,8 +238,12 @@ const update = async ({ id, id_proyecto, id_fase, horas, descripcion }) => {
 };
 
 module.exports = {
+  findByLider,
   findByEmpleado,
+  findByEmpresa,
+  findByProyecto,
   getTotalHorasByEmpleadoYFecha,
+  getHorasTrabajadasByEmpleadoYFecha,
   create,
   findById,
   getTotalHorasSinRegistro,

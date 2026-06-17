@@ -2,7 +2,11 @@ const registroHorasService = require('./horas.service');
 
 const getRegistrosHoras = async (req, res, next) => {
   try {
-    const registros = await registroHorasService.getRegistrosHoras({ user: req.user, empresaId: req.empresaId });
+    const registros = await registroHorasService.getRegistrosHoras({
+      user: req.user,
+      empresaId: req.empresaId,
+      filters: req.query
+    });
 
     // no hay horas registradas
     if (registros.length === 0) {
