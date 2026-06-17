@@ -33,6 +33,7 @@ const findAll = async (empresaId) => {
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
+        p.estado,
         p.id_servicio,
         s.nombre AS nombre_servicio,
         p.id_lider,
@@ -81,6 +82,7 @@ const findAllByLider = async ({ empresaId, liderId }) => {
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
+        p.estado,
         p.id_servicio,
         s.nombre AS nombre_servicio,
         p.id_lider,
@@ -124,6 +126,7 @@ const findAllByEmpleado = async ({ empresaId, empleadoId }) => {
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
+        p.estado,
         p.id_servicio,
         s.nombre AS nombre_servicio,
         p.id_lider,
@@ -175,20 +178,22 @@ const create = async (data) => {
         id_servicio, 
         id_lider, 
         id_empresa, 
+        estado,
         is_active
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
       RETURNING *`,
       [
         data.nombre,
         data.descripcion ?? null,
         data.presupuesto,
         data.margen ?? null,
-        data.fecha_inicio,
-        data.fecha_fin_estimada,
+        data.fecha_inicio ?? null,
+        data.fecha_fin_estimada ?? null,
         data.id_servicio,
-        data.id_lider,
-        data.empresaId
+        data.id_lider ?? null,
+        data.empresaId,
+        data.estado
       ]
     );
 
@@ -221,7 +226,7 @@ const create = async (data) => {
 
 const findBasicById = async (id) => {
   const res = await pool.query(
-    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real, is_active
+    `SELECT id_proyecto, id_empresa, id_lider, nombre, fecha_fin_real, estado, is_active
      FROM proyecto
      WHERE id_proyecto = $1`,
     [id]
@@ -241,6 +246,7 @@ const findById = async (proyectoId) => {
         p.fecha_inicio,
         p.fecha_fin_estimada,
         p.fecha_fin_real,
+        p.estado,
         p.id_servicio,
         p.id_empresa,
         s.nombre AS servicio_nombre,
@@ -290,7 +296,8 @@ const update = async (proyectoId, data) => {
            fecha_inicio = COALESCE($6, fecha_inicio),
            fecha_fin_estimada = COALESCE($7, fecha_fin_estimada),
            id_servicio = COALESCE($8, id_servicio),
-           id_lider = COALESCE($9, id_lider)
+           id_lider = COALESCE($9, id_lider),
+           estado = COALESCE($10, estado)
        WHERE id_proyecto = $1
        RETURNING *`,
       [
@@ -302,7 +309,8 @@ const update = async (proyectoId, data) => {
         data.fecha_inicio ?? null,
         data.fecha_fin_estimada ?? null,
         data.id_servicio ?? null,
-        data.id_lider ?? null
+        data.id_lider ?? null,
+        data.estado ?? null
       ]
     );
 
@@ -357,7 +365,8 @@ const finalizar = async (proyectoId) => {
   const result = await pool.query(
     `
     UPDATE proyecto
-    SET fecha_fin_real = NOW()
+    SET fecha_fin_real = timezone('America/Lima', now())::date,
+        estado = 'Finalizado'
     WHERE id_proyecto = $1
     RETURNING *
     `,

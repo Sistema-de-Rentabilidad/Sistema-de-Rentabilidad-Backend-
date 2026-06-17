@@ -12,6 +12,7 @@ const VALID_NODE_ENVS = new Set(['development', 'test', 'qa', 'production']);
 const VALID_RATE_LIMIT_STORES = new Set(['auto', 'memory', 'database']);
 const MIN_JWT_SECRET_LENGTH = 32;
 const TIME_24H_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_DB_CONNECTION_TIMEOUT_MS = process.env.NODE_ENV === 'qa' ? 30000 : 5000;
 
 const parseIntegerEnv = (name, defaultValue, { min, max }) => {
   const rawValue = process.env[name];
@@ -91,6 +92,10 @@ module.exports = {
   FRONTEND_URL,
   FRONTEND_ORIGIN,
   NODE_ENV: process.env.NODE_ENV,
+  DB_CONNECTION_TIMEOUT_MS: parseIntegerEnv('DB_CONNECTION_TIMEOUT_MS', DEFAULT_DB_CONNECTION_TIMEOUT_MS, {
+    min: 1000,
+    max: 60000,
+  }),
   LOGIN_RATE_LIMIT_STORE: process.env.LOGIN_RATE_LIMIT_STORE || 'auto',
   BCRYPT_SALT_ROUNDS: parseIntegerEnv('BCRYPT_SALT_ROUNDS', 10, { min: 10, max: 14 }),
   LOGIN_RATE_LIMIT_WINDOW_MS: parseIntegerEnv('LOGIN_RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000, {

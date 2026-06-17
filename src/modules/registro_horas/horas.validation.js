@@ -1,5 +1,30 @@
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const { handleValidationErrors } = require('../../modules/middlewares/validationMiddleware');
+
+const listHorasValidation = [
+    query('fecha_desde')
+        .optional()
+        .isISO8601().withMessage('Fecha desde invalida'),
+
+    query('fecha_hasta')
+        .optional()
+        .isISO8601().withMessage('Fecha hasta invalida'),
+
+    (req, res, next) => {
+        const { fecha_desde, fecha_hasta } = req.query;
+
+        if (fecha_desde && fecha_hasta && new Date(fecha_desde) > new Date(fecha_hasta)) {
+            return res.status(400).json({
+                success: false,
+                message: 'El rango de fechas es invalido'
+            });
+        }
+
+        next();
+    },
+
+    handleValidationErrors
+];
 
 const createHorasValidation = [
     body('id_proyecto')
@@ -13,7 +38,7 @@ const createHorasValidation = [
     body('horas')
         .notEmpty().withMessage('Las horas son obligatorias')
         .isNumeric().withMessage('Las horas deben ser números')
-        .isFloat({ min: 0.5, max: 12 }).withMessage('Las horas deben estar entre 0.5 y 12'),
+        .isFloat({ min: 0.5 }).withMessage('Las horas deben ser mayores o iguales a 0.5'),
 
     body('descripcion')
         .optional({ checkFalsy: true })
@@ -44,8 +69,8 @@ const updateHorasValidation = [
     body('horas')
         .optional()
         .isNumeric().withMessage('Las horas deben ser números')
-        .isFloat({ min: 0.5, max: 12 })
-        .withMessage('Las horas deben estar entre 0.5 y 12'),
+        .isFloat({ min: 0.5 })
+        .withMessage('Las horas deben ser mayores o iguales a 0.5'),
 
     body('descripcion')
         .optional()
@@ -69,6 +94,7 @@ const updateHorasValidation = [
 ];
 
 module.exports = {
+    listHorasValidation,
     createHorasValidation,
     registroHorasIdParamValidation,
     updateHorasValidation

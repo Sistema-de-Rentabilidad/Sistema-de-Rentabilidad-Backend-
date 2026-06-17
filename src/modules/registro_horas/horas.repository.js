@@ -2,6 +2,26 @@ const pool = require('../../config/db');
 
 const ahoraLimaSql = "timezone('America/Lima', now())";
 
+const buildFechaFilter = ({ fecha_desde, fecha_hasta } = {}, startIndex = 1) => {
+  const conditions = [];
+  const values = [];
+
+  if (fecha_desde) {
+    values.push(fecha_desde);
+    conditions.push(`rh.fecha >= $${startIndex + values.length - 1}`);
+  }
+
+  if (fecha_hasta) {
+    values.push(fecha_hasta);
+    conditions.push(`rh.fecha <= $${startIndex + values.length - 1}`);
+  }
+
+  return {
+    sql: conditions.length ? ` AND ${conditions.join(' AND ')}` : '',
+    values
+  };
+};
+
 const findByLider = async (liderId) => {
   try {
     const result = await pool.query(
@@ -10,7 +30,7 @@ const findByLider = async (liderId) => {
           rh.id_proyecto,
           rh.id_empleado,
           rh.fecha,
-          rh.horas_trabajadas AS horas,
+          rh.horas,
           rh.descripcion,
           rh.created_at,
           p.nombre AS proyecto_nombre,
@@ -34,7 +54,7 @@ const findByLider = async (liderId) => {
           rh.id_proyecto,
           rh.id_empleado,
           rh.fecha,
-          rh.horas_trabajadas AS horas,
+          rh.horas,
           rh.descripcion,
           rh.created_at,
           p.nombre AS proyecto_nombre,
@@ -50,7 +70,8 @@ const findByLider = async (liderId) => {
   }
 };
 
-const findByEmpleado = async (idEmpleado, empresaId) => {
+const findByEmpleado = async (idEmpleado, empresaId, filters = {}) => {
+  const fechaFilter = buildFechaFilter(filters, 3);
   const result = await pool.query(
     `SELECT
       rh.id_registro,
@@ -70,9 +91,43 @@ const findByEmpleado = async (idEmpleado, empresaId) => {
       ON rh.id_empleado = u.id_usuario
     WHERE rh.id_empleado = $1
       AND u.id_empresa = $2
+      ${fechaFilter.sql}
     ORDER BY rh.fecha DESC
     `,
-    [idEmpleado, empresaId]
+    [idEmpleado, empresaId, ...fechaFilter.values]
+  );
+
+  return result.rows;
+};
+
+const findByEmpresa = async (empresaId, filters = {}) => {
+  const fechaFilter = buildFechaFilter(filters, 2);
+  const result = await pool.query(
+    `SELECT
+      rh.id_registro,
+      rh.fecha,
+      rh.horas,
+      rh.descripcion,
+      rh.id_empleado,
+      u.nombre AS empleado_nombre,
+      p.id_proyecto,
+      p.nombre AS proyecto_nombre,
+      f.id_fase,
+      f.nombre AS fase_nombre
+    FROM registro_horas rh
+    INNER JOIN usuario u
+      ON rh.id_empleado = u.id_usuario
+    INNER JOIN proyecto p
+      ON rh.id_proyecto = p.id_proyecto
+    INNER JOIN fase f
+      ON rh.id_fase = f.id_fase
+    WHERE u.id_empresa = $1
+      AND p.id_empresa = $1
+      AND u.rol = 'empleado'
+      ${fechaFilter.sql}
+    ORDER BY rh.fecha DESC, rh.id_registro DESC
+    `,
+    [empresaId, ...fechaFilter.values]
   );
 
   return result.rows;
@@ -85,7 +140,7 @@ const findByProyecto = async (proyectoId) => {
         rh.id_proyecto,
         rh.id_empleado,
         rh.fecha,
-        rh.horas_trabajadas AS horas,
+        rh.horas,
         rh.descripcion,
         rh.created_at,
         u.nombre AS empleado_nombre
@@ -185,6 +240,7 @@ const update = async ({ id, id_proyecto, id_fase, horas, descripcion }) => {
 module.exports = {
   findByLider,
   findByEmpleado,
+  findByEmpresa,
   findByProyecto,
   getTotalHorasByEmpleadoYFecha,
   getHorasTrabajadasByEmpleadoYFecha,
