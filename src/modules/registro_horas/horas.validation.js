@@ -13,7 +13,7 @@ const createHorasValidation = [
     body('horas')
         .notEmpty().withMessage('Las horas son obligatorias')
         .isNumeric().withMessage('Las horas deben ser números')
-        .isFloat({ min: 0.5, max: 12 }).withMessage('Las horas deben estar entre 0.5 y 12'),
+        .isFloat({ min: 0.5, max: 24 }).withMessage('Las horas deben estar entre 0.5 y 24'),
 
     body('descripcion')
         .optional({ checkFalsy: true })
@@ -44,8 +44,8 @@ const updateHorasValidation = [
     body('horas')
         .optional()
         .isNumeric().withMessage('Las horas deben ser números')
-        .isFloat({ min: 0.5, max: 12 })
-        .withMessage('Las horas deben estar entre 0.5 y 12'),
+        .isFloat({ min: 0.5, max: 24 })
+        .withMessage('Las horas deben estar entre 0.5 y 24'),
 
     body('descripcion')
         .optional()

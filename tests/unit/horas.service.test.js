@@ -60,12 +60,12 @@ describe('horas.service', () => {
         expect(res).toEqual(['Y']);
     });
 
-    it('createRegistroHoras lanza si total mayor a 12 horas diarias', async () => {
+    it('createRegistroHoras lanza si total mayor a 24 horas diarias', async () => {
         mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
         mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
         mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
         mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
-        mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(8);
+        mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(20);
 
         await expect(horasService.createRegistroHoras({
             id_proyecto: 1,
@@ -74,7 +74,7 @@ describe('horas.service', () => {
             descripcion: 'x',
             user: { id_usuario: 4, tipo_pago: 'mensual' },
             empresaId: 1
-        })).rejects.toThrow('No puedes registrar más de 12 horas diarias');
+        })).rejects.toThrow('No puedes registrar más de 24 horas diarias');
     });
 
     it('createRegistroHoras retorna sin error si tipo_pago no es mensual', async () => {

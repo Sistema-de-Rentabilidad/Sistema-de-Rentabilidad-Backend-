@@ -27,8 +27,8 @@ const validarHoras = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRe
   const total = Number(horasActuales) + Number(horasARegistrar);
 
   // APLICA PARA TODOS
-  if (total > 12) {
-    const error = new Error('No puedes registrar más de 12 horas diarias');
+  if (total > 24) {
+    const error = new Error('No puedes registrar más de 24 horas diarias');
     error.status = 400;
     throw error;
   }

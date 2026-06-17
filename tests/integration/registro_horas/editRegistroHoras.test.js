@@ -166,7 +166,7 @@ describe('HU30 - Actualización de registro de horas', () => {
             .set('Cookie', tokenCookieForUser(ctx.empleado))
             .send({ horas: -1 });
         expect(response.status).toBe(400);
-        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
+        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 24');
     });
 
     test('CP-HU30-11-BE - Error interno API edición horas', async () => {
