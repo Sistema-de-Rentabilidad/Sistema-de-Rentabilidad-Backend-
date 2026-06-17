@@ -274,7 +274,7 @@ describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.errors.some((error) => /mayores o iguales a 0.5/.test(error.msg))).toBe(true);
+      expect(response.body.errors.some((error) => /0.5 y 24/.test(error.msg))).toBe(true);
     } finally {
       await cleanupContext(ctx);
     }

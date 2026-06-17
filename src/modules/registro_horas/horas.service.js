@@ -34,6 +34,21 @@ const isRegistroHorasDuplicadoDbError = (error) => (
   REGISTRO_HORAS_DUPLICADO_CONSTRAINTS.has(error.constraint)
 );
 
+const validarHoras = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
+  const horasActuales = idRegistroExcluir
+    ? await registroHorasRepository.getTotalHorasSinRegistro(idEmpleado, fecha, idRegistroExcluir)
+    : await registroHorasRepository.getTotalHorasByEmpleadoYFecha(idEmpleado, fecha);
+
+  const total = Number(horasActuales) + Number(horasARegistrar);
+
+  // APLICA PARA TODOS
+  if (total > 24) {
+    const error = new Error('No puedes registrar más de 24 horas diarias');
+    error.status = 400;
+    throw error;
+  }
+};
+
 const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, user, empresaId }) => {
   const fecha = getFechaActual(); // FECHA AUTOMÁTICA EN HORA DE PERÚ
 
@@ -45,7 +60,7 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
 
   if (proyecto.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error('No tienes permisos para acceder a esta proyecto'),
+      new Error('No tienes permisos para acceder a este proyecto'),
       { status: 403 }
     );
   }
@@ -90,6 +105,13 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
     error.status = 400;
     throw error;
   }
+
+  await validarHoras({
+    idEmpleado: user.id_usuario,
+    fecha,
+    horasARegistrar: horas,
+    tipoPago: user.tipo_pago
+  });
 
   // CREAR FASE_EMPLEADO
   const existeFaseEmpleado = await faseEmpleadoRepository.exists(user.id_usuario, id_fase);
@@ -229,6 +251,14 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     error.status = 400;
     throw error;
   }
+
+  await validarHoras({
+    idEmpleado: user.id_usuario,
+    fecha: fechaRegistro,
+    horasARegistrar: horasRegistro,
+    idRegistroExcluir: id,
+    tipoPago: user.tipo_pago
+  });
 
   try {
     return await registroHorasRepository.update({

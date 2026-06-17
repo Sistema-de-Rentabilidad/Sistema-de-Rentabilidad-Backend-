@@ -101,6 +101,23 @@ describe('horas.service', () => {
         expect(res).toEqual({ id_registro: 9, horas: 13 });
     });
 
+    it('createRegistroHoras rechaza total mayor a 24 horas diarias', async () => {
+        mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
+        mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
+        mockFaseRepo.findById.mockResolvedValue({ id_empresa: 1, id_fase: 2 });
+        mockFaseRepo.findByProyecto.mockResolvedValue([{ id_fase: 2 }]);
+        mockRegistroHorasRepo.getTotalHorasByEmpleadoYFecha.mockResolvedValue(0);
+
+        await expect(horasService.createRegistroHoras({
+            id_proyecto: 1,
+            id_fase: 2,
+            horas: 25,
+            descripcion: 'x',
+            user: { id_usuario: 4, rol: 'empleado', tipo_pago: 'mensual' },
+            empresaId: 1
+        })).rejects.toThrow(/24 horas diarias/);
+    });
+
     it('createRegistroHoras retorna sin error si tipo_pago no es mensual', async () => {
         mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 1, fecha_fin_real: null });
         mockProyectoEmpleadoRepo.exists.mockResolvedValue(true);
@@ -171,7 +188,7 @@ describe('horas.service', () => {
 
     it('createRegistroHoras lanza si proyecto es de otra empresa', async () => {
         mockProyectoRepo.findById.mockResolvedValue({ id_empresa: 2, fecha_fin_real: null });
-        await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('No tienes permisos para acceder a esta proyecto');
+        await expect(horasService.createRegistroHoras({ id_proyecto: 1, id_fase: 2, horas: 1, descripcion: 'x', user: { id_usuario: 4, tipo_pago: 'mensual' }, empresaId: 1 })).rejects.toThrow('No tienes permisos para acceder a este proyecto');
     });
 
     it('createRegistroHoras lanza si proyecto finalizado', async () => {
