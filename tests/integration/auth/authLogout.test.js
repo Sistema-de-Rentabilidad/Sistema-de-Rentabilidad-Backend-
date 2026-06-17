@@ -23,7 +23,7 @@ describe('HU14 - Cierre de sesion', () => {
         }
     });
 
-  test('CP-HU14-1-BE - API invalida sesión con JWT válido (Cerrar sesión)', async () => {
+    test('CP-HU14-1-BE - API invalida sesión con JWT válido (Cerrar sesión)', async () => {
         const cookies = tokenCookieForUser(ctx.propietario);
 
         const response = await request(app)
@@ -90,6 +90,15 @@ describe('HU14 - Cierre de sesion', () => {
             .get('/api/auth/me');
 
         // 3. Verificar que sea rechazado
+        expect(response.status).toBe(401);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('message');
+    });
+
+    test('CP-HU14-6-BE - API logout sin sesión activa', async () => {
+        const response = await request(app)
+            .post('/api/auth/logout');
+
         expect(response.status).toBe(401);
         expect(response.body).toHaveProperty('success', false);
         expect(response.body).toHaveProperty('message');
