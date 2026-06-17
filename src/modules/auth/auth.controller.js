@@ -72,7 +72,13 @@ const me = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-    // Logout solo elimina la cookie del navegador; no revoca JWT ya emitidos.
+    if (!req.cookies || !req.cookies[ACCESS_TOKEN_COOKIE]) {
+        return res.status(401).json({
+            success: false,
+            message: 'No existe sesión activa para cerrar',
+        });
+    }
+
     res.clearCookie(ACCESS_TOKEN_COOKIE, clearAccessTokenCookieOptions);
 
     return res.status(200).json({
@@ -86,3 +92,4 @@ module.exports = {
     me,
     logout
 };
+
