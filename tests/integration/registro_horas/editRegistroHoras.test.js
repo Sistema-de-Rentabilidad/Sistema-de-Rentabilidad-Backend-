@@ -36,76 +36,76 @@ describe('HU30 - Actualización de registro de horas', () => {
         await cleanupContext(ctx);
     });
 
-    // test('CP-HU30-1-BE - Actualización exitosa de registro de horas', async () => {
-    //     const response = await request(app)
-    //         .put(`/api/horas/${registroTemporal.id_registro}`)
-    //         .set('Cookie', tokenCookieForUser(ctx.empleado))
-    //         .send({
-    //             horas: 2.5,
-    //             descripcion: 'Actualización exitosa de prueba'
-    //         });
+    test('CP-HU30-1-BE - Actualización exitosa de registro de horas', async () => {
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({
+                horas: 2.5,
+                descripcion: 'Actualización exitosa de prueba'
+            });
 
-    //     expect(response.status).toBe(200);
-    //     expect(response.body.success).toBe(true);
-    //     expect(Number(response.body.data.horas)).toBe(2.5);
-    //     expect(response.body.data.descripcion).toBe('Actualización exitosa de prueba');
-    // });
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(Number(response.body.data.horas)).toBe(2.5);
+        expect(response.body.data.descripcion).toBe('Actualización exitosa de prueba');
+    });
 
-    // test('CP-HU30-1-BD - Persistencia de edición de horas en BD', async () => {
-    //     await request(app)
-    //         .put(`/api/horas/${registroTemporal.id_registro}`)
-    //         .set('Cookie', tokenCookieForUser(ctx.empleado))
-    //         .send({
-    //             horas: 4,
-    //             descripcion: 'Persistencia BD confirmada'
-    //         });
+    test('CP-HU30-1-BD - Persistencia de edición de horas en BD', async () => {
+        await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({
+                horas: 4,
+                descripcion: 'Persistencia BD confirmada'
+            });
 
-    //     const result = await pool.query(
-    //         'SELECT horas, descripcion FROM registro_horas WHERE id_registro = $1',
-    //         [registroTemporal.id_registro]
-    //     );
+        const result = await pool.query(
+            'SELECT horas, descripcion FROM registro_horas WHERE id_registro = $1',
+            [registroTemporal.id_registro]
+        );
 
-    //     expect(result.rows.length).toBe(1);
-    //     expect(Number(result.rows[0].horas)).toBe(4);
-    //     expect(result.rows[0].descripcion).toBe('Persistencia BD confirmada');
-    // });
+        expect(result.rows.length).toBe(1);
+        expect(Number(result.rows[0].horas)).toBe(4);
+        expect(result.rows[0].descripcion).toBe('Persistencia BD confirmada');
+    });
 
-    // test('CP-HU30-3-BE - Restricción edición proyecto finalizado', async () => {
-    //     await pool.query('UPDATE proyecto SET fecha_fin_real = NOW() WHERE id_proyecto = $1', [ctx.proyecto.id_proyecto]);
+    test('CP-HU30-3-BE - Restricción edición proyecto finalizado', async () => {
+        await pool.query('UPDATE proyecto SET fecha_fin_real = NOW() WHERE id_proyecto = $1', [ctx.proyecto.id_proyecto]);
 
-    //     const response = await request(app)
-    //         .put(`/api/horas/${registroTemporal.id_registro}`)
-    //         .set('Cookie', tokenCookieForUser(ctx.empleado))
-    //         .send({
-    //             horas: 2,
-    //             descripcion: 'Edición en proyecto cerrado'
-    //         });
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({
+                horas: 2,
+                descripcion: 'Edición en proyecto cerrado'
+            });
 
-    //     expect(response.status).toBe(400);
-    //     expect(response.body.message).toBe('No puedes registrar horas en un proyecto finalizado');
-    // });
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe('No puedes registrar horas en un proyecto finalizado');
+    });
 
-    // test('CP-HU30-4-BE - Restricción duplicidad edición fase', async () => {
-    //     const otraFase = await createFase(ctx, { idProyecto: ctx.proyecto.id_proyecto });
+    test('CP-HU30-4-BE - Restricción duplicidad edición fase', async () => {
+        const otraFase = await createFase(ctx, { idProyecto: ctx.proyecto.id_proyecto });
         
-    //     await createRegistroHoras(ctx, {
-    //         idProyecto: ctx.proyecto.id_proyecto,
-    //         idFase: otraFase.id_fase,
-    //         idEmpleado: ctx.empleado.id_usuario,
-    //         descripcion: 'Conflicto hoy'
-    //     });
+        await createRegistroHoras(ctx, {
+            idProyecto: ctx.proyecto.id_proyecto,
+            idFase: otraFase.id_fase,
+            idEmpleado: ctx.empleado.id_usuario,
+            descripcion: 'Conflicto hoy'
+        });
 
-    //     const response = await request(app)
-    //         .put(`/api/horas/${registroTemporal.id_registro}`)
-    //         .set('Cookie', tokenCookieForUser(ctx.empleado))
-    //         .send({
-    //             id_fase: otraFase.id_fase
-    //         });
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({
+                id_fase: otraFase.id_fase
+            });
 
-    //     expect(response.status).toBe(400);
-    //     // Ajustado al mensaje real recibido en los logs
-    //     expect(response.body.message).toBe('Ya existe un registro de horas para esta fase en esa fecha');
-    // });
+        expect(response.status).toBe(400);
+        // Ajustado al mensaje real recibido en los logs
+        expect(response.body.message).toBe('Ya existe un registro de horas para esta fase en esa fecha');
+    });
 
     test('CP-HU30-5-BE - Validación payload vacío edición', async () => {
         const response = await request(app)
@@ -147,18 +147,18 @@ describe('HU30 - Actualización de registro de horas', () => {
         expect(response.body.message).toBe('Solo puedes editar registros del mismo día');
     });
 
-    // test('CP-HU30-8-BE - Restricción edición fase inactiva', async () => {
-    //     const faseInactiva = await createFase(ctx, { idProyecto: ctx.proyecto.id_proyecto, isActive: false });
-    //     const response = await request(app)
-    //         .put(`/api/horas/${registroTemporal.id_registro}`)
-    //         .set('Cookie', tokenCookieForUser(ctx.empleado))
-    //         .send({
-    //             id_fase: faseInactiva.id_fase
-    //         });
+    test('CP-HU30-8-BE - Restricción edición fase inactiva', async () => {
+        const faseInactiva = await createFase(ctx, { idProyecto: ctx.proyecto.id_proyecto, isActive: false });
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({
+                id_fase: faseInactiva.id_fase
+            });
 
-    //     expect(response.status).toBe(404);
-    //     expect(response.body.message).toBe('Fase no encontrada');
-    // });
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe('Fase no encontrada');
+    });
 
     test('CP-HU30-10-BE - Validación horas negativas edición', async () => {
         const response = await request(app)
@@ -166,19 +166,19 @@ describe('HU30 - Actualización de registro de horas', () => {
             .set('Cookie', tokenCookieForUser(ctx.empleado))
             .send({ horas: -1 });
         expect(response.status).toBe(400);
-        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 12');
+        expect(response.body.errors[0].msg).toBe('Las horas deben estar entre 0.5 y 24');
     });
 
-    // test('CP-HU30-11-BE - Error interno API edición horas', async () => {
-    //     const spy = jest.spyOn(registroHorasRepository, 'update').mockRejectedValue(new Error('Error de BD simulado'));
+    test('CP-HU30-11-BE - Error interno API edición horas', async () => {
+        const spy = jest.spyOn(registroHorasRepository, 'update').mockRejectedValue(new Error('Error de BD simulado'));
 
-    //     const response = await request(app)
-    //         .put(`/api/horas/${registroTemporal.id_registro}`)
-    //         .set('Cookie', tokenCookieForUser(ctx.empleado))
-    //         .send({ horas: 3, descripcion: 'Test error 500' });
-    //     expect(response.status).toBe(500);
-    //     spy.mockRestore();
-    // });
+        const response = await request(app)
+            .put(`/api/horas/${registroTemporal.id_registro}`)
+            .set('Cookie', tokenCookieForUser(ctx.empleado))
+            .send({ horas: 3, descripcion: 'Test error 500' });
+        expect(response.status).toBe(500);
+        spy.mockRestore();
+    });
 
     test('CP-HU30-12-BE - Registro inexistente API edición', async () => {
         const response = await request(app)

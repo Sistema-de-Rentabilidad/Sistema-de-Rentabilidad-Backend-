@@ -262,6 +262,56 @@ describe('HU13 - Creacion de empleado/lider', () => {
         });
     });
 
+    test('CP-HU13-2-BE - Error al registrar empleado/lider sin sueldo', async () => {
+        const timestamp = Date.now();
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const payload = {
+                nombre: `${rol.charAt(0).toUpperCase() + rol.slice(1)} sin sueldo`,
+                email: `qa_${rol}_sin_sueldo_${timestamp + Math.random()}@test.com`,
+                password: 'Password123*',
+                rol: rol
+                // Omitiendo monto, tipo_pago y horas_mensuales
+            };
+
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', authCookies)
+                .send(payload);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body.message).toMatch(/requiere monto y tipo de pago/i);
+        }
+    });
+
+    test('CP-HU13-3-BE - Error al registrar empleado/lider mensual sin horas mensuales', async () => {
+        const timestamp = Date.now();
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const payload = {
+                nombre: `${rol.charAt(0).toUpperCase() + rol.slice(1)} mensual sin horas`,
+                email: `qa_${rol}_mensual_sin_horas_${timestamp + Math.random()}@test.com`,
+                password: 'Password123*',
+                rol: rol,
+                tipo_pago: 'mensual',
+                monto: 1000
+                // Omitiendo horas_mensuales
+            };
+
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', authCookies)
+                .send(payload);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body.message).toMatch(/requiere horas mensuales/i);
+        }
+    });
+
     test('CP-HU13-4-BE - Restricción correo duplicado empleado', async () => {
         // Intentar registrar un empleado usando un email que ya existe en seed
         const payload = {
@@ -283,6 +333,31 @@ describe('HU13 - Creacion de empleado/lider', () => {
         expect(response.body).toHaveProperty('success', false);
         expect(response.body).toHaveProperty('message');
         expect(response.body.message).toMatch(/email.*registrado|ya.*existe|duplicad/i);
+    });
+
+    test('CP-HU13-9-BE - Error al registrar empleado/lider sin tipo de pago', async () => {
+        const timestamp = Date.now();
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const payload = {
+                nombre: `${rol.charAt(0).toUpperCase() + rol.slice(1)} sin tipo pago`,
+                email: `qa_${rol}_sin_tipo_${timestamp + Math.random()}@test.com`,
+                password: 'Password123*',
+                rol: rol,
+                monto: 1000
+                // Omitiendo tipo_pago
+            };
+
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', authCookies)
+                .send(payload);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body.message).toMatch(/requiere monto y tipo de pago/i);
+        }
     });
 
     test('CP-HU13-11-BE - Restricción registro usuarios por empleado', async () => {

@@ -1,21 +1,5 @@
 const registroHorasService = require('./horas.service');
 
-const getHorasByLider = async (req, res, next) => {
-  try {
-    if (!req.user?.id_usuario) {
-      return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
-    }
-
-    const horas = await registroHorasService.getHorasByLider(req.user.id_usuario);
-
-    res.status(200).json({ success: true, data: horas });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-
-    next(err);
-  }
-};
-
 const getRegistrosHoras = async (req, res, next) => {
   try {
     const registros = await registroHorasService.getRegistrosHoras({
@@ -91,7 +75,6 @@ const updateRegistroHoras = async (req, res, next) => {
 };
 
 module.exports = {
-  getHorasByLider,
   getRegistrosHoras,
   createRegistroHoras,
   getRegistroHorasById,
