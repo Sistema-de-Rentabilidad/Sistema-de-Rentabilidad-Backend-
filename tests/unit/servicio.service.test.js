@@ -14,11 +14,14 @@ describe('servicio.service', () => {
             findById: jest.fn(),
             update: jest.fn(),
             findByIdFull: jest.fn(),
-            desactivar: jest.fn()
+            desactivar: jest.fn(),
+            countProyectosByServicio: jest.fn()
         };
 
         jest.doMock('../../src/modules/servicio/servicio.repository', () => mockServicioRepo);
         servicioService = require('../../src/modules/servicio/servicio.service');
+
+        mockServicioRepo.countProyectosByServicio.mockResolvedValue(0);
     });
 
     it('getServiciosByEmpresa delega al repositorio', async () => {
@@ -75,6 +78,15 @@ describe('servicio.service', () => {
     it('desactivarServicio lanza si servicio ya inactivo', async () => {
         mockServicioRepo.findByIdFull.mockResolvedValue({ id_empresa: 1, is_active: false });
         await expect(servicioService.desactivarServicio(1, 1)).rejects.toThrow('El servicio ya está inactivo');
+    });
+
+    it('desactivarServicio lanza si el servicio tiene proyectos asociados', async () => {
+        mockServicioRepo.findByIdFull.mockResolvedValue({ id_empresa: 1, is_active: true });
+        mockServicioRepo.countProyectosByServicio.mockResolvedValue(2);
+
+        await expect(servicioService.desactivarServicio(1, 1))
+            .rejects.toThrow('No se puede eliminar un servicio con proyectos asociados');
+        expect(mockServicioRepo.desactivar).not.toHaveBeenCalled();
     });
 
     it('desactivarServicio desactiva correctamente', async () => {

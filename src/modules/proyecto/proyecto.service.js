@@ -58,6 +58,22 @@ const validarTransicionEstado = (proyecto, data) => {
   throw Object.assign(new Error('Transicion de estado no permitida'), { status: 400 });
 };
 
+const validarFechasFinales = (proyecto, data) => {
+  const fechaInicioFinal = data.fecha_inicio ?? proyecto.fecha_inicio;
+  const fechaFinEstimadaFinal = data.fecha_fin_estimada ?? proyecto.fecha_fin_estimada;
+
+  if (
+    fechaInicioFinal &&
+    fechaFinEstimadaFinal &&
+    new Date(fechaFinEstimadaFinal) < new Date(fechaInicioFinal)
+  ) {
+    throw Object.assign(
+      new Error('La fecha de fin estimada no puede ser anterior a la fecha de inicio'),
+      { status: 400 }
+    );
+  }
+};
+
 const getProyectos = async (empresaId) => {
   return await proyectoRepository.findAll(empresaId);
 };
@@ -198,6 +214,7 @@ const updateProyecto = async (proyectoId, empresaId, data) => {
     empleados
   } = data;
 
+  validarFechasFinales(proyecto, data);
   validarTransicionEstado(proyecto, data);
 
   if (nombre) {
