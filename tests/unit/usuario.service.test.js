@@ -77,7 +77,7 @@ describe('usuario.service', () => {
         mockUsuarioRepo.findByEmail.mockResolvedValue(null);
         mockUsuarioRepo.findPropietarioByEmpresa.mockResolvedValue(null);
 
-        await expect(usuarioService.createUsuario({ email: 'a@b.com', password: 'x', rol: 'empleado' }, { rol: 'propietario', id_empresa: 1 })).rejects.toThrow('Empleado requiere monto y tipo de pago');
+        await expect(usuarioService.createUsuario({ email: 'a@b.com', password: 'x', rol: 'empleado' }, { rol: 'propietario', id_empresa: 1 })).rejects.toThrow('Empleado/Lider requiere monto y tipo de pago');
     });
 
     it('createUsuario crea empleado y llama historialService', async () => {

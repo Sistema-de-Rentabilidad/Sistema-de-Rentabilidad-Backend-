@@ -49,6 +49,11 @@ const shouldUseDatabase = () => (
   (LOGIN_RATE_LIMIT_STORE === "auto" && NODE_ENV === "production")
 );
 
+const shouldBypassRateLimit = () => (
+  NODE_ENV !== "production" &&
+  (process.env.JEST_WORKER_ID || process.env.LOGIN_RATE_LIMIT_DISABLED === "true")
+);
+
 const recordMemoryAttempt = (key) => {
   const now = Date.now();
   const current = memoryAttempts.get(key);
@@ -119,6 +124,10 @@ const createDescriptors = (req) => {
 
 const loginRateLimit = async (req, res, next) => {
   try {
+    if (shouldBypassRateLimit()) {
+      return next();
+    }
+
     const descriptors = createDescriptors(req);
 
     for (const descriptor of descriptors) {

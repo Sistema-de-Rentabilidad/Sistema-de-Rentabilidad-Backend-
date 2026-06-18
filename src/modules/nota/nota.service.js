@@ -8,7 +8,14 @@ const getNotasByProyecto = async (proyectoId, empresaId) => {
 };
 
 const createNota = async (proyectoId, data, user, empresaId) => {
-  const proyecto = await verifyProyectoAccess(proyectoId, empresaId);;
+  const proyecto = await verifyProyectoAccess(proyectoId, empresaId);
+
+  if (proyecto.fecha_fin_real) {
+    throw Object.assign(
+      new Error('No puedes registrar notas en un proyecto finalizado'),
+      { status: 400 }
+    );
+  }
 
   if (proyecto.id_lider !== user.id_usuario) {
     throw Object.assign(
@@ -37,7 +44,7 @@ const getNotaById = async (id, empresaId) => {
       { status: 403 }
     );
   }
-  
+
   return nota;
 };
 
@@ -103,3 +110,4 @@ module.exports = {
   updateNota,
   desactivarNota,
 };
+

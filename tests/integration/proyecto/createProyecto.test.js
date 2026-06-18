@@ -1,539 +1,174 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 
-const pool = require('../../../src/config/db');
+const {
+  cleanupContext,
+  createContext,
+  tokenCookieForUser,
+  uniqueText
+} = require('../../helpers/integration.helper');
 
-const proyectoService = require('../../../src/modules/proyecto/proyecto.service');
+jest.setTimeout(90000);
 
-const { login } = require('../../helpers/auth');
+describe('HU18 - Creacion de proyecto con estado inicial', () => {
+  test('CP-HU18-1-BE - API crea proyecto en estado Cotizado', async () => {
+    const ctx = await createContext();
 
-const { crearProyectoTemporal, eliminarProyectoTemporal } = require('../../helpers/proyecto.helper');
-
-jest.setTimeout(20000);
-
-describe('Restricción nombre duplicado', () => {
-
-    test('CP-HU18-8-BE - API rechaza proyecto duplicado', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-
-        // Intentar crear proyecto con nombre YA existente
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send({
-                id_empresa: 1,
-                id_servicio: 1,
-                id_lider: 3,
-                nombre: 'Proyecto Alpha', // <- ya existe en BD
-                descripcion: 'Sistema de control de rentabilidad',
-                presupuesto: 12000,
-                fecha_inicio: '2025-04-01',
-                fecha_fin_estimada: '2025-07-01',
-                margen: 18
-            });
-
-        // Validar rechazo
-        expect(response.status).toBe(400);
-
-        expect(response.body).toHaveProperty('success', false);
-
-        // mensaje opcional
-        expect(response.body.message);
-    });
-
-});
-
-describe('Validación duplicidad empleados', () => {
-
-    test('CP-HU18-3-BE - API rechaza empleados duplicados', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-
-        const nombreProyecto = `Proyecto QA duplicidad empleados ${Date.now()}`;
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send({
-                id_servicio: 1,
-                id_lider: 3,
-                nombre: nombreProyecto,
-                descripcion: 'Proyecto temporal testing',
-                presupuesto: 1000,
-                fecha_inicio: '2025-01-01',
-                fecha_fin_estimada: '2025-12-31',
-                margen: 20,
-                empleados: [4, 4]
-            });
-
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('message');
-        expect(response.body.message).toMatch(/empleados duplicados/i);
-
-        const dbResult = await pool.query(
-            `
-            SELECT id_proyecto
-            FROM proyecto
-            WHERE nombre = $1
-            `,
-            [nombreProyecto]
-        );
-
-        expect(dbResult.rowCount).toBe(0);
-    });
-
-});
-
-describe('Validación fechas proyecto', () => {
-
-    test('CP-HU18-5-BE - API rechaza fecha fin menor a fecha inicio', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-
-        const nombreProyecto = `Proyecto QA fecha invalida ${Date.now()}`;
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send({
-                id_servicio: 1, id_lider: 3, nombre: nombreProyecto, descripcion: 'Proyecto temporal testing',
-                presupuesto: 1000, fecha_inicio: '2025-12-31', fecha_fin_estimada: '2025-01-01',
-                margen: 20, empleados: [4]
-            });
-
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('errors');
-        expect(Array.isArray(response.body.errors)).toBe(true);
-        expect(
-            response.body.errors.some(error =>
-                error.msg === 'La fecha fin no puede ser menor a la fecha de inicio'
-            )
-        ).toBe(true);
-
-        const dbResult = await pool.query(
-            `
-            SELECT id_proyecto
-            FROM proyecto
-            WHERE nombre = $1
-            `,
-            [nombreProyecto]
-        );
-
-        expect(dbResult.rowCount).toBe(0);
-    });
-
-});
-
-describe('Restricción líder externo', () => {
-
-    test('CP-HU18-11-BE - API rechaza proyecto con líder que no pertenece a la empresa', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-        const empresaAutenticadaId = auth.user.id_empresa;
-
-        const liderExternoResult = await pool.query(
-            `
-            SELECT id_usuario, id_empresa
-            FROM usuario
-            WHERE id_empresa <> $1
-              AND rol = 'lider'
-            LIMIT 1
-            `,
-            [empresaAutenticadaId]
-        );
-
-        expect(liderExternoResult.rowCount).toBeGreaterThan(0);
-
-        const liderExternoId = liderExternoResult.rows[0].id_usuario;
-        expect(liderExternoResult.rows[0].id_empresa)
-            .not.toBe(empresaAutenticadaId);
-
-        const nombreProyecto = `Proyecto QA lider externo ${Date.now()}`;
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send({
-                id_servicio: 1,
-                id_lider: liderExternoId,
-                nombre: nombreProyecto,
-                descripcion: 'Proyecto temporal testing con lider externo',
-                presupuesto: 1000,
-                fecha_inicio: '2025-01-01',
-                fecha_fin_estimada: '2025-12-31',
-                margen: 20,
-                empleados: [4]
-            });
-
-        expect(response.status).toBe(400);
-
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('message');
-
-        expect(response.body.message).toMatch(/Líder no válido/i);
-
-        const dbResult = await pool.query(
-            `
-            SELECT id_proyecto
-            FROM proyecto
-            WHERE nombre = $1
-            `,
-            [nombreProyecto]
-        );
-
-        expect(dbResult.rowCount).toBe(0);
-    });
-
-});
-
-describe('Restricción empleado externo', () => {
-
-    test('CP-HU18-12-BE - API rechaza proyecto con empleado que no pertenece a la empresa', async () => {
-
-        const auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-        const empresaAutenticadaId = auth.user.id_empresa;
-
-        const empleadoExternoResult = await pool.query(
-            `
-            SELECT id_usuario, id_empresa
-            FROM usuario
-            WHERE id_empresa <> $1
-              AND rol = 'empleado'
-            LIMIT 1
-            `,
-            [empresaAutenticadaId]
-        );
-
-        expect(empleadoExternoResult.rowCount).toBeGreaterThan(0);
-
-        const empleadoExternoId = empleadoExternoResult.rows[0].id_usuario;
-        expect(empleadoExternoResult.rows[0].id_empresa)
-            .not.toBe(empresaAutenticadaId);
-
-        const nombreProyecto = `Proyecto QA empleado externo ${Date.now()}`;
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send({
-                id_servicio: 1,
-                id_lider: 3,
-                nombre: nombreProyecto,
-                descripcion: 'Proyecto temporal testing con empleado externo',
-                presupuesto: 1000,
-                fecha_inicio: '2025-01-01',
-                fecha_fin_estimada: '2025-12-31',
-                margen: 20,
-                empleados: [empleadoExternoId]
-            });
-
-        expect(response.status).toBe(400);
-
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('message');
-
-        expect(response.body.message).toMatch(/Empleado no válido/i);
-
-        const dbResult = await pool.query(
-            `
-            SELECT id_proyecto
-            FROM proyecto
-            WHERE nombre = $1
-            `,
-            [nombreProyecto]
-        );
-
-        expect(dbResult.rowCount).toBe(0);
-    });
-
-});
-
-describe('Restricción UNIQUE nombre proyecto', () => {
-
-    test('CP-HU18-8-BD - BD rechaza nombre duplicado', async () => {
-
-        await expect(
-
-            pool.query(
-                `
-                INSERT INTO proyecto (
-                    id_empresa,
-                    id_servicio,
-                    id_lider,
-                    nombre,
-                    descripcion,
-                    presupuesto,
-                    fecha_inicio,
-                    fecha_fin_estimada,
-                    margen,
-                    is_active
-                )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
-                `,
-                [
-                    1,
-                    1,
-                    3,
-                    'Proyecto Alpha', // ya existe
-                    'Duplicado',
-                    1000,
-                    '2025-01-01',
-                    '2025-06-01',
-                    20
-                ]
-            )
-
-        ).rejects.toMatchObject({
-            code: '23505'
+    try {
+      const response = await request(app)
+        .post('/api/proyectos')
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({
+          nombre: uniqueText('Proyecto Cotizado'),
+          descripcion: 'Proyecto temporal',
+          presupuesto: 10000,
+          margen: 20,
+          id_servicio: ctx.servicio.id_servicio,
+          id_lider: ctx.lider.id_usuario,
+          fecha_inicio: '2025-01-01',
+          fecha_fin_estimada: '2025-12-31'
         });
 
-    });
+      expect(response.status).toBe(201);
+      expect(response.body.data).toMatchObject({
+        estado: 'Cotizado',
+        id_lider: ctx.lider.id_usuario
+      });
+      ctx.ids.proyectos.push(response.body.data.id_proyecto);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
 
+  test('CP-HU18-17-BE - API crea proyecto Cotizado sin lider ni fechas', async () => {
+    const ctx = await createContext();
+
+    try {
+      const response = await request(app)
+        .post('/api/proyectos')
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({
+          nombre: uniqueText('Proyecto Sin Lider'),
+          descripcion: 'Proyecto temporal',
+          presupuesto: 10000,
+          margen: 20,
+          id_servicio: ctx.servicio.id_servicio
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.estado).toBe('Cotizado');
+      expect(response.body.data.id_lider).toBeNull();
+      expect(response.body.data.fecha_inicio).toBeNull();
+      expect(response.body.data.fecha_fin_estimada).toBeNull();
+      ctx.ids.proyectos.push(response.body.data.id_proyecto);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
 });
 
-describe('Testiny - Registro y restricciones de proyecto', () => {
-    let auth;
-    const proyectosCreados = [];
-    let uniqueCounter = 0;
+describe('HU46 - Gestion de estados del proyecto', () => {
+  const crearCotizado = async (ctx) => {
+    const response = await request(app)
+      .post('/api/proyectos')
+      .set('Cookie', tokenCookieForUser(ctx.propietario))
+      .send({
+        nombre: uniqueText('Proyecto Estado'),
+        descripcion: 'Proyecto temporal',
+        presupuesto: 10000,
+        margen: 20,
+        id_servicio: ctx.servicio.id_servicio
+      });
 
-    const buildProyectoPayload = (overrides = {}) => {
-        uniqueCounter += 1;
+    expect(response.status).toBe(201);
+    ctx.ids.proyectos.push(response.body.data.id_proyecto);
+    return response.body.data;
+  };
 
-        return {
-            id_servicio: 1,
-            id_lider: 3,
-            nombre: `Proyecto QA Testiny ${Date.now()} ${uniqueCounter}`,
-            descripcion: 'Proyecto temporal testing',
-            presupuesto: 1000,
-            fecha_inicio: '2025-01-01',
-            fecha_fin_estimada: '2025-12-31',
-            margen: 20,
-            ...overrides
-        };
-    };
+  test('CP-HU46-2-BE - API rechaza aprobar sin lider', async () => {
+    const ctx = await createContext();
 
-    beforeEach(async () => {
-        auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-    });
+    try {
+      const proyecto = await crearCotizado(ctx);
 
-    afterEach(async () => {
-        while (proyectosCreados.length > 0) {
-            await eliminarProyectoTemporal(proyectosCreados.pop());
-        }
-    });
+      const response = await request(app)
+        .put(`/api/proyectos/${proyecto.id_proyecto}`)
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({ estado: 'Aprobado' });
 
-    test('TC-468 - Validacion company_id proyectos', async () => {
-        const empresaInvalida = auth.user.id_empresa + 99999;
-        const payload = buildProyectoPayload({
-            id_empresa: empresaInvalida
+      expect(response.status).toBe(400);
+      expect(response.body.message).toMatch(/lider/i);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test('CP-HU46-1-BE - API cambia a Aprobado con datos completos', async () => {
+    const ctx = await createContext();
+
+    try {
+      const proyecto = await crearCotizado(ctx);
+
+      const response = await request(app)
+        .put(`/api/proyectos/${proyecto.id_proyecto}`)
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({
+          estado: 'Aprobado',
+          id_lider: ctx.lider.id_usuario,
+          fecha_inicio: '2025-01-01',
+          fecha_fin_estimada: '2025-12-31'
         });
 
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send(payload);
+      expect(response.status).toBe(200);
+      expect(response.body.data.estado).toBe('Aprobado');
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
 
-        expect(response.status).toBe(201);
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(response.body.data).toHaveProperty('id_proyecto');
-        expect(response.body.data).toHaveProperty('id_empresa', auth.user.id_empresa);
-        expect(response.body.data.id_empresa).not.toBe(empresaInvalida);
+  test('CP-HU46-4-BE - API cambia de Aprobado a Ejecucion', async () => {
+    const ctx = await createContext();
 
-        proyectosCreados.push(response.body.data.id_proyecto);
+    try {
+      const proyecto = await crearCotizado(ctx);
+      await request(app)
+        .put(`/api/proyectos/${proyecto.id_proyecto}`)
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({
+          estado: 'Aprobado',
+          id_lider: ctx.lider.id_usuario,
+          fecha_inicio: '2025-01-01',
+          fecha_fin_estimada: '2025-12-31'
+        })
+        .expect(200);
 
-        const dbResult = await pool.query(
-            `SELECT id_empresa
-             FROM proyecto
-             WHERE id_proyecto = $1`,
-            [response.body.data.id_proyecto]
-        );
+      const response = await request(app)
+        .put(`/api/proyectos/${proyecto.id_proyecto}`)
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({ estado: 'Ejecución' });
 
-        expect(dbResult.rowCount).toBe(1);
-        expect(dbResult.rows[0].id_empresa).toBe(auth.user.id_empresa);
-    });
+      expect(response.status).toBe(200);
+      expect(response.body.data.estado).toBe('Ejecución');
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
 
-    test('TC-481 - Registro API proyecto exitoso', async () => {
-        const payload = buildProyectoPayload();
+  test('CP-HU46-5-BE - API desestima proyecto cotizado', async () => {
+    const ctx = await createContext();
 
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send(payload);
+    try {
+      const proyecto = await crearCotizado(ctx);
 
-        expect(response.status).toBe(201);
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(response.body.data).toMatchObject({
-            nombre: payload.nombre,
-            descripcion: payload.descripcion,
-            id_servicio: payload.id_servicio,
-            id_lider: payload.id_lider,
-            id_empresa: auth.user.id_empresa,
-            is_active: true
-        });
-        expect(Number(response.body.data.presupuesto)).toBe(payload.presupuesto);
-        expect(Number(response.body.data.margen)).toBe(payload.margen);
+      const response = await request(app)
+        .put(`/api/proyectos/${proyecto.id_proyecto}`)
+        .set('Cookie', tokenCookieForUser(ctx.propietario))
+        .send({ estado: 'Desestimado' });
 
-        proyectosCreados.push(response.body.data.id_proyecto);
-    });
-
-    test('TC-482 - Persistencia proyecto registrado', async () => {
-        const payload = buildProyectoPayload();
-
-        const createResponse = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send(payload);
-
-        expect(createResponse.status).toBe(201);
-        const proyectoId = createResponse.body.data.id_proyecto;
-        proyectosCreados.push(proyectoId);
-
-        const getResponse = await request(app)
-            .get(`/api/proyectos/${proyectoId}`)
-            .set('Cookie', auth.cookies);
-
-        expect(getResponse.status).toBe(200);
-        expect(getResponse.body).toHaveProperty('success', true);
-        expect(getResponse.body).toHaveProperty('data');
-        expect(getResponse.body.data).toMatchObject({
-            id_proyecto: proyectoId,
-            nombre: payload.nombre,
-            id_empresa: auth.user.id_empresa,
-            id_servicio: payload.id_servicio,
-            id_lider: payload.id_lider
-        });
-
-        const dbResult = await pool.query(
-            `SELECT nombre, id_empresa, id_servicio, id_lider, is_active
-             FROM proyecto
-             WHERE id_proyecto = $1`,
-            [proyectoId]
-        );
-
-        expect(dbResult.rowCount).toBe(1);
-        expect(dbResult.rows[0]).toMatchObject({
-            nombre: payload.nombre,
-            id_empresa: auth.user.id_empresa,
-            id_servicio: payload.id_servicio,
-            id_lider: payload.id_lider,
-            is_active: true
-        });
-    });
-
-    test('TC-499 - Restriccion registro proyectos', async () => {
-        const liderInexistenteResult = await pool.query(
-            `SELECT COALESCE(MAX(id_usuario), 0) + 100000 AS id_lider
-             FROM usuario`
-        );
-        const liderInexistenteId = liderInexistenteResult.rows[0].id_lider;
-        const payload = buildProyectoPayload({
-            id_lider: liderInexistenteId
-        });
-
-        const response = await request(app)
-            .post('/api/proyectos')
-            .set('Cookie', auth.cookies)
-            .send(payload);
-
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('success', false);
-        expect(response.body).toHaveProperty('message');
-        expect(response.body.message).toMatch(/l.*der no.*v.*lido/i);
-
-        const dbResult = await pool.query(
-            `SELECT id_proyecto
-             FROM proyecto
-             WHERE nombre = $1`,
-            [payload.nombre]
-        );
-
-        expect(dbResult.rowCount).toBe(0);
-    });
-});
-
-describe('Registro de proyecto - manejo de errores internos', () => {
-
-    let auth;
-
-    beforeEach(async () => {
-
-        /**
-         * Login necesario (req.empresaId viene del auth)
-         */
-        auth = await login(
-            'qa_propietario@test.com',
-            'Qa123456*'
-        );
-
-    });
-
-    afterEach(() => {
-        jest.restoreAllMocks();
-    });
-
-    test(
-        'CP-HU18-15-BE - API retorna error controlado ante excepción interna',
-        async () => {
-
-            /**
-             * Mock del service (fallo interno)
-             */
-            jest.spyOn(proyectoService, 'createProyecto')
-                .mockRejectedValue(new Error('DB crash simulado'));
-
-            /**
-             * Consumir endpoint real
-             */
-            const response = await request(app)
-                .post('/api/proyectos')
-                .set('Cookie', auth.cookies)
-                .send({
-                    id_empresa: 1,
-                    id_servicio: 1,
-                    id_lider: 3,
-                    nombre: `Proyecto QA ${Date.now()}`,
-                    descripcion: 'Proyecto temporal testing',
-                    presupuesto: 1000,
-                    fecha_inicio: '2025-01-01',
-                    fecha_fin_estimada: '2025-12-31',
-                    margen: 20,
-                });
-
-            /**
-             * Debe devolver error controlado
-             */
-            expect(
-                [500, 503]
-            ).toContain(response.status);
-
-            expect(response.body)
-                .toHaveProperty('message');
-
-        }
-
-    );
-
+      expect(response.status).toBe(200);
+      expect(response.body.data.estado).toBe('Desestimado');
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
 });

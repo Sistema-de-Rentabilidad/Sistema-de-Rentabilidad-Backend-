@@ -12,8 +12,7 @@ const VALID_NODE_ENVS = new Set(['development', 'test', 'qa', 'production']);
 const VALID_RATE_LIMIT_STORES = new Set(['auto', 'memory', 'database']);
 const MIN_JWT_SECRET_LENGTH = 32;
 const TIME_24H_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DEFAULT_MARCAJE_ENTRADA_HORA_INICIO = '06:00';
-const DEFAULT_MARCAJE_ENTRADA_HORA_FIN = '10:00';
+const DEFAULT_DB_CONNECTION_TIMEOUT_MS = process.env.NODE_ENV === 'qa' ? 30000 : 5000;
 
 const parseIntegerEnv = (name, defaultValue, { min, max }) => {
   const rawValue = process.env[name];
@@ -76,14 +75,6 @@ const validateEnv = () => {
   if (process.env.LOGIN_RATE_LIMIT_STORE && !VALID_RATE_LIMIT_STORES.has(process.env.LOGIN_RATE_LIMIT_STORE)) {
     throw new Error('LOGIN_RATE_LIMIT_STORE debe ser auto, memory o database');
   }
-
-  if (process.env.MARCAJE_ENTRADA_HORA_INICIO && !TIME_24H_PATTERN.test(process.env.MARCAJE_ENTRADA_HORA_INICIO)) {
-    throw new Error('MARCAJE_ENTRADA_HORA_INICIO debe usar formato HH:mm');
-  }
-
-  if (process.env.MARCAJE_ENTRADA_HORA_FIN && !TIME_24H_PATTERN.test(process.env.MARCAJE_ENTRADA_HORA_FIN)) {
-    throw new Error('MARCAJE_ENTRADA_HORA_FIN debe usar formato HH:mm');
-  }
 };
 
 validateEnv();
@@ -101,6 +92,10 @@ module.exports = {
   FRONTEND_URL,
   FRONTEND_ORIGIN,
   NODE_ENV: process.env.NODE_ENV,
+  DB_CONNECTION_TIMEOUT_MS: parseIntegerEnv('DB_CONNECTION_TIMEOUT_MS', DEFAULT_DB_CONNECTION_TIMEOUT_MS, {
+    min: 1000,
+    max: 60000,
+  }),
   LOGIN_RATE_LIMIT_STORE: process.env.LOGIN_RATE_LIMIT_STORE || 'auto',
   BCRYPT_SALT_ROUNDS: parseIntegerEnv('BCRYPT_SALT_ROUNDS', 10, { min: 10, max: 14 }),
   LOGIN_RATE_LIMIT_WINDOW_MS: parseIntegerEnv('LOGIN_RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000, {
@@ -111,6 +106,4 @@ module.exports = {
     min: 1,
     max: 100,
   }),
-  MARCAJE_ENTRADA_HORA_INICIO: process.env.MARCAJE_ENTRADA_HORA_INICIO || DEFAULT_MARCAJE_ENTRADA_HORA_INICIO,
-  MARCAJE_ENTRADA_HORA_FIN: process.env.MARCAJE_ENTRADA_HORA_FIN || DEFAULT_MARCAJE_ENTRADA_HORA_FIN,
 };

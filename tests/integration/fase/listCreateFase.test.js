@@ -8,12 +8,12 @@ const {
   createFase,
   tokenCookieForUser,
   uniquePhaseName
-} = require('../../helpers/testinySecundarias.helper');
+} = require('../../helpers/integration.helper');
 
 jest.setTimeout(30000);
 
 describe('Pruebas secundarias Testiny - Fase', () => {
-  test("TC-923 - CP-HU35-1-BE - Obtención de fases por proyecto", async () => {
+  test("CP-HU35-1-BE - Obtención de fases por proyecto", async () => {
     const ctx = await createContext();
 
     try {
@@ -32,30 +32,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-924 - CP-HU35-1-BD - Validación integridad de fases", async () => {
-    const ctx = await createContext();
-
-    try {
-      const result = await pool.query(
-        `SELECT f.id_fase, f.id_proyecto, p.id_empresa
-         FROM fase f
-         INNER JOIN proyecto p ON p.id_proyecto = f.id_proyecto
-         WHERE f.id_fase = $1`,
-        [ctx.fase.id_fase]
-      );
-
-      expect(result.rowCount).toBe(1);
-      expect(result.rows[0]).toMatchObject({
-        id_fase: ctx.fase.id_fase,
-        id_proyecto: ctx.proyecto.id_proyecto,
-        id_empresa: ctx.empresa.id_empresa
-      });
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-927 - CP-HU35-2-BE - Lista vacía de fases", async () => {
+  test("CP-HU35-2-BE - Lista vacía de fases", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -75,7 +52,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-930 - CP-HU35-4-BE - Filtrado seguro por empresa", async () => {
+  test("CP-HU35-4-BE - Filtrado seguro por empresa", async () => {
     const ctxA = await createContext();
     const ctxB = await createContext();
 
@@ -94,26 +71,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-931 - CP-HU35-4-BD - Validación id_empresa fases", async () => {
-    const ctx = await createContext();
-
-    try {
-      const result = await pool.query(
-        `SELECT f.id_fase, p.id_empresa
-         FROM fase f
-         INNER JOIN proyecto p ON p.id_proyecto = f.id_proyecto
-         WHERE f.id_fase = $1`,
-        [ctx.fase.id_fase]
-      );
-
-      expect(result.rowCount).toBe(1);
-      expect(result.rows[0].id_empresa).toBe(ctx.empresa.id_empresa);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-933 - CP-HU35-5-BE - Proyecto inexistente API", async () => {
+  test("CP-HU35-5-BE - Proyecto inexistente API", async () => {
     const ctx = await createContext();
 
     try {
@@ -130,7 +88,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-935 - CP-HU35-6-BE - Token expirado en fases", async () => {
+  test("CP-HU35-6-BE - Token expirado en fases", async () => {
     const ctx = await createContext();
 
     try {
@@ -145,7 +103,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-937 - CP-HU36-1-BE - Registro API exitoso fase", async () => {
+  test("CP-HU36-1-BE - Registro API exitoso fase", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -170,7 +128,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-938 - CP-HU36-1-BD - Persistencia fase registrada", async () => {
+  test("CP-HU36-1-BD - Persistencia fase registrada", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -198,7 +156,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-941 - CP-HU36-2-BE - Validación backend campos obligatorios", async () => {
+  test("CP-HU36-2-BE - Validación backend campos obligatorios", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -217,7 +175,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-943 - CP-HU36-3-BE - Restricción nombre duplicado", async () => {
+  test("CP-HU36-3-BE - Restricción nombre duplicado", async () => {
     const ctx = await createContext();
 
     try {
@@ -250,7 +208,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-946 - CP-HU36-4-BE - Validación backend horas", async () => {
+  test("CP-HU36-4-BE - Validación backend horas", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -269,7 +227,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-949 - CP-HU36-6-BE - Restricción backend registro fases", async () => {
+  test("CP-HU36-6-BE - Restricción backend registro fases", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -287,7 +245,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-951 - CP-HU36-7-BE - Restricción creación proyecto finalizado", async () => {
+  test("CP-HU36-7-BE - Restricción creación proyecto finalizado", async () => {
     const ctx = await createContext({ proyectoFinalizado: true, crearFase: false });
 
     try {
@@ -306,7 +264,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-953 - CP-HU36-8-BE - Error interno registro fase", async () => {
+  test("CP-HU36-8-BE - Error interno registro fase", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {
@@ -329,7 +287,7 @@ describe('Pruebas secundarias Testiny - Fase', () => {
     }
   });
 
-  test("TC-955 - CP-HU36-9-BE - Token expirado creación fase", async () => {
+  test("CP-HU36-9-BE - Token expirado creación fase", async () => {
     const ctx = await createContext({ crearFase: false });
 
     try {

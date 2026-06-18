@@ -2,6 +2,8 @@ const { hashPassword } = require('../../utils/hash');
 const usuarioRepository = require('./usuario.repository');
 const historialRepository = require('../historial_sueldo/historial.repository');
 const historialService = require('../historial_sueldo/historial.service');
+const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository'); // Importa esto
+const proyectoRepository = require('../proyecto/proyecto.repository');
 
 const getUsuarios = async (user) => {
   // admin ve todo
@@ -48,7 +50,10 @@ const createUsuario = async (data, currentUser) => {
   if (currentUser.rol === 'admin') {
     // admin debe indicar empresa
     if (!id_empresa) {
-      throw new Error('Admin debe especificar la empresa');
+      throw Object.assign(
+        new Error('Admin debe especificar la empresa'),
+        { status: 400 }
+      );
     }
 
     // admin SOLO crea propietario
@@ -84,24 +89,24 @@ const createUsuario = async (data, currentUser) => {
   }
 
   // reglas de sueldo
-  if (rolFinal === 'empleado') {
+  if (['empleado', 'lider'].includes(rolFinal)) {
     if (!monto || !tipo_pago) {
       throw Object.assign(
-        new Error('Empleado requiere monto y tipo de pago'),
+        new Error('Empleado/Lider requiere monto y tipo de pago'),
         { status: 400 }
       );
     }
 
     if (tipo_pago === 'mensual' && (!horas_mensuales || horas_mensuales <= 0)) {
       throw Object.assign(
-        new Error('Empleado mensual requiere horas mensuales'),
+        new Error('Empleado/Lider mensual requiere horas mensuales'),
         { status: 400 }
       );
     }
   } else {
     if (monto || tipo_pago || horas_mensuales) {
       throw Object.assign(
-        new Error('Solo empleados pueden tener información salarial'),
+        new Error('Solo empleados y lideres pueden tener información salarial'),
         { status: 400 }
       );
     }
@@ -119,8 +124,8 @@ const createUsuario = async (data, currentUser) => {
     id_empresa: empresaFinal
   });
 
-  // historial si empleado
-  if (rolFinal === 'empleado') {
+  // historial si empleado o lider
+  if (['empleado', 'lider'].includes(rolFinal)) {
     await historialService.createHistorial({
       id_usuario: usuario.id_usuario,
       tipo_pago,
@@ -256,7 +261,7 @@ const updateUsuario = async (id, data, currentUser) => {
 
     if (existente && existente.id_usuario !== usuario.id_usuario) {
       const error = new Error('El email ya está registrado');
-      error.status = 400;
+      error.status = 409;
       throw error;
     }
   }
@@ -273,7 +278,7 @@ const updateUsuario = async (id, data, currentUser) => {
     password: data.password
   });
 
-  const quiereActualizarSueldo = usuario.rol === 'empleado' && (data.monto || data.tipo_pago || data.horas_mensuales);
+  const quiereActualizarSueldo = ['empleado', 'lider'].includes(usuario.rol) && (data.monto || data.tipo_pago || data.horas_mensuales);
 
   if (quiereActualizarSueldo) {
     const sueldoActual = await historialRepository.findActivo(usuario.id_usuario);
@@ -329,6 +334,21 @@ const desactivarUsuario = async (id, currentUser) => {
       error.status = 403;
       throw error;
     }
+
+    // NUEVA VALIDACIÓN: usuario con proyectos activos
+    const proyectosAsignados = await proyectoEmpleadoRepository.countProyectosActivosByUsuario(id);
+    let lideraProyectosActivos = false;
+
+    if (usuario.rol === 'lider') {
+      const proyectosLider = await proyectoRepository.findAllByLider({ empresaId: currentUser.id_empresa, liderId: id });
+      lideraProyectosActivos = proyectosLider.length > 0;
+    }
+
+    if (proyectosAsignados > 0 || lideraProyectosActivos) {
+      const error = new Error('No se puede desactivar un usuario con proyectos activos');
+      error.status = 400;
+      throw error;
+    }
   }
 
   if (!usuario.is_active) {
@@ -347,3 +367,4 @@ module.exports = {
   updateUsuario,
   desactivarUsuario
 };
+

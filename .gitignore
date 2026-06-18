@@ -41,6 +41,12 @@ temp/
 coverage/
 
 # =========================
+# Non-functional test outputs
+# =========================
+tests/non-functional/resource-usage/results/*
+!tests/non-functional/resource-usage/results/.gitkeep
+
+# =========================
 # Optional
 # =========================
 *.local

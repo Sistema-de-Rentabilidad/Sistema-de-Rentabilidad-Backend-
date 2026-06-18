@@ -42,7 +42,8 @@ const createTracker = () => ({
     proyectos: [],
     usuarios: [],
     servicios: [],
-    empresas: []
+    empresas: [],
+    notas: [] // Nueva categoría para notas
   }
 });
 
@@ -90,6 +91,7 @@ const cleanupContext = async (ctx) => {
   await deleteByIds('usuario', 'id_usuario', ctx.ids.usuarios);
   await deleteByIds('servicio', 'id_servicio', ctx.ids.servicios);
   await deleteByIds('empresa', 'id_empresa', ctx.ids.empresas);
+  await deleteByIds('nota', 'id_nota', ctx.ids.notas);
 };
 
 const createEmpresa = async (ctx, nombre = uniqueText('QA Empresa Testiny')) => {
@@ -160,8 +162,10 @@ const createProyecto = async (ctx, {
   idServicio,
   idLider = null,
   finalizado = false,
-  isActive = true
+  isActive = true,
+  estado = null
 } = {}) => {
+  const estadoProyecto = estado || (finalizado ? 'Finalizado' : 'Ejecución');
   const result = await pool.query(
     `INSERT INTO proyecto (
         id_empresa,
@@ -174,9 +178,10 @@ const createProyecto = async (ctx, {
         fecha_fin_estimada,
         fecha_fin_real,
         margen,
+        estado,
         is_active
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING *`,
     [
       idEmpresa,
@@ -189,6 +194,7 @@ const createProyecto = async (ctx, {
       '2027-12-31',
       finalizado ? '2026-01-01' : null,
       20,
+      estadoProyecto,
       isActive
     ]
   );
@@ -266,18 +272,42 @@ const createMarcaje = async (ctx, {
   return result.rows[0];
 };
 
+const createNota = async (ctx, {
+  idProyecto,
+  idLider,
+  descripcion = uniqueText('QA Nota'),
+  fecha = getFechaActual()
+} = {}) => {
+  const result = await pool.query(
+    `INSERT INTO nota (id_proyecto, id_lider, descripcion, fecha, is_active)
+     VALUES ($1, $2, $3, $4, true)
+     RETURNING *`,
+    [idProyecto, idLider, descripcion, fecha]
+  );
+
+  pushId(ctx, 'notas', result.rows[0].id_nota);
+  return result.rows[0];
+};
+
 const createContext = async ({
   empleadoTipoPago = 'mensual',
   empleadoActivo = true,
   liderActivo = true,
   proyectoFinalizado = false,
+  proyectoEstado = null,
   asignarEmpleado = true,
   crearFase = true,
-  faseActiva = true
+  faseActiva = true,
+  incluirAdmin = false // Nuevo parámetro
 } = {}) => {
   const ctx = createTracker();
   const empresa = await createEmpresa(ctx);
   const servicio = await createServicio(ctx, empresa.id_empresa);
+
+  const admin = incluirAdmin
+    ? await createUsuario(ctx, { idEmpresa: null, rol: 'admin' })
+    : null;
+
   const propietario = await createUsuario(ctx, { idEmpresa: empresa.id_empresa, rol: 'propietario' });
   const lider = await createUsuario(ctx, { idEmpresa: empresa.id_empresa, rol: 'lider', isActive: liderActivo });
   const empleado = await createUsuario(ctx, {
@@ -290,7 +320,8 @@ const createContext = async ({
     idEmpresa: empresa.id_empresa,
     idServicio: servicio.id_servicio,
     idLider: lider.id_usuario,
-    finalizado: proyectoFinalizado
+    finalizado: proyectoFinalizado,
+    estado: proyectoEstado
   });
 
   if (asignarEmpleado) {
@@ -305,6 +336,7 @@ const createContext = async ({
     ...ctx,
     empresa,
     servicio,
+    admin,
     propietario,
     lider,
     empleado,
@@ -332,6 +364,11 @@ const tokenCookieForUser = (user, expiresIn = '1h') => {
   return [`${ACCESS_TOKEN_COOKIE}=${token}`];
 };
 
+const resetDatabase = async () => {
+  // Orden crítico para evitar errores de Foreign Key
+  await pool.query('TRUNCATE TABLE registro_horas, marcaje, fase_empleado, proyecto_empleado, historial_sueldo, fase, proyecto, servicio, usuario, empresa RESTART IDENTITY CASCADE');
+};
+
 module.exports = {
   cleanupContext,
   createContext,
@@ -343,8 +380,10 @@ module.exports = {
   createFase,
   createRegistroHoras,
   createMarcaje,
+  createNota,
   createTracker,
   tokenCookieForUser,
   uniquePhaseName,
-  uniqueText
+  uniqueText,
+  resetDatabase
 };

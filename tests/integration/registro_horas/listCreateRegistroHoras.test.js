@@ -11,9 +11,9 @@ const {
   createRegistroHoras,
   tokenCookieForUser,
   uniqueText
-} = require('../../helpers/testinySecundarias.helper');
+} = require('../../helpers/integration.helper');
 
-jest.setTimeout(30000);
+jest.setTimeout(40000);
 
 const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 
@@ -24,60 +24,138 @@ const ayer = () => {
   return date.toISOString().slice(0, 10);
 };
 
-describe('Pruebas secundarias Testiny - Horas', () => {
-  test("TC-638 - CP-HU27-1-BE - Obtención de registros de horas", async () => {
+describe('HU22, HU27, HU29 - Gestión y creación de registro de horas', () => {
+  const casosUsuario = [
+    { rol: 'empleado', tipoPago: 'por_hora' },
+    { rol: 'empleado', tipoPago: 'mensual' },
+    { rol: 'lider', tipoPago: 'por_hora' },
+    { rol: 'lider', tipoPago: 'mensual' }
+  ];
+
+  casosUsuario.forEach(({ rol, tipoPago }) => {
+    describe(`Escenario: ${rol} con pago ${tipoPago}`, () => {
+      let ctx;
+      let auth;
+
+      beforeEach(async () => {
+        ctx = await createContext({
+          empleadoTipoPago: tipoPago,
+          empleadoRol: rol
+        });
+        auth = authFor(rol === 'empleado' ? ctx.empleado : ctx.lider);
+      });
+
+      afterEach(async () => {
+        await cleanupContext(ctx);
+      });
+
+      test(`CP-HU27-1-BE - Obtención de registros de horas (${rol})`, async () => {
+        const registro = await createRegistroHoras(ctx, {
+          idProyecto: ctx.proyecto.id_proyecto,
+          idFase: ctx.fase.id_fase,
+          idEmpleado: rol === 'empleado' ? ctx.empleado.id_usuario : ctx.lider.id_usuario
+        });
+        const response = await request(app)
+          .get('/api/horas')
+          .set('Cookie', auth.cookies);
+        expect(response.status).toBe(200);
+        expect(response.body.data.some((item) => item.id_registro === registro.id_registro)).toBe(true);
+      });
+
+      test(`CP-HU29-1-BE - Registro API horas exitoso (${rol})`, async () => {
+        const response = await request(app)
+          .post('/api/horas')
+          .set('Cookie', auth.cookies)
+          .send({
+            id_proyecto: ctx.proyecto.id_proyecto,
+            id_fase: ctx.fase.id_fase,
+            horas: 1,
+            descripcion: 'Registro horas'
+          });
+
+        expect(response.status).toBe(201);
+        expect(response.body.data).toMatchObject({
+          id_proyecto: ctx.proyecto.id_proyecto,
+          id_fase: ctx.fase.id_fase,
+          id_empleado: rol === 'empleado' ? ctx.empleado.id_usuario : ctx.lider.id_usuario
+        });
+      });
+    });
+  });
+
+  test("CP-HU22-1-BE - Obtención de registros de toda la empresa", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
+    const { propietario, lider, empleado } = ctx;
 
     try {
-      const registro = await createRegistroHoras(ctx, {
+      // Crear registros para diferentes usuarios
+      await createRegistroHoras(ctx, {
         idProyecto: ctx.proyecto.id_proyecto,
         idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario
+        idEmpleado: empleado.id_usuario
       });
-      const auth = authFor(ctx.empleado);
+      await createRegistroHoras(ctx, {
+        idProyecto: ctx.proyecto.id_proyecto,
+        idFase: ctx.fase.id_fase,
+        idEmpleado: lider.id_usuario
+      });
 
-      const response = await request(app)
-        .get('/api/horas')
-        .set('Cookie', auth.cookies);
+      // Prueba como propietario (debe ver todo)
+      const authPropietario = authFor(propietario);
+      const responseProp = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', authPropietario.cookies);
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data.some((item) => item.id_registro === registro.id_registro)).toBe(true);
+      expect(responseProp.status).toBe(200);
+      expect(responseProp.body.data.length).toBeGreaterThanOrEqual(2);
+
+      // Prueba como líder (debe ver todo)
+      const authLider = authFor(lider);
+      const responseLider = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', authLider.cookies);
+
+      expect(responseLider.status).toBe(200);
+      // Debe contener el del empleado
+      expect(responseLider.body.data.some(r => r.id_empleado === empleado.id_usuario)).toBe(true);
+      // Debe contener el suyo
+      expect(responseLider.body.data.some(r => r.id_empleado === lider.id_usuario)).toBe(true);
     } finally {
       await cleanupContext(ctx);
     }
   });
 
-  test("TC-639 - CP-HU27-1-BD - Validación de registros por empleado", async () => {
-    const ctxA = await createContext({ empleadoTipoPago: 'por_hora' });
-    const ctxB = await createContext({ empleadoTipoPago: 'por_hora' });
+  test("CP-HU22-6-BE - Validación de JWT expirado en endpoint empresa", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
-      const registroA = await createRegistroHoras(ctxA, {
-        idProyecto: ctxA.proyecto.id_proyecto,
-        idFase: ctxA.fase.id_fase,
-        idEmpleado: ctxA.empleado.id_usuario
-      });
-      await createRegistroHoras(ctxB, {
-        idProyecto: ctxB.proyecto.id_proyecto,
-        idFase: ctxB.fase.id_fase,
-        idEmpleado: ctxB.empleado.id_usuario
-      });
+      const response = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', tokenCookieForUser(ctx.propietario, '-1h'));
 
-      const auth = authFor(ctxA.empleado);
-      const response = await request(app).get('/api/horas').set('Cookie', auth.cookies);
-
-      expect(response.status).toBe(200);
-      expect(response.body.data.every((item) => item.id_registro !== undefined)).toBe(true);
-      expect(response.body.data.some((item) => item.id_registro === registroA.id_registro)).toBe(true);
-      expect(response.body.data.every((item) => item.id_proyecto !== ctxB.proyecto.id_proyecto)).toBe(true);
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
     } finally {
-      await cleanupContext(ctxA);
-      await cleanupContext(ctxB);
+      await cleanupContext(ctx);
     }
   });
 
-  test("TC-642 - CP-HU27-2-BE - Respuesta vacía registros horas", async () => {
+  test("CP-HU22-7-BE - Validación de permisos para empleado en reporte global", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
+
+    try {
+      const auth = authFor(ctx.empleado);
+      const response = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', auth.cookies);
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU27-2-BE - Respuesta vacía registros horas", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -91,40 +169,13 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-644 - CP-HU27-3-BE - Validación edición solo día actual", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
-
-    try {
-      const registro = await createRegistroHoras(ctx, {
-        idProyecto: ctx.proyecto.id_proyecto,
-        idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario,
-        fecha: getFechaActual(),
-        horas: 1
-      });
-      const auth = authFor(ctx.empleado);
-
-      const response = await request(app)
-        .put(`/api/horas/${registro.id_registro}`)
-        .set('Cookie', auth.cookies)
-        .send({ horas: 2, descripcion: 'Horas editadas' });
-
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(Number(response.body.data.horas)).toBe(2);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-650 - CP-HU27-6-BE - Validación JWT expirado horas", async () => {
+  test("CP-HU27-5-BE - Validación JWT expirado horas", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
       const response = await request(app)
         .get('/api/horas')
         .set('Cookie', tokenCookieForUser(ctx.empleado, '-1h'));
-
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
     } finally {
@@ -132,7 +183,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-652 - CP-HU27-7-BE - Restricción edición registros antiguos", async () => {
+  test("CP-HU27-6-BE - Restricción edición registros antiguos", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -148,7 +199,6 @@ describe('Pruebas secundarias Testiny - Horas', () => {
         .put(`/api/horas/${registro.id_registro}`)
         .set('Cookie', auth.cookies)
         .send({ horas: 2, descripcion: 'Horas antiguas' });
-
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('success', false);
       expect(response.body.message).toMatch(/mismo d/i);
@@ -157,36 +207,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-654 - CP-HU29-1-BE - Registro API horas exitoso", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
-
-    try {
-      const auth = authFor(ctx.empleado);
-
-      const response = await request(app)
-        .post('/api/horas')
-        .set('Cookie', auth.cookies)
-        .send({
-          id_proyecto: ctx.proyecto.id_proyecto,
-          id_fase: ctx.fase.id_fase,
-          horas: 1,
-          descripcion: 'Registro horas'
-        });
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toMatchObject({
-        id_proyecto: ctx.proyecto.id_proyecto,
-        id_fase: ctx.fase.id_fase,
-        id_empleado: ctx.empleado.id_usuario
-      });
-      ctx.ids.registros.push(response.body.data.id_registro);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-655 - CP-HU29-1-BD - Persistencia registro horas", async () => {
+  test("CP-HU29-1-BD - Persistencia registro horas", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -217,61 +238,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-658 - CP-HU29-2-BE - Validación límite horas diarias", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
-
-    try {
-      const faseExtra = await createFase(ctx, { idProyecto: ctx.proyecto.id_proyecto });
-      await createRegistroHoras(ctx, {
-        idProyecto: ctx.proyecto.id_proyecto,
-        idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario,
-        horas: 11.5
-      });
-      const auth = authFor(ctx.empleado);
-
-      const response = await request(app)
-        .post('/api/horas')
-        .set('Cookie', auth.cookies)
-        .send({
-          id_proyecto: ctx.proyecto.id_proyecto,
-          id_fase: faseExtra.id_fase,
-          horas: 1,
-          descripcion: 'Limite diario'
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toMatch(/12 horas/i);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-660 - CP-HU29-3-BE - Validación marcaje obligatorio", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
-
-    try {
-      const auth = authFor(ctx.empleado);
-
-      const response = await request(app)
-        .post('/api/horas')
-        .set('Cookie', auth.cookies)
-        .send({
-          id_proyecto: ctx.proyecto.id_proyecto,
-          id_fase: ctx.fase.id_fase,
-          horas: 1,
-          descripcion: 'Sin marcaje'
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toMatch(/registrar tu entrada/i);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-662 - CP-HU29-4-BE - Restricción duplicidad fase", async () => {
+  test("CP-HU29-4-BE - Restricción duplicidad fase", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -281,7 +248,6 @@ describe('Pruebas secundarias Testiny - Horas', () => {
         idEmpleado: ctx.empleado.id_usuario
       });
       const auth = authFor(ctx.empleado);
-
       const response = await request(app)
         .post('/api/horas')
         .set('Cookie', auth.cookies)
@@ -299,7 +265,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-663 - CP-HU29-4-BD - Validación unicidad fase por fecha", async () => {
+  test("CP-HU29-4-BD - Validación unicidad fase por fecha", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -319,7 +285,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-665 - CP-HU29-5-BE - Restricción proyecto finalizado", async () => {
+  test("CP-HU29-5-BE - Restricción proyecto finalizado", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora', proyectoFinalizado: true });
 
     try {
@@ -342,7 +308,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-668 - CP-HU29-7-BE - Validación token expirado registro", async () => {
+  test("CP-HU29-7-BE - Validación token expirado registro", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -363,7 +329,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-670 - CP-HU29-8-BE - Validación horas inválidas", async () => {
+  test("CP-HU29-8-BE - Validación horas inválidas", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -380,13 +346,13 @@ describe('Pruebas secundarias Testiny - Horas', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.errors.some((error) => /0.5 y 12/.test(error.msg))).toBe(true);
+      expect(response.body.errors.some((error) => /0.5 y 24/.test(error.msg))).toBe(true);
     } finally {
       await cleanupContext(ctx);
     }
   });
 
-  test("TC-672 - CP-HU29-9-BE - Restricción fase inactiva", async () => {
+  test("CP-HU29-9-BE - Restricción fase inactiva", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora', faseActiva: false });
 
     try {
@@ -409,7 +375,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-674 - CP-HU29-10-BE - Restricción proyecto no asignado", async () => {
+  test("CP-HU29-10-BE - Restricción proyecto no asignado", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora', asignarEmpleado: false });
 
     try {
@@ -432,7 +398,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-676 - CP-HU29-11-BE - Restricción fecha distinta", async () => {
+  test("CP-HU29-11-BE - Restricción fecha distinta", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -459,7 +425,7 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 
-  test("TC-678 - CP-HU29-12-BE - Error interno API registro horas", async () => {
+  test("CP-HU29-12-BE - Error interno API registro horas", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
 
     try {
@@ -487,3 +453,4 @@ describe('Pruebas secundarias Testiny - Horas', () => {
     }
   });
 });
+

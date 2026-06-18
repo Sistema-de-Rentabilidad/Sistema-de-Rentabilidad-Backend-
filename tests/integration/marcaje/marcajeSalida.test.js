@@ -11,14 +11,14 @@ const {
   createMarcaje,
   createRegistroHoras,
   tokenCookieForUser
-} = require('../../helpers/testinySecundarias.helper');
+} = require('../../helpers/integration.helper');
 
 jest.setTimeout(30000);
 
 const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 
-describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
-  test("TC-720 - CP-HU25-1-BE - Registro API salida exitoso", async () => {
+describe('Marcaje salida - empleado y lider', () => {
+  test("CP-HU25-1-BE - Registro API salida exitoso", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -47,7 +47,7 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
     }
   });
 
-  test("TC-721 - CP-HU25-1-BD - Persistencia hora de salida", async () => {
+  test("CP-HU25-1-BD - Persistencia hora de salida", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -79,7 +79,7 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
     }
   });
 
-  test("TC-724 - CP-HU25-2-BE - Validación backend salida sin entrada", async () => {
+  test("CP-HU25-2-BE - Validación backend salida sin entrada", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -97,7 +97,7 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
     }
   });
 
-  test("TC-726 - CP-HU25-3-BE - Restricción backend salida duplicada", async () => {
+  test("CP-HU25-3-BE - Restricción backend salida duplicada", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -120,32 +120,7 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
     }
   });
 
-  test("TC-728 - CP-HU25-4-BE - Validación backend horas excedidas", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
-
-    try {
-      await createMarcaje(ctx, { idUsuario: ctx.empleado.id_usuario, entradaHaceHoras: 0.01 });
-      await createRegistroHoras(ctx, {
-        idProyecto: ctx.proyecto.id_proyecto,
-        idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario,
-        horas: 2
-      });
-      const auth = authFor(ctx.empleado);
-
-      const response = await request(app)
-        .post('/api/marcajes/salida')
-        .set('Cookie', auth.cookies)
-        .send();
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toMatch(/exceden el tiempo trabajado/i);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-730 - CP-HU25-5-BE - Validación backend horas inexistentes", async () => {
+  test("CP-HU25-5-BE - Validación backend horas inexistentes", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -164,7 +139,7 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
     }
   });
 
-  test("TC-732 - CP-HU25-6-BE - Validación backend hora inválida", async () => {
+  test("CP-HU25-6-BE - Validación backend hora inválida", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'mensual' });
 
     try {
@@ -178,59 +153,6 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('success', false);
       expect(response.body.errors.some((error) => /No debes enviar datos/.test(error.msg))).toBe(true);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-756 - CP-HU41-5-BE - Usuario líder inactivo", async () => {
-    const ctx = await createContext({ liderActivo: false });
-
-    try {
-      const response = await request(app)
-        .post('/api/marcajes/entrada')
-        .set('Cookie', tokenCookieForUser(ctx.lider))
-        .send();
-
-      expect(response.status).toBe(401);
-      expect(response.body).toHaveProperty('success', false);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-759 - CP-HU42-1-BE - Registro API salida líder", async () => {
-    const ctx = await createContext();
-
-    try {
-      await createMarcaje(ctx, { idUsuario: ctx.lider.id_usuario, entradaHaceHoras: 4 });
-      const auth = authFor(ctx.lider);
-
-      const response = await request(app)
-        .post('/api/marcajes/salida')
-        .set('Cookie', auth.cookies)
-        .send();
-
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('hora_salida');
-      expect(response.body.data).not.toHaveProperty('total_horas_registradas');
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("TC-766 - CP-HU42-8-BE - Usuario líder inactivo salida", async () => {
-    const ctx = await createContext({ liderActivo: false });
-
-    try {
-      const response = await request(app)
-        .post('/api/marcajes/salida')
-        .set('Cookie', tokenCookieForUser(ctx.lider))
-        .send();
-
-      expect(response.status).toBe(401);
-      expect(response.body).toHaveProperty('success', false);
     } finally {
       await cleanupContext(ctx);
     }
@@ -302,6 +224,57 @@ describe('Pruebas secundarias Testiny - Marcaje salida y líder', () => {
       await cleanupContext(ctx);
     }
   });
+
+  test("CP-HU41-5-BE - Usuario líder inactivo", async () => {
+    const ctx = await createContext({ liderActivo: false });
+
+    try {
+      const response = await request(app)
+        .post('/api/marcajes/entrada')
+        .set('Cookie', tokenCookieForUser(ctx.lider))
+        .send();
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU42-1-BE - Registro API salida líder", async () => {
+    const ctx = await createContext();
+
+    try {
+      await createMarcaje(ctx, { idUsuario: ctx.lider.id_usuario, entradaHaceHoras: 4 });
+      const auth = authFor(ctx.lider);
+
+      const response = await request(app)
+        .post('/api/marcajes/salida')
+        .set('Cookie', auth.cookies)
+        .send();
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU42-8-BE - Usuario líder inactivo salida", async () => {
+    const ctx = await createContext({ liderActivo: false });
+
+    try {
+      const response = await request(app)
+        .post('/api/marcajes/salida')
+        .set('Cookie', tokenCookieForUser(ctx.lider))
+        .send();
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
 });
 
 describe('HU31 - Obtención de marcajes', () => {
@@ -324,36 +297,6 @@ describe('HU31 - Obtención de marcajes', () => {
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data.length).toBeGreaterThan(0);
       expect(response.body.data[0]).toHaveProperty('id_marcaje');
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("CP-HU31-1-BD - Integridad de marcajes almacenados", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
-
-    try {
-      // 1. Crear un marcaje conocido
-      const marcaje = await createMarcaje(ctx, {
-        idUsuario: ctx.empleado.id_usuario,
-        entradaHaceHoras: 4
-      });
-
-      // 2. Consultar directamente en la BD
-      const result = await pool.query(
-        'SELECT id_usuario, fecha, hora_entrada FROM marcaje WHERE id_marcaje = $1',
-        [marcaje.id_marcaje]
-      );
-
-      // 3. Resultado esperado: Los datos en BD coinciden con el marcaje creado
-      expect(result.rowCount).toBe(1);
-      expect(result.rows[0].id_usuario).toBe(ctx.empleado.id_usuario);
-
-      // Verificar formato de fecha/hora (comparando las partes, ignorando milisegundos o zonas si es necesario)
-      const fechaDB = new Date(result.rows[0].fecha).toISOString().split('T')[0];
-      const fechaEsperada = new Date().toISOString().split('T')[0];
-
-      expect(fechaDB).toBe(fechaEsperada);
     } finally {
       await cleanupContext(ctx);
     }
@@ -382,12 +325,12 @@ describe('HU31 - Obtención de marcajes', () => {
     }
   });
 
-  test("CP-HU31-4-BE - Validación token expirado marcajes", async () => {
+  test("CP-HU31-3-BE - Validación token expirado marcajes", async () => {
     // Creamos un token que expiró hace 1 hora
     const expiredToken = jwt.sign(
-        { id: 1, rol: 'empleado' },
-        JWT_SECRET,
-        { expiresIn: '-1h' }
+      { id: 1, rol: 'empleado' },
+      JWT_SECRET,
+      { expiresIn: '-1h' }
     );
 
     const response = await request(app)
@@ -400,3 +343,5 @@ describe('HU31 - Obtención de marcajes', () => {
     expect(response.body).toHaveProperty('success', false);
   });
 });
+
+

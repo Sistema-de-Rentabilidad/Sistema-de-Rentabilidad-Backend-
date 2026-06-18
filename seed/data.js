@@ -357,6 +357,14 @@ module.exports = {
             tipo_pago: 'por_hora',
             monto: 25,
             fecha_inicio: '2025-01-01',
+            fecha_fin: '2025-01-31',
+        },
+
+        {
+            id_usuario: 4,
+            tipo_pago: 'mensual',
+            monto: 4500,
+            fecha_inicio: '2025-02-01',
             fecha_fin: null,
             horas_mensuales: 160,
         },
@@ -367,7 +375,6 @@ module.exports = {
             monto: 20,
             fecha_inicio: '2025-01-01',
             fecha_fin: null,
-            horas_mensuales: 160,
         },
 
         {
@@ -394,7 +401,6 @@ module.exports = {
             monto: 22,
             fecha_inicio: '2025-02-01',
             fecha_fin: null,
-            horas_mensuales: 160,
         },
     ],
 

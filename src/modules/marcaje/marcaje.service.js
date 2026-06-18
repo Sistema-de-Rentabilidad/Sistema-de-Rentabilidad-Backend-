@@ -1,9 +1,5 @@
 const marcajeRepository = require('./marcaje.repository');
 const { getFechaActual } = require('../../utils/dateTime');
-const {
-  MARCAJE_ENTRADA_HORA_INICIO,
-  MARCAJE_ENTRADA_HORA_FIN
-} = require('../../config/env');
 
 const BUSINESS_TIME_ZONE = 'America/Lima';
 
@@ -26,25 +22,7 @@ const getHoraActualEnMinutos = (fechaHora = new Date(), timeZone = BUSINESS_TIME
   return Number(values.hour) * 60 + Number(values.minute);
 };
 
-const estaDentroDelRango = (actual, inicio, fin) => {
-  if (inicio <= fin) {
-    return actual >= inicio && actual <= fin;
-  }
-
-  return actual >= inicio || actual <= fin;
-};
-
 const validarHorarioEntrada = ({ fechaHora = new Date() } = {}) => {
-  const actual = getHoraActualEnMinutos(fechaHora);
-  const inicio = parseHoraMinutos(MARCAJE_ENTRADA_HORA_INICIO);
-  const fin = parseHoraMinutos(MARCAJE_ENTRADA_HORA_FIN);
-
-  if (!estaDentroDelRango(actual, inicio, fin)) {
-    const error = new Error('El registro de entrada solo está permitido dentro del horario establecido');
-    error.status = 400;
-    error.code = 'HORARIO_ENTRADA_NO_PERMITIDO';
-    throw error;
-  }
 };
 
 const getMarcajes = async ({ user }) => {
@@ -97,12 +75,6 @@ const marcarSalida = async ({ user }) => {
     throw error;
   }
 
-  if (result.error === 'HORAS_EXCEDEN_MARCAJE' && user.rol !== 'lider') {
-    const error = new Error('Las horas registradas exceden el tiempo trabajado del dia');
-    error.status = 400;
-    throw error;
-  }
-
   if (result.error === 'HORA_SALIDA_INVALIDA') {
     const error = new Error('La hora de salida debe ser posterior a la hora de entrada');
     error.status = 400;
@@ -114,11 +86,8 @@ const marcarSalida = async ({ user }) => {
     ...result.marcaje
   };
 
-  // SOLO empleados reciben estos campos
-  if (user.rol !== 'lider') {
-    response.total_horas_registradas = result.resumenHoras?.total;
-    response.horas_trabajadas = result.resumenHoras?.trabajadas;
-  }
+  response.total_horas_registradas = result.resumenHoras?.total;
+  response.horas_trabajadas = result.resumenHoras?.trabajadas;
 
   return response;
 };

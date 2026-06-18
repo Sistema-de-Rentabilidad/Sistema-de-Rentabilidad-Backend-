@@ -9,16 +9,19 @@ const role = require('../middlewares/roleMiddleware');
 const empresa = require('../middlewares/empresaMiddleware');
 
 // GET /horas
-router.get('/', auth, role('empleado'), empresa, registroHorasController.getRegistrosHoras);
+router.get('/', auth, role('empleado', 'lider'), empresa, registroHorasController.getRegistrosHoras);
+
+// GET /horas/empresa
+router.get('/empresa', auth, role('lider', 'propietario'), empresa, registroHorasController.getRegistrosHorasEmpresa);
 
 // POST /horas
-router.post('/', auth, role('empleado'), empresa, createHorasValidation, registroHorasController.createRegistroHoras);
+router.post('/', auth, role('empleado', 'lider'), empresa, createHorasValidation, registroHorasController.createRegistroHoras);
 
 // GET /horas/:id
-router.get('/:id', auth, role('empleado'), empresa, registroHorasIdParamValidation, registroHorasController.getRegistroHorasById)
+router.get('/:id', auth, role('empleado', 'lider'), empresa, registroHorasIdParamValidation, registroHorasController.getRegistroHorasById);
 
 // PUT /horas/:id
-router.put('/:id', auth, role('empleado'), empresa, registroHorasIdParamValidation, updateHorasValidation, registroHorasController.updateRegistroHoras
-);
+router.put('/:id', auth, role('empleado', 'lider'), empresa, registroHorasIdParamValidation, updateHorasValidation, registroHorasController.updateRegistroHoras);
 
 module.exports = router;
+

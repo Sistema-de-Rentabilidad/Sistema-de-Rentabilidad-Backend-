@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
 
-const { login } = require('../../helpers/auth');
+const { login } = require('../../helpers/auth.helper');
 
 const { crearUsuarioTemporal, eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
 
@@ -33,7 +33,7 @@ describe('HU2 - Edicion de mi usuario', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('success', true);
-        
+
         // Verificación de seguridad para evitar "null nor undefined"
         expect(response.body).toHaveProperty('data');
         expect(response.body.data).not.toBeNull();
@@ -48,7 +48,7 @@ describe('HU2 - Edicion de mi usuario', () => {
         expect(dbResult.rows[0].nombre).toBe(nuevoNombre);
     });
 
-    test('TC-442 - Persistencia cambios perfil', async () => {
+    test('CP-HU2-1-BD - Persistencia cambios perfil', async () => {
         const nuevoNombre = 'Perfil Persistido';
 
         const updateResponse = await request(app)
@@ -208,6 +208,175 @@ describe('HU16 - Edicion de empleado/lider', () => {
         });
     });
 
+    test('CP-HU16-3-BE - Error al editar sueldo con valor negativo (empleado/lider)', async () => {
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const user = await crearUsuarioTemporal({
+                rol: rol,
+                idEmpresa: authPropietario.user.id_empresa
+            });
+
+            // Creamos un historial salarial inicial para poder actualizarlo
+            await pool.query(
+                `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+                [user.id_usuario, 'mensual', 1000, 40]
+            );
+
+            const response = await request(app)
+                .put(`/api/usuarios/${user.id_usuario}`)
+                .set('Cookie', authPropietario.cookies)
+                .send({ monto: -500 });
+
+            expect(response.status).toBe(400); // O el status que aplique en la validación
+            expect(response.body).toHaveProperty('success', false);
+            // El mensaje de error dependerá de tu lógica de validación
+
+            await eliminarUsuarioTemporal(user.id_usuario);
+        }
+    });
+
+    test('CP-HU16-12-BD - Persistencia de nuevo sueldo en historial', async () => {
+        const roles = ['empleado', 'lider'];
+        const nuevoMonto = 3500;
+
+        for (const rol of roles) {
+            const user = await crearUsuarioTemporal({
+                rol: rol,
+                idEmpresa: authPropietario.user.id_empresa
+            });
+
+            // Creamos un historial salarial inicial (hace un día)
+            await pool.query(
+                `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) 
+                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP - INTERVAL '1 day')`,
+                [user.id_usuario, 'mensual', 1000, 40]
+            );
+
+            // Realizamos la actualización vía API
+            await request(app)
+                .put(`/api/usuarios/${user.id_usuario}`)
+                .set('Cookie', authPropietario.cookies)
+                .send({ monto: nuevoMonto });
+
+            // Verificamos en BD
+            const dbResult = await pool.query(
+                `SELECT monto FROM historial_sueldo WHERE id_usuario = $1 ORDER BY id_historial DESC LIMIT 1`,
+                [user.id_usuario]
+            );
+
+            expect(dbResult.rowCount).toBe(1);
+            expect(parseFloat(dbResult.rows[0].monto)).toBe(parseFloat(nuevoMonto));
+
+            await eliminarUsuarioTemporal(user.id_usuario);
+        }
+    });
+
+    test('CP-HU16-13-BE - Error al editar sueldo con formato inválido (texto)', async () => {
+        const user = await crearUsuarioTemporal({
+            rol: 'empleado',
+            idEmpresa: authPropietario.user.id_empresa
+        });
+
+        // Intentamos enviar un valor de texto no numérico
+        const response = await request(app)
+            .put(`/api/usuarios/${user.id_usuario}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({ monto: 'abc123' });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        // El middleware de validación devuelve 'errors' (un array), no 'message'
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/monto debe ser un número/i);
+
+        await eliminarUsuarioTemporal(user.id_usuario);
+    });
+
+    test('CP-HU16-13-BD - No persistencia de sueldo con formato inválido', async () => {
+        const user = await crearUsuarioTemporal({
+            rol: 'empleado',
+            idEmpresa: authPropietario.user.id_empresa
+        });
+        const montoOriginal = 1000;
+
+        // Creamos un historial salarial inicial
+        await pool.query(
+            `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) 
+             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP - INTERVAL '1 day')`,
+            [user.id_usuario, 'mensual', montoOriginal, 40]
+        );
+
+        // Intentamos actualizar con un valor inválido
+        await request(app)
+            .put(`/api/usuarios/${user.id_usuario}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({ monto: 'abc123' });
+
+        // Verificamos en BD que el monto sigue siendo el original
+        const dbResult = await pool.query(
+            `SELECT monto FROM historial_sueldo WHERE id_usuario = $1 ORDER BY id_historial DESC LIMIT 1`,
+            [user.id_usuario]
+        );
+
+        expect(dbResult.rowCount).toBe(1);
+        expect(parseFloat(dbResult.rows[0].monto)).toBe(montoOriginal);
+        
+        await eliminarUsuarioTemporal(user.id_usuario);
+    });
+
+    test('CP-HU16-15-BE - Restricción API edición sueldo sin permisos', async () => {
+        // Creamos un usuario que es empleado (no puede editar sueldos)
+        const empleado = await crearUsuarioTemporal({
+            rol: 'empleado',
+            idEmpresa: authPropietario.user.id_empresa
+        });
+        const authEmpleado = await login(empleado.email, empleado.passwordPlano);
+
+        // Intentamos editar el sueldo de otro empleado o el suyo propio
+        const response = await request(app)
+            .put(`/api/usuarios/${empleado.id_usuario}`)
+            .set('Cookie', authEmpleado.cookies)
+            .send({ monto: 4000 });
+
+        expect(response.status).toBe(403);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/permisos|autorizado|forbidden/i);
+        
+        await eliminarUsuarioTemporal(empleado.id_usuario);
+    });
+
+    test('CP-HU16-15-BD - Verificación de integridad ante edición no autorizada', async () => {
+        // Obtenemos un usuario existente de otra empresa (usando el mismo seeding de antes)
+        const res = await pool.query(
+            `SELECT id_usuario, id_empresa FROM usuario WHERE id_empresa != $1 LIMIT 1`,
+            [authPropietario.user.id_empresa]
+        );
+        const usuarioOtraEmpresa = res.rows[0];
+        
+        // Asignamos sueldo inicial
+        const montoOriginal = 1000;
+        await pool.query(
+            `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) 
+             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP - INTERVAL '1 day')`,
+            [usuarioOtraEmpresa.id_usuario, 'mensual', montoOriginal, 40]
+        );
+
+        // Intentamos actualizar sueldo con el propietario de la otra empresa
+        await request(app)
+            .put(`/api/usuarios/${usuarioOtraEmpresa.id_usuario}`)
+            .set('Cookie', authPropietario.cookies)
+            .send({ monto: 4000 });
+
+        // Verificamos que el sueldo no cambió
+        const dbResult = await pool.query(
+            `SELECT monto FROM historial_sueldo WHERE id_usuario = $1 ORDER BY id_historial DESC LIMIT 1`,
+            [usuarioOtraEmpresa.id_usuario]
+        );
+
+        expect(parseFloat(dbResult.rows[0].monto)).toBe(montoOriginal);
+    });
+
     test('CP-HU16-5-BE - Restricción correo duplicado edición empleado', async () => {
         const duplicateEmail = 'qa_admin@test.com';
 
@@ -216,7 +385,7 @@ describe('HU16 - Edicion de empleado/lider', () => {
             .set('Cookie', authPropietario.cookies)
             .send({ email: duplicateEmail });
 
-        expect(response.status).toBe(400);
+        expect(response.status).toBe(409);
         expect(response.body).toHaveProperty('success', false);
         expect(response.body.message).toMatch(/email.*registrado|ya.*existe|duplicad/i);
 
@@ -280,7 +449,45 @@ describe('HU16 - Edicion de empleado/lider', () => {
 
         expect(dbResult.rowCount).toBe(1);
         expect(dbResult.rows[0].nombre).toBe(empleadoOtraEmpresa.nombre);
-    }, 15000);
+    });
+
+    test('CP-HU16-12-BE - Actualización API de sueldo exitosa (empleado/lider)', async () => {
+        const roles = ['empleado', 'lider'];
+        const nuevoMonto = 3500;
+
+        for (const rol of roles) {
+            const user = await crearUsuarioTemporal({
+                rol: rol,
+                idEmpresa: authPropietario.user.id_empresa
+            });
+
+            // Creamos un historial salarial inicial (hace un día para evitar conflicto de "hoy")
+            await pool.query(
+                `INSERT INTO historial_sueldo (id_usuario, tipo_pago, monto, horas_mensuales, fecha_inicio) 
+                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP - INTERVAL '1 day')`,
+                [user.id_usuario, 'mensual', 1000, 40]
+            );
+
+            const response = await request(app)
+                .put(`/api/usuarios/${user.id_usuario}`)
+                .set('Cookie', authPropietario.cookies)
+                .send({ monto: nuevoMonto });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toHaveProperty('success', true);
+
+            // Verificar en BD que se creó un nuevo historial con el monto actualizado
+            const dbResult = await pool.query(
+                `SELECT monto FROM historial_sueldo WHERE id_usuario = $1 ORDER BY id_historial DESC LIMIT 1`,
+                [user.id_usuario]
+            );
+
+            // Comparar convirtiendo a número para evitar problemas de formato de decimales (ej: "3500" vs "3500.00")
+            expect(parseFloat(dbResult.rows[0].monto)).toBe(parseFloat(nuevoMonto));
+
+            await eliminarUsuarioTemporal(user.id_usuario);
+        }
+    });
 
 });
 

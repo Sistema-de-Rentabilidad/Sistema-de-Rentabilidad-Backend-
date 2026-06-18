@@ -3,26 +3,28 @@ const proyectoRepository = require('../proyecto/proyecto.repository');
 const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository')
 const faseRepository = require('../fase/fase.repository');
 const faseEmpleadoRepository = require('../fase_empleado/fase_empleado.repository')
+
 const { getFechaActual, toFechaString } = require('../../utils/dateTime');
 
-const getHorasByLider = async (liderId) => {
-  return await registroHorasRepository.findByLider(liderId);
-};
-
 const getRegistrosHoras = async ({ user, empresaId }) => {
-  return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
+  if (['lider', 'empleado'].includes(user.rol)) {
+    return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
+  }
+
+  throw Object.assign(
+    new Error('No tienes permisos para acceder a los registros de horas'),
+    { status: 403 }
+  );
 };
 
-const requiereMarcajeParaRegistrarHoras = (tipoPago) => {
-  // Los usuarios por hora no usan el modulo de marcaje; cualquier otro tipo de pago requiere entrada diaria.
-  return tipoPago !== 'por_hora';
-};
-
-const crearErrorMarcajeRequerido = () => {
-  const error = new Error('Debes registrar tu entrada antes de registrar horas');
-  error.status = 400;
-  error.code = 'MARCAJE_REQUERIDO';
-  return error;
+const getRegistrosHorasEmpresa = async ({ user, empresaId }) => {
+  if (['lider', 'propietario'].includes(user.rol)) {
+    return await registroHorasRepository.findByEmpresa(empresaId);
+  }
+  throw Object.assign(
+    new Error('No tienes permisos para acceder a los registros de toda la empresa'),
+    { status: 403 }
+  );
 };
 
 const REGISTRO_HORAS_DUPLICADO_CONSTRAINTS = new Set([
@@ -35,8 +37,7 @@ const isRegistroHorasDuplicadoDbError = (error) => (
   REGISTRO_HORAS_DUPLICADO_CONSTRAINTS.has(error.constraint)
 );
 
-const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
-
+const validarHoras = async ({ idEmpleado, fecha, horasARegistrar, tipoPago, idRegistroExcluir = null }) => {
   const horasActuales = idRegistroExcluir
     ? await registroHorasRepository.getTotalHorasSinRegistro(idEmpleado, fecha, idRegistroExcluir)
     : await registroHorasRepository.getTotalHorasByEmpleadoYFecha(idEmpleado, fecha);
@@ -44,24 +45,8 @@ const validarHorasContraMarcaje = async ({ idEmpleado, fecha, horasARegistrar, t
   const total = Number(horasActuales) + Number(horasARegistrar);
 
   // APLICA PARA TODOS
-  if (total > 12) {
-    const error = new Error('No puedes registrar más de 12 horas diarias');
-    error.status = 400;
-    throw error;
-  }
-
-  if (!requiereMarcajeParaRegistrarHoras(tipoPago)) {
-    return;
-  }
-
-  const horasTrabajadas = await registroHorasRepository.getHorasTrabajadasByEmpleadoYFecha(idEmpleado, fecha);
-
-  if (horasTrabajadas === null) {
-    throw crearErrorMarcajeRequerido();
-  }
-
-  if (total > Number(horasTrabajadas)) {
-    const error = new Error('Las horas registradas exceden el tiempo trabajado del dia');
+  if (total > 24) {
+    const error = new Error('No puedes registrar más de 24 horas diarias');
     error.status = 400;
     throw error;
   }
@@ -78,20 +63,22 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
 
   if (proyecto.id_empresa !== empresaId) {
     throw Object.assign(
-      new Error('No tienes permisos para acceder a esta proyecto'),
+      new Error('No tienes permisos para acceder a este proyecto'),
       { status: 403 }
     );
   }
 
   // PROYECTO FINALIZADO
-  if (proyecto.fecha_fin_real) {
+  if (proyecto.fecha_fin_real || proyecto.estado === 'Finalizado') {
     const error = new Error('No se pueden registrar horas en un proyecto finalizado');
     error.status = 400;
     throw error;
   }
 
   // VALIDAR ASIGNACION EMPLEADO
-  const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, id_proyecto);
+  const perteneceProyecto = user.rol === 'lider'
+    ? proyecto.id_lider === user.id_usuario
+    : await proyectoEmpleadoRepository.exists(user.id_usuario, id_proyecto);
 
   if (!perteneceProyecto) {
     const error = new Error('No estás asignado a este proyecto');
@@ -122,8 +109,7 @@ const createRegistroHoras = async ({ id_proyecto, id_fase, horas, descripcion, u
     throw error;
   }
 
-  // VALIDAR LIMITE DIARIO Y TIEMPO TRABAJADO SEGUN MARCAJE
-  await validarHorasContraMarcaje({
+  await validarHoras({
     idEmpleado: user.id_usuario,
     fecha,
     horasARegistrar: horas,
@@ -228,14 +214,16 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
   }
 
   // PROYECTO FINALIZADO
-  if (proyecto.fecha_fin_real) {
+  if (proyecto.fecha_fin_real || proyecto.estado === 'Finalizado') {
     const error = new Error('No puedes registrar horas en un proyecto finalizado');
     error.status = 400;
     throw error;
   }
 
   // VALIDAR ASIGNACION EMPLEADO
-  const perteneceProyecto = await proyectoEmpleadoRepository.exists(user.id_usuario, proyectoId);
+  const perteneceProyecto = user.rol === 'lider'
+    ? proyecto.id_lider === user.id_usuario
+    : await proyectoEmpleadoRepository.exists(user.id_usuario, proyectoId);
 
   if (!perteneceProyecto) {
     const error = new Error('No estás asignado a este proyecto');
@@ -267,10 +255,9 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
     throw error;
   }
 
-  // VALIDAR LIMITE DIARIO Y TIEMPO TRABAJADO SEGUN MARCAJE
-  await validarHorasContraMarcaje({
+  await validarHoras({
     idEmpleado: user.id_usuario,
-    fecha: registro.fecha,
+    fecha: fechaRegistro,
     horasARegistrar: horasRegistro,
     idRegistroExcluir: id,
     tipoPago: user.tipo_pago
@@ -300,10 +287,9 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
 };
 
 module.exports = {
-  getHorasByLider,
   getRegistrosHoras,
+  getRegistrosHorasEmpresa,
   createRegistroHoras,
   getRegistroHorasById,
-  updateRegistroHoras,
-  requiereMarcajeParaRegistrarHoras
+  updateRegistroHoras
 };

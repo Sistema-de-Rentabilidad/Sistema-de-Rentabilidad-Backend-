@@ -1,37 +1,37 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 const pool = require('../../../src/config/db');
-
-const { login } = require('../../helpers/auth');
-const { crearEmpresaTemporal, eliminarEmpresaTemporal } = require('../../helpers/empresa.helper');
-const { eliminarUsuarioTemporal } = require('../../helpers/usuario.helper');
-
 const usuarioRepository = require('../../../src/modules/usuario/usuario.repository');
 
-jest.setTimeout(20000);
+const {
+    createContext,
+    cleanupContext,
+    tokenCookieForUser,
+    createUsuario
+} = require('../../helpers/integration.helper');
+
+jest.setTimeout(30000);
 
 describe('HU12 - Creacion de propietario', () => {
-
-    let auth;
-    let empresa;
-    let createdUserId;
-
-    beforeAll(async () => {
-        auth = await login('qa_admin@test.com', 'Qa123456*');
-    });
+    let ctx;
+    let authCookies;
 
     beforeEach(async () => {
-        empresa = await crearEmpresaTemporal();
-        createdUserId = null;
+        // Al crear contexto, se crea automáticamente un propietario.
+        // Si queremos probar la creación de un propietario,
+        // necesitamos una empresa sin propietario.
+        ctx = await createContext({ incluirAdmin: true });
+
+        // Eliminamos el propietario creado por el contexto para que
+        // la empresa quede libre para el registro de un nuevo propietario.
+        await pool.query('DELETE FROM usuario WHERE id_usuario = $1', [ctx.propietario.id_usuario]);
+        ctx.ids.usuarios = ctx.ids.usuarios.filter(id => id !== ctx.propietario.id_usuario);
+
+        authCookies = tokenCookieForUser(ctx.admin);
     });
 
     afterEach(async () => {
-        if (createdUserId) {
-            await eliminarUsuarioTemporal(createdUserId);
-        }
-        if (empresa?.id_empresa) {
-            await eliminarEmpresaTemporal(empresa.id_empresa);
-        }
+        await cleanupContext(ctx);
     });
 
     test('CP-HU12-1-BE - Registro API propietario exitoso', async () => {
@@ -39,12 +39,12 @@ describe('HU12 - Creacion de propietario', () => {
             nombre: `Propietario QA Test`,
             email: `qa_propietario_${Date.now()}@test.com`,
             password: 'Password123*',
-            id_empresa: empresa.id_empresa
+            id_empresa: ctx.empresa.id_empresa
         };
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', auth.cookies)
+            .set('Cookie', authCookies)
             .send(payload);
 
         expect(response.status).toBe(201);
@@ -59,9 +59,12 @@ describe('HU12 - Creacion de propietario', () => {
         expect(user).toHaveProperty('nombre', payload.nombre);
         expect(user).toHaveProperty('email', payload.email.toLowerCase());
         expect(user).toHaveProperty('rol', 'propietario');
-        expect(user).toHaveProperty('id_empresa', empresa.id_empresa);
+        expect(user).toHaveProperty('id_empresa', ctx.empresa.id_empresa);
 
-        createdUserId = user.id;
+        // Track the user for cleanup
+        if (response.body.user?.id) {
+            ctx.ids.usuarios.push(response.body.user.id);
+        }
     });
 
     test('CP-HU12-1-BD - Persistencia propietario registrado', async () => {
@@ -70,53 +73,54 @@ describe('HU12 - Creacion de propietario', () => {
             nombre: `Propietario BD Test`,
             email: `qa_propietario_bd_${timestamp}@test.com`,
             password: 'Password123*',
-            id_empresa: empresa.id_empresa
+            id_empresa: ctx.empresa.id_empresa
         };
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', auth.cookies)
+            .set('Cookie', authCookies)
             .send(payload);
 
         expect(response.status).toBe(201);
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('user');
 
-        const user = response.body.user;
-        createdUserId = user.id;
-
+        const userId = response.body.user.id;
+        ctx.ids.usuarios.push(userId);
         const dbResult = await pool.query(
             `SELECT id_usuario, nombre, email, rol, id_empresa, is_active
              FROM usuario
              WHERE id_usuario = $1`,
-            [createdUserId]
+            [userId]
         );
 
         expect(dbResult.rowCount).toBe(1);
         const persistedUser = dbResult.rows[0];
 
         expect(persistedUser).toMatchObject({
-            id_usuario: createdUserId,
+            id_usuario: userId,
             nombre: payload.nombre,
             email: payload.email.toLowerCase(),
             rol: 'propietario',
-            id_empresa: empresa.id_empresa,
+            id_empresa: ctx.empresa.id_empresa,
             is_active: true
         });
     });
 
     test('CP-HU12-2-BE - Restricción correo duplicado', async () => {
-        // Usar email que ya existe en el seed (qa_empleado1@test.com)
+        // Usar email de un usuario ya existente para generar conflicto.
+        const usuarioExistente = await createUsuario(ctx, { idEmpresa: ctx.empresa.id_empresa, rol: 'empleado' });
+
         const payload = {
             nombre: 'Propietario Intento',
-            email: 'qa_empleado1@test.com', // Email que ya existe
+            email: usuarioExistente.email, // Email duplicado
             password: 'Password123*',
-            id_empresa: empresa.id_empresa
+            id_empresa: ctx.empresa.id_empresa
         };
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', auth.cookies)
+            .set('Cookie', authCookies)
             .send(payload);
 
         expect(response.status).toBe(400);
@@ -126,15 +130,97 @@ describe('HU12 - Creacion de propietario', () => {
     });
 
     test('CP-HU12-2-BD - Restricción UNIQUE correo (BD rechaza inserción)', async () => {
-        // Intentar insertar directamente en la BD un usuario con email que ya existe en seed
-        const duplicateEmail = 'qa_empleado1@test.com';
+        const usuarioExistente = await createUsuario(ctx, { idEmpresa: ctx.empresa.id_empresa, rol: 'empleado' });
 
         await expect(
             pool.query(
                 `INSERT INTO usuario (id_empresa, nombre, email, password, rol) VALUES ($1, $2, $3, $4, $5)`,
-                [empresa.id_empresa || 1, 'Insert Duplicate', duplicateEmail, 'x', 'propietario']
+                [ctx.empresa.id_empresa, 'Insert Duplicate', usuarioExistente.email, 'x', 'propietario']
             )
         ).rejects.toMatchObject({ code: '23505' }); // Postgres unique_violation
+    });
+
+    test('CP-HU12-4-BE - Validación contraseña insegura', async () => {
+        const payload = {
+            nombre: 'Usuario Contraseña Debil',
+            email: `qa_debil_${Date.now()}@test.com`,
+            password: '123', // Contraseña muy corta y débil
+            id_empresa: ctx.empresa.id_empresa
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        // El middleware devuelve un array de errores
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/contraseña|8/i);
+    });
+
+    test('CP-HU12-6-BE - Validación correo inválido', async () => {
+        const payload = {
+            nombre: 'Usuario Correo Mal',
+            email: 'test@@',
+            password: 'Password123*',
+            id_empresa: ctx.empresa.id_empresa
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/email|inválido/i);
+    });
+
+    test('CP-HU12-8-BE - Validación nombre inválido', async () => {
+        const payload = {
+            nombre: '@@##',
+            email: 'qa_nombre_invalido@test.com',
+            password: 'Password123*',
+            id_empresa: ctx.empresa.id_empresa
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body).toHaveProperty('errors');
+        expect(JSON.stringify(response.body.errors)).toMatch(/nombre/i);
+
+        // Verificamos que no se guardó en BD
+        const dbResult = await pool.query(
+            'SELECT * FROM usuario WHERE email = $1',
+            [payload.email]
+        );
+        expect(dbResult.rowCount).toBe(0);
+    });
+
+    test('CP-HU12-9-BE - Validación empresa obligatoria para admin', async () => {
+        const payload = {
+            nombre: 'Propietario Sin Empresa',
+            email: 'qa_sin_empresa@test.com',
+            password: 'Password123*',
+            // id_empresa omitido
+        };
+
+        const response = await request(app)
+            .post('/api/usuarios')
+            .set('Cookie', authCookies)
+            .send(payload);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('success', false);
+        expect(response.body.message).toMatch(/empresa/i);
     });
 
     test('CP-HU12-10-BE - Error interno registro propietario', async () => {
@@ -142,7 +228,7 @@ describe('HU12 - Creacion de propietario', () => {
             nombre: `Propietario Error Test`,
             email: `qa_propietario_error_${Date.now()}@test.com`,
             password: 'Password123*',
-            id_empresa: empresa.id_empresa
+            id_empresa: ctx.empresa.id_empresa
         };
 
         // Simular error interno en la creación (BD/Repo)
@@ -153,7 +239,7 @@ describe('HU12 - Creacion de propietario', () => {
         try {
             const response = await request(app)
                 .post('/api/usuarios')
-                .set('Cookie', auth.cookies)
+                .set('Cookie', authCookies)
                 .send(payload);
 
             expect(response.status).toBe(500);
@@ -168,22 +254,17 @@ describe('HU12 - Creacion de propietario', () => {
 });
 
 describe('HU13 - Creacion de empleado/lider', () => {
-
-    let authPropietario;
-    let createdEmpleadoId;
-
-    beforeAll(async () => {
-        authPropietario = await login('qa_propietario@test.com', 'Qa123456*');
-    });
+    let ctx;
+    let authCookies;
 
     beforeEach(async () => {
-        createdEmpleadoId = null;
+        ctx = await createContext();
+        // El propietario crea empleados/lideres
+        authCookies = tokenCookieForUser(ctx.propietario);
     });
 
     afterEach(async () => {
-        if (createdEmpleadoId) {
-            await eliminarUsuarioTemporal(createdEmpleadoId);
-        }
+        await cleanupContext(ctx);
     });
 
     test('CP-HU13-1-BE - Registro API empleado exitoso', async () => {
@@ -201,7 +282,7 @@ describe('HU13 - Creacion de empleado/lider', () => {
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', authPropietario.cookies)
+            .set('Cookie', authCookies)
             .send(payload);
 
         expect(response.status).toBe(201);
@@ -215,9 +296,9 @@ describe('HU13 - Creacion de empleado/lider', () => {
         expect(user).toHaveProperty('email', payload.email.toLowerCase());
         expect(user).toHaveProperty('rol', 'empleado');
         // Debe asignarse a la misma empresa del propietario
-        expect(user).toHaveProperty('id_empresa', authPropietario.user.id_empresa);
+        expect(user).toHaveProperty('id_empresa', ctx.propietario.id_empresa);
 
-        createdEmpleadoId = user.id;
+        ctx.ids.usuarios.push(response.body.user.id);
     });
 
     test('CP-HU13-1-BD - Persistencia empleado registrado', async () => {
@@ -235,41 +316,90 @@ describe('HU13 - Creacion de empleado/lider', () => {
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', authPropietario.cookies)
+            .set('Cookie', authCookies)
             .send(payload);
 
         expect(response.status).toBe(201);
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('user');
 
-        const user = response.body.user;
-        createdEmpleadoId = user.id;
-
+        const userId = response.body.user.id;
+        ctx.ids.usuarios.push(userId);
         const dbResult = await pool.query(
             `SELECT id_usuario, nombre, email, rol, id_empresa, is_active
              FROM usuario
              WHERE id_usuario = $1`,
-            [createdEmpleadoId]
+            [userId]
         );
 
         expect(dbResult.rowCount).toBe(1);
         const persistedUser = dbResult.rows[0];
 
         expect(persistedUser).toMatchObject({
-            id_usuario: createdEmpleadoId,
+            id_usuario: userId,
             nombre: payload.nombre,
             email: payload.email.toLowerCase(),
             rol: 'empleado',
-            id_empresa: authPropietario.user.id_empresa,
+            id_empresa: ctx.propietario.id_empresa,
             is_active: true
         });
+    });
+
+    test('CP-HU13-2-BE - Error al registrar empleado/lider sin sueldo', async () => {
+        const timestamp = Date.now();
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const payload = {
+                nombre: `${rol.charAt(0).toUpperCase() + rol.slice(1)} sin sueldo`,
+                email: `qa_${rol}_sin_sueldo_${timestamp + Math.random()}@test.com`,
+                password: 'Password123*',
+                rol: rol
+                // Omitiendo monto, tipo_pago y horas_mensuales
+            };
+
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', authCookies)
+                .send(payload);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body.message).toMatch(/requiere monto y tipo de pago/i);
+        }
+    });
+
+    test('CP-HU13-3-BE - Error al registrar empleado/lider mensual sin horas mensuales', async () => {
+        const timestamp = Date.now();
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const payload = {
+                nombre: `${rol.charAt(0).toUpperCase() + rol.slice(1)} mensual sin horas`,
+                email: `qa_${rol}_mensual_sin_horas_${timestamp + Math.random()}@test.com`,
+                password: 'Password123*',
+                rol: rol,
+                tipo_pago: 'mensual',
+                monto: 1000
+                // Omitiendo horas_mensuales
+            };
+
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', authCookies)
+                .send(payload);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body.message).toMatch(/requiere horas mensuales/i);
+        }
     });
 
     test('CP-HU13-4-BE - Restricción correo duplicado empleado', async () => {
         // Intentar registrar un empleado usando un email que ya existe en seed
         const payload = {
             nombre: 'Empleado Duplicado',
-            email: 'qa_empleado1@test.com', // email existente en seed
+            email: ctx.empleado.email, // email existente
             password: 'Password123*',
             rol: 'empleado',
             tipo_pago: 'mensual',
@@ -279,7 +409,7 @@ describe('HU13 - Creacion de empleado/lider', () => {
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', authPropietario.cookies)
+            .set('Cookie', authCookies)
             .send(payload);
 
         expect(response.status).toBe(400);
@@ -288,10 +418,34 @@ describe('HU13 - Creacion de empleado/lider', () => {
         expect(response.body.message).toMatch(/email.*registrado|ya.*existe|duplicad/i);
     });
 
+    test('CP-HU13-9-BE - Error al registrar empleado/lider sin tipo de pago', async () => {
+        const timestamp = Date.now();
+        const roles = ['empleado', 'lider'];
+
+        for (const rol of roles) {
+            const payload = {
+                nombre: `${rol.charAt(0).toUpperCase() + rol.slice(1)} sin tipo pago`,
+                email: `qa_${rol}_sin_tipo_${timestamp + Math.random()}@test.com`,
+                password: 'Password123*',
+                rol: rol,
+                monto: 1000
+                // Omitiendo tipo_pago
+            };
+
+            const response = await request(app)
+                .post('/api/usuarios')
+                .set('Cookie', authCookies)
+                .send(payload);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toHaveProperty('success', false);
+            expect(response.body.message).toMatch(/requiere monto y tipo de pago/i);
+        }
+    });
+
     test('CP-HU13-11-BE - Restricción registro usuarios por empleado', async () => {
         // Login con empleado del seed
-        const authEmpleado = await login('qa_empleado1@test.com', 'Qa123456*');
-
+        const authEmpleado = tokenCookieForUser(ctx.empleado);
         const payload = {
             nombre: 'Intento por empleado',
             email: `qa_emp_intento_${Date.now()}@test.com`,
@@ -304,7 +458,7 @@ describe('HU13 - Creacion de empleado/lider', () => {
 
         const response = await request(app)
             .post('/api/usuarios')
-            .set('Cookie', authEmpleado.cookies)
+            .set('Cookie', authEmpleado)
             .send(payload);
 
         expect(response.status).toBe(403);
