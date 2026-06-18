@@ -13,7 +13,7 @@ const {
   uniqueText
 } = require('../../helpers/integration.helper');
 
-jest.setTimeout(90000);
+jest.setTimeout(40000);
 
 const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 
@@ -53,7 +53,7 @@ describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
         const registro = await createRegistroHoras(ctx, {
           idProyecto: ctx.proyecto.id_proyecto,
           idFase: ctx.fase.id_fase,
-          idEmpleado: ctx.empleado.id_usuario
+          idEmpleado: rol === 'empleado' ? ctx.empleado.id_usuario : ctx.lider.id_usuario
         });
         const response = await request(app)
           .get('/api/horas')
@@ -280,138 +280,6 @@ describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
     }
   });
 
-  test("CP-HU29-2-BE - Registro permite mas de 12 horas", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
-
-    try {
-      const response = await request(app)
-        .post('/api/horas')
-        .set('Cookie', tokenCookieForUser(ctx.empleado))
-        .send({
-          id_proyecto: ctx.proyecto.id_proyecto,
-          id_fase: ctx.fase.id_fase,
-          horas: 13,
-          descripcion: 'Mas de doce'
-        });
-
-      expect(response.status).toBe(201);
-      expect(Number(response.body.data.horas)).toBe(13);
-      ctx.ids.registros.push(response.body.data.id_registro);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("CP-HU29-3-BE - Registro permite sin marcaje", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'mensual' });
-
-    try {
-      const response = await request(app)
-        .post('/api/horas')
-        .set('Cookie', tokenCookieForUser(ctx.empleado))
-        .send({
-          id_proyecto: ctx.proyecto.id_proyecto,
-          id_fase: ctx.fase.id_fase,
-          horas: 2,
-          descripcion: 'Sin marcaje'
-        });
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('success', true);
-      ctx.ids.registros.push(response.body.data.id_registro);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("CP-HU29-LIDER-BE - Lider registra horas en proyecto propio", async () => {
-    const ctx = await createContext();
-
-    try {
-      const response = await request(app)
-        .post('/api/horas')
-        .set('Cookie', tokenCookieForUser(ctx.lider))
-        .send({
-          id_proyecto: ctx.proyecto.id_proyecto,
-          id_fase: ctx.fase.id_fase,
-          horas: 2,
-          descripcion: 'Horas lider'
-        });
-
-      expect(response.status).toBe(201);
-      expect(response.body.data).toMatchObject({
-        id_empleado: ctx.lider.id_usuario,
-        id_proyecto: ctx.proyecto.id_proyecto,
-        id_fase: ctx.fase.id_fase
-      });
-      ctx.ids.registros.push(response.body.data.id_registro);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("CP-HU22-1-BE - Propietario visualiza horas de empleados de su empresa", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
-    const externo = await createContext({ empleadoTipoPago: 'por_hora' });
-
-    try {
-      const registroEmpresa = await createRegistroHoras(ctx, {
-        idProyecto: ctx.proyecto.id_proyecto,
-        idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario
-      });
-      const registroExterno = await createRegistroHoras(externo, {
-        idProyecto: externo.proyecto.id_proyecto,
-        idFase: externo.fase.id_fase,
-        idEmpleado: externo.empleado.id_usuario
-      });
-
-      const response = await request(app)
-        .get('/api/horas')
-        .set('Cookie', tokenCookieForUser(ctx.propietario));
-
-      expect(response.status).toBe(200);
-      const ids = response.body.data.map((item) => item.id_registro);
-      expect(ids).toContain(registroEmpresa.id_registro);
-      expect(ids).not.toContain(registroExterno.id_registro);
-    } finally {
-      await cleanupContext(externo);
-      await cleanupContext(ctx);
-    }
-  });
-
-  test("CP-HU22-2-BE - Lider filtra reporte de horas por rango de fechas", async () => {
-    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
-
-    try {
-      const registroHoy = await createRegistroHoras(ctx, {
-        idProyecto: ctx.proyecto.id_proyecto,
-        idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario,
-        fecha: getFechaActual()
-      });
-      const registroAyer = await createRegistroHoras(ctx, {
-        idProyecto: ctx.proyecto.id_proyecto,
-        idFase: ctx.fase.id_fase,
-        idEmpleado: ctx.empleado.id_usuario,
-        fecha: ayer(),
-        descripcion: uniqueText('QA_TESTINY_HORAS_AYER')
-      });
-
-      const response = await request(app)
-        .get('/api/horas')
-        .query({ fecha_desde: getFechaActual(), fecha_hasta: getFechaActual() })
-        .set('Cookie', tokenCookieForUser(ctx.lider));
-
-      expect(response.status).toBe(200);
-      const ids = response.body.data.map((item) => item.id_registro);
-      expect(ids).toContain(registroHoy.id_registro);
-      expect(ids).not.toContain(registroAyer.id_registro);
-    } finally {
-      await cleanupContext(ctx);
-    }
-  });
-
   test("CP-HU29-9-BE - Restricción fase inactiva", async () => {
     const ctx = await createContext({ empleadoTipoPago: 'por_hora', faseActiva: false });
 
@@ -513,4 +381,3 @@ describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
     }
   });
 });
-

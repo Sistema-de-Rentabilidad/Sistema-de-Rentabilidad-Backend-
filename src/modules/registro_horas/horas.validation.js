@@ -1,31 +1,6 @@
 const { body, param, query } = require('express-validator');
 const { handleValidationErrors } = require('../../modules/middlewares/validationMiddleware');
 
-const listHorasValidation = [
-    query('fecha_desde')
-        .optional()
-        .isISO8601().withMessage('Fecha desde invalida'),
-
-    query('fecha_hasta')
-        .optional()
-        .isISO8601().withMessage('Fecha hasta invalida'),
-
-    (req, res, next) => {
-        const { fecha_desde, fecha_hasta } = req.query;
-
-        if (fecha_desde && fecha_hasta && new Date(fecha_desde) > new Date(fecha_hasta)) {
-            return res.status(400).json({
-                success: false,
-                message: 'El rango de fechas es invalido'
-            });
-        }
-
-        next();
-    },
-
-    handleValidationErrors
-];
-
 const createHorasValidation = [
     body('id_proyecto')
         .notEmpty().withMessage('El proyecto es obligatorio')
@@ -94,7 +69,6 @@ const updateHorasValidation = [
 ];
 
 module.exports = {
-    listHorasValidation,
     createHorasValidation,
     registroHorasIdParamValidation,
     updateHorasValidation

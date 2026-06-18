@@ -3,23 +3,26 @@ const proyectoRepository = require('../proyecto/proyecto.repository');
 const proyectoEmpleadoRepository = require('../proyecto_empleado/proyecto_empleado.repository')
 const faseRepository = require('../fase/fase.repository');
 const faseEmpleadoRepository = require('../fase_empleado/fase_empleado.repository')
+
 const { getFechaActual, toFechaString } = require('../../utils/dateTime');
 
-const getHorasByLider = async (liderId) => {
-  return await registroHorasRepository.findByLider(liderId);
-};
-
-const getRegistrosHoras = async ({ user, empresaId, filters = {} }) => {
-  if (user.rol === 'empleado') {
-    return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId, filters);
-  }
-
-  if (['lider', 'propietario'].includes(user.rol)) {
-    return await registroHorasRepository.findByEmpresa(empresaId, filters);
+const getRegistrosHoras = async ({ user, empresaId }) => {
+  if (['lider', 'empleado'].includes(user.rol)) {
+    return await registroHorasRepository.findByEmpleado(user.id_usuario, empresaId);
   }
 
   throw Object.assign(
     new Error('No tienes permisos para acceder a los registros de horas'),
+    { status: 403 }
+  );
+};
+
+const getRegistrosHorasEmpresa = async ({ user, empresaId }) => {
+  if (['lider', 'propietario'].includes(user.rol)) {
+    return await registroHorasRepository.findByEmpresa(empresaId);
+  }
+  throw Object.assign(
+    new Error('No tienes permisos para acceder a los registros de toda la empresa'),
     { status: 403 }
   );
 };
@@ -284,10 +287,9 @@ const updateRegistroHoras = async ({ id, id_proyecto, id_fase, horas, descripcio
 };
 
 module.exports = {
-  getHorasByLider,
   getRegistrosHoras,
+  getRegistrosHorasEmpresa,
   createRegistroHoras,
   getRegistroHorasById,
   updateRegistroHoras
 };
-

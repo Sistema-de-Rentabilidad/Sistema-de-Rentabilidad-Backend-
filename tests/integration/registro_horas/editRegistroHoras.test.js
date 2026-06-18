@@ -63,7 +63,7 @@ describe('HU30 - Actualización de registro de horas', () => {
                 expect(response.body.success).toBe(true);
                 expect(Number(response.body.data.horas)).toBe(2.5);
             });
-
+            
             test(`CP-HU30-1-BD - Persistencia de edición de horas en BD (${rol})`, async () => {
                 await request(app)
                     .put(`/api/horas/${registroTemporal.id_registro}`)
