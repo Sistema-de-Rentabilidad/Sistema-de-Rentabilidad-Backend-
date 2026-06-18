@@ -24,7 +24,7 @@ const ayer = () => {
   return date.toISOString().slice(0, 10);
 };
 
-describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
+describe('HU22, HU27, HU29 - Gestión y creación de registro de horas', () => {
   const casosUsuario = [
     { rol: 'empleado', tipoPago: 'por_hora' },
     { rol: 'empleado', tipoPago: 'mensual' },
@@ -81,6 +81,78 @@ describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
         });
       });
     });
+  });
+
+  test("CP-HU22-1-BE - Obtención de registros de toda la empresa", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
+    const { propietario, lider, empleado } = ctx;
+
+    try {
+      // Crear registros para diferentes usuarios
+      await createRegistroHoras(ctx, {
+        idProyecto: ctx.proyecto.id_proyecto,
+        idFase: ctx.fase.id_fase,
+        idEmpleado: empleado.id_usuario
+      });
+      await createRegistroHoras(ctx, {
+        idProyecto: ctx.proyecto.id_proyecto,
+        idFase: ctx.fase.id_fase,
+        idEmpleado: lider.id_usuario
+      });
+
+      // Prueba como propietario (debe ver todo)
+      const authPropietario = authFor(propietario);
+      const responseProp = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', authPropietario.cookies);
+
+      expect(responseProp.status).toBe(200);
+      expect(responseProp.body.data.length).toBeGreaterThanOrEqual(2);
+
+      // Prueba como líder (debe ver todo)
+      const authLider = authFor(lider);
+      const responseLider = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', authLider.cookies);
+
+      expect(responseLider.status).toBe(200);
+      // Debe contener el del empleado
+      expect(responseLider.body.data.some(r => r.id_empleado === empleado.id_usuario)).toBe(true);
+      // Debe contener el suyo
+      expect(responseLider.body.data.some(r => r.id_empleado === lider.id_usuario)).toBe(true);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU22-6-BE - Validación de JWT expirado en endpoint empresa", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
+
+    try {
+      const response = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', tokenCookieForUser(ctx.propietario, '-1h'));
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
+  });
+
+  test("CP-HU22-7-BE - Validación de permisos para empleado en reporte global", async () => {
+    const ctx = await createContext({ empleadoTipoPago: 'por_hora' });
+
+    try {
+      const auth = authFor(ctx.empleado);
+      const response = await request(app)
+        .get('/api/horas/empresa')
+        .set('Cookie', auth.cookies);
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+    } finally {
+      await cleanupContext(ctx);
+    }
   });
 
   test("CP-HU27-2-BE - Respuesta vacía registros horas", async () => {
@@ -381,3 +453,4 @@ describe('HU27, HU29 - Gestión y creación de registro de horas', () => {
     }
   });
 });
+
