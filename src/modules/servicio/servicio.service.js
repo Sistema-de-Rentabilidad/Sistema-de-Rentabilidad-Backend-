@@ -101,6 +101,14 @@ const desactivarServicio = async (servicioId, empresaId) => {
     throw error;
   }
 
+  const proyectosAsociados = await servicioRepository.countProyectosByServicio(servicioId);
+
+  if (proyectosAsociados > 0) {
+    const error = new Error('No se puede eliminar un servicio con proyectos asociados');
+    error.status = 400;
+    throw error;
+  }
+
   const result = await servicioRepository.desactivar(servicioId);
   return result;
 };
