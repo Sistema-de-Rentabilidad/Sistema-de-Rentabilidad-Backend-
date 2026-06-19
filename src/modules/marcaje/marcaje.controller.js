@@ -22,6 +22,15 @@ const getMarcajes = async (req, res, next) => {
   }
 };
 
+const getMarcajesEmpresa = async (req, res, next) => {
+  try {
+    const marcajes = await marcajeService.getMarcajesEmpresa({ user: req.user });
+    return res.status(200).json({ success: true, data: marcajes });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const marcarEntrada = async (req, res, next) => {
   try {
     const marcaje = await marcajeService.marcarEntrada({
@@ -54,6 +63,7 @@ const marcarSalida = async (req, res, next) => {
 
 module.exports = {
   getMarcajes,
+  getMarcajesEmpresa,
   marcarEntrada,
   marcarSalida
 };
