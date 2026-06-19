@@ -34,6 +34,27 @@ const findByUsuario = async (idUsuario) => {
   return result.rows;
 };
 
+const findByEmpresa = async (idEmpresa) => {
+  const result = await pool.query(
+    `SELECT
+        m.id_marcaje,
+        m.id_usuario,
+        u.nombre,
+        m.fecha::text AS fecha,
+        to_char(m.hora_entrada, 'HH24:MI:SS') AS hora_entrada,
+        CASE
+          WHEN m.hora_salida IS NULL THEN NULL
+          ELSE to_char(m.hora_salida, 'HH24:MI:SS')
+        END AS hora_salida
+     FROM marcaje m
+     JOIN usuario u ON m.id_usuario = u.id_usuario
+     WHERE u.id_empresa = $1
+     ORDER BY m.fecha DESC, m.id_marcaje DESC`,
+    [idEmpresa]
+  );
+  return result.rows;
+};
+
 const withTransaction = async (callback) => {
   const client = await pool.connect();
 
@@ -213,6 +234,8 @@ const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true 
 
 module.exports = {
   findByUsuario,
+  findByEmpresa,
   registrarEntrada,
   registrarSalida
 };
+

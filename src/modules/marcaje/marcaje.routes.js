@@ -19,6 +19,15 @@ const bloquearEmpleadoPorHora = (req, res, next) => {
   next();
 };
 
+// GET /marcajes/empresa - Solo para propietarios
+router.get(
+  '/empresa',
+  auth,
+  role('propietario'),
+  empresa,
+  marcajeController.getMarcajesEmpresa
+);
+
 // GET /marcajes
 router.get('/', auth, role('empleado', 'lider'), empresa, bloquearEmpleadoPorHora, marcajeController.getMarcajes);
 
@@ -29,3 +38,4 @@ router.post('/entrada', auth, role('empleado', 'lider'), empresa, bloquearEmplea
 router.post('/salida', auth, role('empleado', 'lider'), empresa, bloquearEmpleadoPorHora, marcajeBodyValidation, marcajeController.marcarSalida);
 
 module.exports = router;
+
