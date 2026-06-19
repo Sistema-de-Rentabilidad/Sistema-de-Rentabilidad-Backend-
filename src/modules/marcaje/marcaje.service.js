@@ -29,11 +29,14 @@ const getMarcajes = async ({ user }) => {
   return await marcajeRepository.findByUsuario(user.id_usuario);
 };
 
+const getMarcajesEmpresa = async ({ user }) => {
+  return await marcajeRepository.findByEmpresa(user.id_empresa);
+};
+
 const marcarEntrada = async ({ user, enforceHorario = false, fechaHora = new Date() }) => {
   if (enforceHorario) {
     validarHorarioEntrada({ fechaHora });
   }
-
   const fecha = getFechaActual();
   const result = await marcajeRepository.registrarEntrada({
     id_usuario: user.id_usuario,
@@ -94,6 +97,7 @@ const marcarSalida = async ({ user }) => {
 
 module.exports = {
   getMarcajes,
+  getMarcajesEmpresa,
   marcarEntrada,
   marcarSalida,
   validarHorarioEntrada
