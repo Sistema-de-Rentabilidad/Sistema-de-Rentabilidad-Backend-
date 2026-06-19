@@ -115,8 +115,8 @@ const updateProyectoValidation = [
   // presupuesto (obligatorio en create, pero opcional en update)
   body('presupuesto')
     .optional()
-    .isFloat({ min: 0 })
-    .withMessage('El presupuesto debe ser mayor o igual a 0'),
+    .isFloat({ min: 1 })
+    .withMessage('El presupuesto debe ser mayor o igual a 1'),
 
   body('margen')
     .optional()
