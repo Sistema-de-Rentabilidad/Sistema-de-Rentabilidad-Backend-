@@ -24,7 +24,16 @@ const create = async (data) => {
 
 const findById = async (id) => {
   const res = await pool.query(
-    `SELECT n.id_nota, n.id_proyecto, n.id_lider, n.descripcion, n.fecha, p.id_empresa, u.nombre AS nombre_lider
+    `SELECT
+        n.id_nota,
+        n.id_proyecto,
+        n.id_lider,
+        n.descripcion,
+        n.fecha,
+        p.id_empresa,
+        p.fecha_fin_real,
+        p.estado,
+        u.nombre AS nombre_lider
      FROM nota n
      INNER JOIN proyecto p
        ON p.id_proyecto = n.id_proyecto
@@ -46,7 +55,9 @@ const findByIdFull = async (id) => {
         n.descripcion,
         n.fecha,
         n.is_active,
-        p.id_empresa
+        p.id_empresa,
+        p.fecha_fin_real,
+        p.estado
      FROM nota n
      INNER JOIN proyecto p
        ON n.id_proyecto = p.id_proyecto

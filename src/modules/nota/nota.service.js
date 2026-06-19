@@ -1,6 +1,10 @@
 const notaRepository = require('./nota.repository');
 const verifyProyectoAccess = require('../../utils/verifyProyectoAccess')
 
+const isProyectoFinalizado = (proyecto) => (
+  Boolean(proyecto?.fecha_fin_real) || proyecto?.estado === 'Finalizado'
+);
+
 const getNotasByProyecto = async (proyectoId, empresaId) => {
   await verifyProyectoAccess(proyectoId, empresaId);
 
@@ -10,7 +14,7 @@ const getNotasByProyecto = async (proyectoId, empresaId) => {
 const createNota = async (proyectoId, data, user, empresaId) => {
   const proyecto = await verifyProyectoAccess(proyectoId, empresaId);
 
-  if (proyecto.fecha_fin_real) {
+  if (isProyectoFinalizado(proyecto)) {
     throw Object.assign(
       new Error('No puedes registrar notas en un proyecto finalizado'),
       { status: 400 }
@@ -69,6 +73,13 @@ const updateNota = async (id, data, user, empresaId) => {
     );
   }
 
+  if (isProyectoFinalizado(nota)) {
+    throw Object.assign(
+      new Error('No se pueden editar notas de un proyecto finalizado'),
+      { status: 400 }
+    );
+  }
+
   return await notaRepository.update(id, data.descripcion);
 };
 
@@ -96,6 +107,13 @@ const desactivarNota = async (id, user, empresaId) => {
   if (!nota.is_active) {
     throw Object.assign(
       new Error('La nota ya fue eliminada'),
+      { status: 400 }
+    );
+  }
+
+  if (isProyectoFinalizado(nota)) {
+    throw Object.assign(
+      new Error('No se pueden eliminar notas de un proyecto finalizado'),
       { status: 400 }
     );
   }
