@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed:qa": "cross-env NODE_ENV=qa node seed/index.js",
+    "start:qa": "cross-env NODE_ENV=qa LOGIN_RATE_LIMIT_STORE=database node src/server.js",
     "dev:qa": "cross-env NODE_ENV=qa LOGIN_RATE_LIMIT_STORE=database nodemon src/server.js",
     "qa:reset": "npm run seed:qa && npm run dev:qa",
     "test": "cross-env NODE_ENV=qa jest --passWithNoTests",
