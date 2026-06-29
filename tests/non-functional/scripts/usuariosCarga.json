@@ -1,0 +1,482 @@
+[
+  {
+    "id_usuario": 58,
+    "email": "lider.carga1@test.com",
+    "rol": "lider",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 59,
+    "email": "lider.carga2@test.com",
+    "rol": "lider",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 60,
+    "email": "lider.carga3@test.com",
+    "rol": "lider",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 61,
+    "email": "lider.carga4@test.com",
+    "rol": "lider",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 62,
+    "email": "lider.carga5@test.com",
+    "rol": "lider",
+    "id_empresa": 13
+  },
+  {
+    "id_usuario": 63,
+    "email": "lider.carga6@test.com",
+    "rol": "lider",
+    "id_empresa": 14
+  },
+  {
+    "id_usuario": 64,
+    "email": "lider.carga7@test.com",
+    "rol": "lider",
+    "id_empresa": 15
+  },
+  {
+    "id_usuario": 65,
+    "email": "lider.carga8@test.com",
+    "rol": "lider",
+    "id_empresa": 16
+  },
+  {
+    "id_usuario": 66,
+    "email": "lider.carga9@test.com",
+    "rol": "lider",
+    "id_empresa": 17
+  },
+  {
+    "id_usuario": 67,
+    "email": "lider.carga10@test.com",
+    "rol": "lider",
+    "id_empresa": 18
+  },
+  {
+    "id_usuario": 68,
+    "email": "lider.carga11@test.com",
+    "rol": "lider",
+    "id_empresa": 19
+  },
+  {
+    "id_usuario": 69,
+    "email": "lider.carga12@test.com",
+    "rol": "lider",
+    "id_empresa": 20
+  },
+  {
+    "id_usuario": 70,
+    "email": "lider.carga13@test.com",
+    "rol": "lider",
+    "id_empresa": 21
+  },
+  {
+    "id_usuario": 71,
+    "email": "lider.carga14@test.com",
+    "rol": "lider",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 72,
+    "email": "lider.carga15@test.com",
+    "rol": "lider",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 73,
+    "email": "lider.carga16@test.com",
+    "rol": "lider",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 74,
+    "email": "lider.carga17@test.com",
+    "rol": "lider",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 75,
+    "email": "lider.carga18@test.com",
+    "rol": "lider",
+    "id_empresa": 13
+  },
+  {
+    "id_usuario": 76,
+    "email": "lider.carga19@test.com",
+    "rol": "lider",
+    "id_empresa": 14
+  },
+  {
+    "id_usuario": 77,
+    "email": "lider.carga20@test.com",
+    "rol": "lider",
+    "id_empresa": 15
+  },
+  {
+    "id_usuario": 78,
+    "email": "lider.carga21@test.com",
+    "rol": "lider",
+    "id_empresa": 16
+  },
+  {
+    "id_usuario": 79,
+    "email": "lider.carga22@test.com",
+    "rol": "lider",
+    "id_empresa": 17
+  },
+  {
+    "id_usuario": 80,
+    "email": "lider.carga23@test.com",
+    "rol": "lider",
+    "id_empresa": 18
+  },
+  {
+    "id_usuario": 81,
+    "email": "lider.carga24@test.com",
+    "rol": "lider",
+    "id_empresa": 19
+  },
+  {
+    "id_usuario": 82,
+    "email": "lider.carga25@test.com",
+    "rol": "lider",
+    "id_empresa": 20
+  },
+  {
+    "id_usuario": 83,
+    "email": "lider.carga26@test.com",
+    "rol": "lider",
+    "id_empresa": 21
+  },
+  {
+    "id_usuario": 84,
+    "email": "lider.carga27@test.com",
+    "rol": "lider",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 85,
+    "email": "lider.carga28@test.com",
+    "rol": "lider",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 86,
+    "email": "lider.carga29@test.com",
+    "rol": "lider",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 87,
+    "email": "lider.carga30@test.com",
+    "rol": "lider",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 88,
+    "email": "empleado.carga1@test.com",
+    "rol": "empleado",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 89,
+    "email": "empleado.carga2@test.com",
+    "rol": "empleado",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 90,
+    "email": "empleado.carga3@test.com",
+    "rol": "empleado",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 91,
+    "email": "empleado.carga4@test.com",
+    "rol": "empleado",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 92,
+    "email": "empleado.carga5@test.com",
+    "rol": "empleado",
+    "id_empresa": 13
+  },
+  {
+    "id_usuario": 93,
+    "email": "empleado.carga6@test.com",
+    "rol": "empleado",
+    "id_empresa": 14
+  },
+  {
+    "id_usuario": 94,
+    "email": "empleado.carga7@test.com",
+    "rol": "empleado",
+    "id_empresa": 15
+  },
+  {
+    "id_usuario": 95,
+    "email": "empleado.carga8@test.com",
+    "rol": "empleado",
+    "id_empresa": 16
+  },
+  {
+    "id_usuario": 96,
+    "email": "empleado.carga9@test.com",
+    "rol": "empleado",
+    "id_empresa": 17
+  },
+  {
+    "id_usuario": 97,
+    "email": "empleado.carga10@test.com",
+    "rol": "empleado",
+    "id_empresa": 18
+  },
+  {
+    "id_usuario": 98,
+    "email": "empleado.carga11@test.com",
+    "rol": "empleado",
+    "id_empresa": 19
+  },
+  {
+    "id_usuario": 99,
+    "email": "empleado.carga12@test.com",
+    "rol": "empleado",
+    "id_empresa": 20
+  },
+  {
+    "id_usuario": 100,
+    "email": "empleado.carga13@test.com",
+    "rol": "empleado",
+    "id_empresa": 21
+  },
+  {
+    "id_usuario": 101,
+    "email": "empleado.carga14@test.com",
+    "rol": "empleado",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 102,
+    "email": "empleado.carga15@test.com",
+    "rol": "empleado",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 103,
+    "email": "empleado.carga16@test.com",
+    "rol": "empleado",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 104,
+    "email": "empleado.carga17@test.com",
+    "rol": "empleado",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 105,
+    "email": "empleado.carga18@test.com",
+    "rol": "empleado",
+    "id_empresa": 13
+  },
+  {
+    "id_usuario": 106,
+    "email": "empleado.carga19@test.com",
+    "rol": "empleado",
+    "id_empresa": 14
+  },
+  {
+    "id_usuario": 107,
+    "email": "empleado.carga20@test.com",
+    "rol": "empleado",
+    "id_empresa": 15
+  },
+  {
+    "id_usuario": 108,
+    "email": "empleado.carga21@test.com",
+    "rol": "empleado",
+    "id_empresa": 16
+  },
+  {
+    "id_usuario": 109,
+    "email": "empleado.carga22@test.com",
+    "rol": "empleado",
+    "id_empresa": 17
+  },
+  {
+    "id_usuario": 110,
+    "email": "empleado.carga23@test.com",
+    "rol": "empleado",
+    "id_empresa": 18
+  },
+  {
+    "id_usuario": 111,
+    "email": "empleado.carga24@test.com",
+    "rol": "empleado",
+    "id_empresa": 19
+  },
+  {
+    "id_usuario": 112,
+    "email": "empleado.carga25@test.com",
+    "rol": "empleado",
+    "id_empresa": 20
+  },
+  {
+    "id_usuario": 113,
+    "email": "empleado.carga26@test.com",
+    "rol": "empleado",
+    "id_empresa": 21
+  },
+  {
+    "id_usuario": 114,
+    "email": "empleado.carga27@test.com",
+    "rol": "empleado",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 115,
+    "email": "empleado.carga28@test.com",
+    "rol": "empleado",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 116,
+    "email": "empleado.carga29@test.com",
+    "rol": "empleado",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 117,
+    "email": "empleado.carga30@test.com",
+    "rol": "empleado",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 118,
+    "email": "empleado.carga31@test.com",
+    "rol": "empleado",
+    "id_empresa": 13
+  },
+  {
+    "id_usuario": 119,
+    "email": "empleado.carga32@test.com",
+    "rol": "empleado",
+    "id_empresa": 14
+  },
+  {
+    "id_usuario": 120,
+    "email": "empleado.carga33@test.com",
+    "rol": "empleado",
+    "id_empresa": 15
+  },
+  {
+    "id_usuario": 121,
+    "email": "empleado.carga34@test.com",
+    "rol": "empleado",
+    "id_empresa": 16
+  },
+  {
+    "id_usuario": 122,
+    "email": "empleado.carga35@test.com",
+    "rol": "empleado",
+    "id_empresa": 17
+  },
+  {
+    "id_usuario": 123,
+    "email": "empleado.carga36@test.com",
+    "rol": "empleado",
+    "id_empresa": 18
+  },
+  {
+    "id_usuario": 124,
+    "email": "empleado.carga37@test.com",
+    "rol": "empleado",
+    "id_empresa": 19
+  },
+  {
+    "id_usuario": 125,
+    "email": "empleado.carga38@test.com",
+    "rol": "empleado",
+    "id_empresa": 20
+  },
+  {
+    "id_usuario": 126,
+    "email": "empleado.carga39@test.com",
+    "rol": "empleado",
+    "id_empresa": 21
+  },
+  {
+    "id_usuario": 127,
+    "email": "empleado.carga40@test.com",
+    "rol": "empleado",
+    "id_empresa": 9
+  },
+  {
+    "id_usuario": 128,
+    "email": "empleado.carga41@test.com",
+    "rol": "empleado",
+    "id_empresa": 10
+  },
+  {
+    "id_usuario": 129,
+    "email": "empleado.carga42@test.com",
+    "rol": "empleado",
+    "id_empresa": 11
+  },
+  {
+    "id_usuario": 130,
+    "email": "empleado.carga43@test.com",
+    "rol": "empleado",
+    "id_empresa": 12
+  },
+  {
+    "id_usuario": 131,
+    "email": "empleado.carga44@test.com",
+    "rol": "empleado",
+    "id_empresa": 13
+  },
+  {
+    "id_usuario": 132,
+    "email": "empleado.carga45@test.com",
+    "rol": "empleado",
+    "id_empresa": 14
+  },
+  {
+    "id_usuario": 133,
+    "email": "empleado.carga46@test.com",
+    "rol": "empleado",
+    "id_empresa": 15
+  },
+  {
+    "id_usuario": 134,
+    "email": "empleado.carga47@test.com",
+    "rol": "empleado",
+    "id_empresa": 16
+  },
+  {
+    "id_usuario": 135,
+    "email": "empleado.carga48@test.com",
+    "rol": "empleado",
+    "id_empresa": 17
+  },
+  {
+    "id_usuario": 136,
+    "email": "empleado.carga49@test.com",
+    "rol": "empleado",
+    "id_empresa": 18
+  },
+  {
+    "id_usuario": 137,
+    "email": "empleado.carga50@test.com",
+    "rol": "empleado",
+    "id_empresa": 19
+  }
+]
