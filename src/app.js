@@ -112,4 +112,4 @@ app.use(errorHandler);
 
 module.exports = app;
 
-// comentario para prueba HA-02
+// comentario para prueba HA-02: Despliegue de nueva versión
