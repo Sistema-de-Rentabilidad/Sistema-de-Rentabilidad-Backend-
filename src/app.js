@@ -102,3 +102,5 @@ app.use('/api', notasRoutes);
 app.use(errorHandler);
 
 module.exports = app;
+
+// comentario para prueba HA-02
