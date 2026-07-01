@@ -16,6 +16,9 @@
     "test:coverage": "cross-env NODE_ENV=qa jest --coverage --passWithNoTests",
     "test:api": "cross-env NODE_ENV=qa jest --runInBand tests/integration --passWithNoTests",
     "test:nf:resource": "k6 run tests/non-functional/resource-usage/nf-13-resource-usage.k6.js",
+    "stress:owner-projects:preflight": "node tests/non-functional/performance/stress/check-owner-projects-stress-data.js",
+    "stress:owner-projects:inspect": "k6 inspect --include-system-env-vars tests/non-functional/performance/stress/stress-proyectos-propietario.js",
+    "stress:owner-projects:run": "k6 run --console-output tmp/owner-projects-write-stress-console.log tests/non-functional/performance/stress/stress-proyectos-propietario.js",
     "test:postman": "newman run postman/collections/backend-qa.postman_collection.json",
     "test:postman:env": "newman run postman/collections/backend-qa.postman_collection.json -e postman/environments/qa.postman_environment.json"
   },
