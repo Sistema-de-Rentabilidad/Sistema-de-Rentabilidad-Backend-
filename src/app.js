@@ -80,6 +80,10 @@ app.get('/health', async (req, res) => {
   }
 });
 
+app.get('/test/error', (req, res) => {
+    throw new Error('Error de prueba para recuperación');
+});
+
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
