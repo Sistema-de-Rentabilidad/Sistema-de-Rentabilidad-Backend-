@@ -80,8 +80,8 @@ app.get('/health', async (req, res) => {
   }
 });
 
-app.get('/test/error', (req, res) => {
-    throw new Error('Error de prueba para recuperación');
+app.get('/api/test/error', (req, res, next) => {
+  next(new Error('Error de prueba para recuperación'));
 });
 
 app.use('/api', (req, res, next) => {
