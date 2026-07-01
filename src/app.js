@@ -80,8 +80,8 @@ app.get('api/health', async (req, res) => {
   }
 });
 
-app.get('/api/test/error', (req, res, next) => {
-  next(new Error('Error de prueba para recuperación'));
+app.get('/crash', (req, res) => {
+    process.exit(1);
 });
 
 app.use('/api', (req, res, next) => {
