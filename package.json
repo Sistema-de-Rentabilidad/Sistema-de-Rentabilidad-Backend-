@@ -19,6 +19,12 @@
     "stress:owner-projects:preflight": "node tests/non-functional/performance/stress/check-owner-projects-stress-data.js",
     "stress:owner-projects:inspect": "k6 inspect --include-system-env-vars tests/non-functional/performance/stress/stress-proyectos-propietario.js",
     "stress:owner-projects:run": "k6 run --console-output tmp/owner-projects-write-stress-console.log tests/non-functional/performance/stress/stress-proyectos-propietario.js",
+    "stress:marcajes:prepare": "node tests/non-functional/performance/stress/prepare-stress-marcajes-data.js",
+    "stress:marcajes:inspect": "k6 inspect --include-system-env-vars tests/non-functional/performance/stress/stress-marcajes.js",
+    "stress:marcajes:run": "k6 run --summary-mode full --summary-export tmp/stress-marcajes-summary.json --console-output tmp/stress-marcajes-console.log tests/non-functional/performance/stress/stress-marcajes.js",
+    "stress:marcajes:salida:prepare": "node tests/non-functional/performance/stress/prepare-stress-marcajes-data.js --salida",
+    "stress:marcajes:salida:inspect": "k6 inspect --include-system-env-vars tests/non-functional/performance/stress/stress-marcajes-salida.js",
+    "stress:marcajes:salida:run": "k6 run --summary-mode full --summary-export tmp/stress-marcajes-salida-summary.json --console-output tmp/stress-marcajes-salida-console.log tests/non-functional/performance/stress/stress-marcajes-salida.js",
     "test:postman": "newman run postman/collections/backend-qa.postman_collection.json",
     "test:postman:env": "newman run postman/collections/backend-qa.postman_collection.json -e postman/environments/qa.postman_environment.json"
   },
