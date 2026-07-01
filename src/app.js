@@ -80,8 +80,8 @@ app.get('api/health', async (req, res) => {
   }
 });
 
-app.get('/crash', (req, res) => {
-    process.exit(1);
+app.get('/api/test/error', (req, res, next) => {
+  process.exit(1);
 });
 
 app.use('/api', (req, res, next) => {
