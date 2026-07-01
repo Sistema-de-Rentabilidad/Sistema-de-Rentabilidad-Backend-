@@ -6,7 +6,7 @@ const BASE_URL =
 
 export const options = {
     vus: 1,
-    duration: "10m",
+    duration: "5m",
 };
 
 export function setup() {
