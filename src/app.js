@@ -87,6 +87,10 @@ app.get('/health', async (req, res) => {
   }
 });
 
+app.get('/test/error', (req, res) => {
+    throw new Error('Error de prueba para recuperación');
+});
+
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -111,5 +115,3 @@ app.use('/api', notasRoutes);
 app.use(errorHandler);
 
 module.exports = app;
-
-// comentario para prueba HA-02: Despliegue de nueva versión
