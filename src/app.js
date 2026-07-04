@@ -6,6 +6,13 @@ const morgan = require('morgan');
 const { FRONTEND_ORIGIN, NODE_ENV } = require('./config/env');
 const app = express();
 
+/**
+ * PERFORMANCE / QA CONFIG
+ */
+if (NODE_ENV === 'qa') {
+  console.log = () => { };
+}
+
 const authRoutes = require('./modules/auth/auth.routes');
 const empresaRoutes = require('./modules/empresa/empresa.routes');
 const servicioRoutes = require('./modules/servicio/servicio.routes');
@@ -38,10 +45,10 @@ app.use(helmet({
 
 app.use(cors({
   origin(origin, callback) {
-    if (origin === FRONTEND_ORIGIN || (!origin && NODE_ENV !== 'production')) {
+    // Permite si es el frontend O si no hay origen (como JMeter) Y es modo desarrollo/qa
+    if (origin === FRONTEND_ORIGIN || !origin) {
       return callback(null, true);
     }
-
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -52,7 +59,7 @@ app.use(cors({
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
-if (NODE_ENV !== 'production') {
+if (NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
   app.use(morgan('combined', {
@@ -88,7 +95,9 @@ app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
-app.use('/api', csrfProtection);
+if (NODE_ENV === 'production') {
+  app.use('/api', csrfProtection);
+}
 
 // prefijos API
 app.use('/api/auth', authRoutes);
@@ -106,5 +115,3 @@ app.use('/api', notasRoutes);
 app.use(errorHandler);
 
 module.exports = app;
-
-// comentario para prueba HA-02

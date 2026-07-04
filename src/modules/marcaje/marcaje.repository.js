@@ -117,35 +117,12 @@ const calcularHorasTrabajadas = async (client, id_empleado, fecha, horaEntrada) 
   };
 };
 
-const validarHoraSalidaPosterior = async (client, id_marcaje) => {
-  const result = await client.query(
-    `SELECT (${ahoraLimaSql} > hora_entrada) AS salida_valida
-     FROM marcaje
-     WHERE id_marcaje = $1`,
-    [id_marcaje]
-  );
-
-  return result.rows[0]?.salida_valida === true;
-};
-
 const create = async (client, id_usuario, fecha) => {
   const result = await client.query(
     `INSERT INTO marcaje (id_usuario, fecha, hora_entrada)
      VALUES ($1, $2, ${ahoraLimaSql})
      RETURNING ${marcajeSelectSql}`,
     [id_usuario, fecha]
-  );
-
-  return result.rows[0];
-};
-
-const update = async (client, id_marcaje) => {
-  const result = await client.query(
-    `UPDATE marcaje
-     SET hora_salida = ${ahoraLimaSql}
-     WHERE id_marcaje = $1
-     RETURNING ${marcajeSelectSql}`,
-    [id_marcaje]
   );
 
   return result.rows[0];
@@ -186,50 +163,49 @@ const registrarEntrada = async ({ id_usuario, fecha }) => {
 };
 
 const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true }) => {
-  return withTransaction(async (client) => {
-    await lockMarcajeDia(client, id_usuario, fecha);
+  const client = await pool.connect();
+  try {
+    // 1. Obtenemos el marcaje ANTES del UPDATE para usar el objeto completo, 
+    // incluyendo la hora_entrada original (timestamp/time)
+    const resultMarcaje = await client.query(
+      `SELECT id_marcaje, hora_entrada, hora_salida 
+       FROM marcaje 
+       WHERE id_usuario = $1 AND fecha = $2`, 
+      [id_usuario, fecha]
+    );
 
-    const marcaje = await findMarcajeDelDia(client, id_usuario, fecha);
+    const marcaje = resultMarcaje.rows[0];
+    if (!marcaje) return { error: MARCAJE_ERRORS.ENTRADA_NO_REGISTRADA };
+    if (marcaje.hora_salida) return { error: MARCAJE_ERRORS.SALIDA_DUPLICADA, marcaje };
 
-    if (!marcaje?.hora_entrada) {
-      return {
-        error:
-          MARCAJE_ERRORS.ENTRADA_NO_REGISTRADA
-      };
-    }
-
-    if (marcaje.hora_salida) {
-      return {
-        error:
-          MARCAJE_ERRORS.SALIDA_DUPLICADA,
-        marcaje
-      };
-    }
-
+    // 2. Usamos el valor original de hora_entrada que viene de la BD
     const resumenHoras = await calcularHorasTrabajadas(client, id_usuario, fecha, marcaje.hora_entrada);
-
+    
     if (validarRegistroHoras && resumenHoras.registros === 0) {
-      return {
-        error:
-          MARCAJE_ERRORS.REGISTRO_HORAS_NO_REGISTRADO,
-        resumenHoras
-      };
+      return { error: MARCAJE_ERRORS.REGISTRO_HORAS_NO_REGISTRADO, resumenHoras };
     }
 
-    const salidaValida = await validarHoraSalidaPosterior(client, marcaje.id_marcaje);
+    // 3. Ejecutamos el update atómico
+    const resultUpdate = await client.query(
+      `
+      UPDATE marcaje
+      SET hora_salida = ${ahoraLimaSql}
+      WHERE id_marcaje = $1
+        AND hora_salida IS NULL
+        AND (${ahoraLimaSql} > hora_entrada)
+      RETURNING ${marcajeSelectSql.replace(/\n/g, ' ')};
+      `,
+      [marcaje.id_marcaje]
+    );
 
-    if (!salidaValida) {
-      return {
-        error:
-          MARCAJE_ERRORS.HORA_SALIDA_INVALIDA,
-        resumenHoras
-      };
+    if (resultUpdate.rows.length === 0) {
+      return { error: MARCAJE_ERRORS.HORA_SALIDA_INVALIDA };
     }
 
-    const marcajeActualizado = await update(client, marcaje.id_marcaje);
-
-    return { marcaje: marcajeActualizado, resumenHoras };
-  });
+    return { marcaje: resultUpdate.rows[0], resumenHoras };
+  } finally {
+    client.release();
+  }
 };
 
 module.exports = {
