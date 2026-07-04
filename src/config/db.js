@@ -11,7 +11,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 
   // ⚡ configuración del pool (optimización)
-  max: 10, // máximo conexiones
+  max: 20, // máximo conexiones
   idleTimeoutMillis: 30000, // 30s
   connectionTimeoutMillis: DB_CONNECTION_TIMEOUT_MS // timeout conexión
 });
