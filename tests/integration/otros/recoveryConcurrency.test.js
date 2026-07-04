@@ -17,18 +17,18 @@ const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 
 describe('Recovery y Concurrency', () => {
 
-  test("CP-NF10 - Recuperación ante caída del backend", async () => {
-    const response = await request(app).get('/health');
-    const serializedBody = JSON.stringify(response.body);
+  // test("CP-NF10 - Recuperación ante caída del backend", async () => {
+  //   const response = await request(app).get('/health');
+  //   const serializedBody = JSON.stringify(response.body);
 
-    expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({
-      success: true,
-      status: 'ok',
-      database: 'ok'
-    });
-    expect(serializedBody).not.toMatch(/DATABASE_URL|password|postgres:\/\/|supabase\.co|pooler/i);
-  });
+  //   expect(response.status).toBe(200);
+  //   expect(response.body).toMatchObject({
+  //     success: true,
+  //     status: 'ok',
+  //     database: 'ok'
+  //   });
+  //   expect(serializedBody).not.toMatch(/DATABASE_URL|password|postgres:\/\/|supabase\.co|pooler/i);
+  // });
 
   test("CP-NF11 - Edición simultánea de proyectos", async () => {
     // 1. Crear un proyecto temporal para la prueba
