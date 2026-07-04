@@ -18,7 +18,7 @@ const authFor = (user) => ({ cookies: tokenCookieForUser(user) });
 describe('Recovery y Concurrency', () => {
 
   test("CP-NF10 - Recuperación ante caída del backend", async () => {
-    const response = await request(app).get('/health');
+    const response = await request(app).get('/api/health');
     const serializedBody = JSON.stringify(response.body);
 
     expect(response.status).toBe(200);
