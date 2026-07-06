@@ -67,7 +67,7 @@ if (NODE_ENV === 'development') {
   }));
 }
 
-app.get('api/health', async (req, res) => {
+const healthCheck = async (req, res) => {
   try {
     await pool.query('SELECT 1');
 
@@ -85,7 +85,10 @@ app.get('api/health', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   }
-});
+};
+
+app.get('/health', healthCheck);
+app.get('/health/ready', healthCheck);
 
 app.get('/api/test/error', (req, res, next) => {
   process.exit(1);
