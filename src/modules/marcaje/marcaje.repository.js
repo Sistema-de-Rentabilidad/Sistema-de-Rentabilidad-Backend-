@@ -1,4 +1,6 @@
 const pool = require('../../config/db');
+const { LOG_PERFORMANCE } = require('../../config/env');
+const logger = require('../../utils/logger');
 
 const MARCAJE_ERRORS = {
   ENTRADA_DUPLICADA: 'ENTRADA_DUPLICADA',
@@ -94,29 +96,6 @@ const findMarcajeDelDia = async (client, id_usuario, fecha) => {
   return result.rows[0];
 };
 
-const calcularHorasTrabajadas = async (client, id_empleado, fecha, horaEntrada) => {
-  const result = await client.query(
-    `SELECT
-        COUNT(*)::int AS total_registros,
-        COALESCE(SUM(horas), 0)::numeric AS total_horas,
-        (
-          EXTRACT(
-            EPOCH FROM (${ahoraLimaSql} - $3)
-          ) / 3600
-        )::numeric AS horas_trabajadas
-     FROM registro_horas
-     WHERE id_empleado = $1
-       AND fecha = $2`,
-    [id_empleado, fecha, horaEntrada]
-  );
-
-  return {
-    registros: Number(result.rows[0].total_registros),
-    total: Number(result.rows[0].total_horas),
-    trabajadas: Number(result.rows[0].horas_trabajadas)
-  };
-};
-
 const create = async (client, id_usuario, fecha) => {
   const result = await client.query(
     `INSERT INTO marcaje (id_usuario, fecha, hora_entrada)
@@ -162,49 +141,204 @@ const registrarEntrada = async ({ id_usuario, fecha }) => {
   });
 };
 
+const registrarSalidaSql = `
+  WITH parametros AS (
+    SELECT
+      $1::int AS id_usuario,
+      $2::date AS fecha,
+      $3::boolean AS validar_registro_horas,
+      ${ahoraLimaSql} AS ahora_lima
+  ),
+  marcaje_actual AS MATERIALIZED (
+    SELECT
+      m.id_marcaje,
+      m.id_usuario,
+      m.fecha,
+      m.hora_entrada,
+      m.hora_salida
+    FROM marcaje m
+    JOIN parametros p
+      ON m.id_usuario = p.id_usuario
+     AND m.fecha = p.fecha
+  ),
+  resumen_horas AS MATERIALIZED (
+    SELECT
+      COUNT(rh.id_registro)::int AS registros,
+      COALESCE(SUM(rh.horas), 0)::numeric AS total_horas,
+      (
+        EXTRACT(EPOCH FROM (p.ahora_lima - ma.hora_entrada)) / 3600
+      )::numeric AS horas_trabajadas
+    FROM parametros p
+    JOIN marcaje_actual ma
+      ON ma.hora_salida IS NULL
+    LEFT JOIN registro_horas rh
+      ON rh.id_empleado = ma.id_usuario
+     AND rh.fecha = ma.fecha
+    GROUP BY p.ahora_lima, ma.hora_entrada
+  ),
+  marcaje_actualizado AS (
+    UPDATE marcaje m
+    SET hora_salida = p.ahora_lima
+    FROM parametros p
+    JOIN marcaje_actual ma ON true
+    JOIN resumen_horas rh ON true
+    WHERE m.id_marcaje = ma.id_marcaje
+      AND m.hora_salida IS NULL
+      AND p.ahora_lima > m.hora_entrada
+      AND (
+        NOT p.validar_registro_horas
+        OR rh.registros > 0
+      )
+    RETURNING
+      m.id_marcaje,
+      m.id_usuario,
+      m.fecha::text AS fecha,
+      to_char(m.hora_entrada, 'HH24:MI:SS') AS hora_entrada,
+      to_char(m.hora_salida, 'HH24:MI:SS') AS hora_salida
+  )
+  SELECT
+    CASE
+      WHEN ma.id_marcaje IS NULL
+        THEN '${MARCAJE_ERRORS.ENTRADA_NO_REGISTRADA}'
+      WHEN ma.hora_salida IS NOT NULL
+        THEN '${MARCAJE_ERRORS.SALIDA_DUPLICADA}'
+      WHEN p.validar_registro_horas AND rh.registros = 0
+        THEN '${MARCAJE_ERRORS.REGISTRO_HORAS_NO_REGISTRADO}'
+      WHEN ma.hora_entrada IS NULL OR p.ahora_lima <= ma.hora_entrada
+        THEN '${MARCAJE_ERRORS.HORA_SALIDA_INVALIDA}'
+      WHEN mu.id_marcaje IS NULL
+        THEN '${MARCAJE_ERRORS.SALIDA_DUPLICADA}'
+      ELSE NULL
+    END AS error,
+    ma.id_marcaje AS id_marcaje_existente,
+    ma.hora_entrada AS hora_entrada_existente,
+    ma.hora_salida AS hora_salida_existente,
+    mu.id_marcaje,
+    mu.id_usuario,
+    mu.fecha,
+    mu.hora_entrada,
+    mu.hora_salida,
+    rh.registros,
+    rh.total_horas,
+    rh.horas_trabajadas
+  FROM parametros p
+  LEFT JOIN marcaje_actual ma ON true
+  LEFT JOIN resumen_horas rh ON true
+  LEFT JOIN marcaje_actualizado mu ON true
+`;
+
+const poolStats = () => ({
+  totalCount: pool.totalCount,
+  idleCount: pool.idleCount,
+  waitingCount: pool.waitingCount
+});
+
+const elapsedMilliseconds = (startedAt) =>
+  Number(process.hrtime.bigint() - startedAt) / 1e6;
+
+const roundedMilliseconds = (milliseconds) =>
+  Math.round(milliseconds * 1000) / 1000;
+
+const buildResumenHoras = (row) => ({
+  registros: Number(row.registros),
+  total: Number(row.total_horas),
+  trabajadas: Number(row.horas_trabajadas)
+});
+
+const buildRegistrarSalidaResult = (row) => {
+  if (row.error === MARCAJE_ERRORS.ENTRADA_NO_REGISTRADA) {
+    return { error: row.error };
+  }
+
+  if (row.error === MARCAJE_ERRORS.SALIDA_DUPLICADA) {
+    const result = { error: row.error };
+
+    if (row.hora_salida_existente !== null) {
+      result.marcaje = {
+        id_marcaje: row.id_marcaje_existente,
+        hora_entrada: row.hora_entrada_existente,
+        hora_salida: row.hora_salida_existente
+      };
+    }
+
+    return result;
+  }
+
+  if (row.error === MARCAJE_ERRORS.REGISTRO_HORAS_NO_REGISTRADO) {
+    return {
+      error: row.error,
+      resumenHoras: buildResumenHoras(row)
+    };
+  }
+
+  if (row.error === MARCAJE_ERRORS.HORA_SALIDA_INVALIDA) {
+    return { error: row.error };
+  }
+
+  return {
+    marcaje: {
+      id_marcaje: row.id_marcaje,
+      id_usuario: row.id_usuario,
+      fecha: row.fecha,
+      hora_entrada: row.hora_entrada,
+      hora_salida: row.hora_salida
+    },
+    resumenHoras: buildResumenHoras(row)
+  };
+};
+
 const registrarSalida = async ({ id_usuario, fecha, validarRegistroHoras = true }) => {
-  const client = await pool.connect();
+  const repositoryStartedAt = LOG_PERFORMANCE ? process.hrtime.bigint() : null;
+  const poolWaitStartedAt = LOG_PERFORMANCE ? process.hrtime.bigint() : null;
+  const poolBeforeConnect = LOG_PERFORMANCE ? poolStats() : null;
+  let poolAfterConnect = null;
+  let poolWaitMs = null;
+  let client;
+  let outcome = 'EXCEPTION';
+
   try {
-    // 1. Obtenemos el marcaje ANTES del UPDATE para usar el objeto completo, 
-    // incluyendo la hora_entrada original (timestamp/time)
-    const resultMarcaje = await client.query(
-      `SELECT id_marcaje, hora_entrada, hora_salida 
-       FROM marcaje 
-       WHERE id_usuario = $1 AND fecha = $2`, 
-      [id_usuario, fecha]
-    );
+    client = await pool.connect();
 
-    const marcaje = resultMarcaje.rows[0];
-    if (!marcaje) return { error: MARCAJE_ERRORS.ENTRADA_NO_REGISTRADA };
-    if (marcaje.hora_salida) return { error: MARCAJE_ERRORS.SALIDA_DUPLICADA, marcaje };
-
-    // 2. Usamos el valor original de hora_entrada que viene de la BD
-    const resumenHoras = await calcularHorasTrabajadas(client, id_usuario, fecha, marcaje.hora_entrada);
-    
-    if (validarRegistroHoras && resumenHoras.registros === 0) {
-      return { error: MARCAJE_ERRORS.REGISTRO_HORAS_NO_REGISTRADO, resumenHoras };
+    if (LOG_PERFORMANCE) {
+      poolWaitMs = elapsedMilliseconds(poolWaitStartedAt);
+      poolAfterConnect = poolStats();
     }
 
-    // 3. Ejecutamos el update atómico
-    const resultUpdate = await client.query(
-      `
-      UPDATE marcaje
-      SET hora_salida = ${ahoraLimaSql}
-      WHERE id_marcaje = $1
-        AND hora_salida IS NULL
-        AND (${ahoraLimaSql} > hora_entrada)
-      RETURNING ${marcajeSelectSql.replace(/\n/g, ' ')};
-      `,
-      [marcaje.id_marcaje]
-    );
+    const result = await client.query(registrarSalidaSql, [
+      id_usuario,
+      fecha,
+      validarRegistroHoras
+    ]);
+    const response = buildRegistrarSalidaResult(result.rows[0]);
 
-    if (resultUpdate.rows.length === 0) {
-      return { error: MARCAJE_ERRORS.HORA_SALIDA_INVALIDA };
-    }
+    outcome = response.error || 'OK';
 
-    return { marcaje: resultUpdate.rows[0], resumenHoras };
+    return response;
+  } catch (error) {
+    outcome = error.code || error.name || 'EXCEPTION';
+    throw error;
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
+
+    if (LOG_PERFORMANCE) {
+      if (poolWaitMs === null) {
+        poolWaitMs = elapsedMilliseconds(poolWaitStartedAt);
+      }
+
+      logger.info('Rendimiento marcaje salida', {
+        event: 'marcaje_salida_performance',
+        outcome,
+        poolWaitMs: roundedMilliseconds(poolWaitMs),
+        repositoryTotalMs: roundedMilliseconds(elapsedMilliseconds(repositoryStartedAt)),
+        pool: {
+          beforeConnect: poolBeforeConnect,
+          afterConnect: poolAfterConnect,
+          afterRelease: poolStats()
+        }
+      });
+    }
   }
 };
 
