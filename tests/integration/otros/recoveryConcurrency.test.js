@@ -29,6 +29,14 @@ describe('Recovery y Concurrency', () => {
   //   });
   //   expect(serializedBody).not.toMatch(/DATABASE_URL|password|postgres:\/\/|supabase\.co|pooler/i);
   // });
+  //   expect(response.status).toBe(200);
+  //   expect(response.body).toMatchObject({
+  //     success: true,
+  //     status: 'ok',
+  //     database: 'ok'
+  //   });
+  //   expect(serializedBody).not.toMatch(/DATABASE_URL|password|postgres:\/\/|supabase\.co|pooler/i);
+  // });
 
   test("CP-NF11 - Edición simultánea de proyectos", async () => {
     // 1. Crear un proyecto temporal para la prueba

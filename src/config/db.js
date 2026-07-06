@@ -1,6 +1,6 @@
 // src/config/db.js
 const { Pool, types } = require('pg');
-const { DATABASE_URL, DB_CONNECTION_TIMEOUT_MS } = require('./env');
+const { DATABASE_URL, DB_CONNECTION_TIMEOUT_MS, DB_POOL_MAX } = require('./env');
 
 types.setTypeParser(1082, (value) => value);
 
@@ -11,7 +11,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 
   // ⚡ configuración del pool (optimización)
-  max: 20, // máximo conexiones
+  max: DB_POOL_MAX, // máximo conexiones
   idleTimeoutMillis: 30000, // 30s
   connectionTimeoutMillis: DB_CONNECTION_TIMEOUT_MS // timeout conexión
 });

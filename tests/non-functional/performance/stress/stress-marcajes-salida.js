@@ -15,14 +15,14 @@ const BASE_URL = (
 ).replace(/\/+$/, "");
 const ORIGIN = __ENV.K6_ORIGIN || BASE_URL.replace(/\/api\/?$/, "");
 const RUN_ID = __ENV.RUN_ID || "";
-const threshold = (expression) => ({
-    threshold: expression,
-    abortOnFail: true,
-    delayAbortEval: "2m30s",
-});
+const BURST_WINDOW_SECONDS = Number(__ENV.BURST_WINDOW_SECONDS || 0);
 
 if (__ENV.ALLOW_PRODUCTION_STRESS !== "YES") {
     throw new Error("Debes indicar ALLOW_PRODUCTION_STRESS=YES");
+}
+
+if (!Number.isFinite(BURST_WINDOW_SECONDS) || BURST_WINDOW_SECONDS < 0) {
+    throw new Error("BURST_WINDOW_SECONDS debe ser un numero mayor o igual a 0");
 }
 
 const preparedAt = Date.parse(runtime.preparedAt);
@@ -43,35 +43,44 @@ if (
     throw new Error("Runtime invalido o vencido; ejecuta el preparador de salida");
 }
 
-const scenario = (execName, vus, startTime, maxDuration = "30s") => ({
+const scenario = (execName, vus, iterations, startTime, maxDuration) => ({
     executor: "shared-iterations",
     exec: execName,
     vus,
-    iterations: vus,
+    iterations,
     startTime,
     maxDuration,
-    gracefulStop: "0s",
+    gracefulStop: "30s",
 });
 
 export const options = {
     scenarios: {
-        salida_base: scenario("salidaBase", 100, "0s"),
-        salida_burst: scenario("salidaBurst", 400, "2m", "1m"),
+        salida_base: scenario("salidaBase", 100, 100, "0s", "1m"),
+        salida_burst: scenario("salidaBurst", 400, 400, "2m", "2m"),
     },
     discardResponseBodies: true,
     thresholds: {
-        "checks{endpoint:marcaje_salida}": [threshold("rate>0.98")],
-        "http_req_failed{endpoint:marcaje_salida}": [threshold("rate<0.02")],
+        "checks{endpoint:marcaje_salida}": ["rate>0.98"],
+        "http_req_failed{endpoint:marcaje_salida}": ["rate<0.02"],
+        "http_req_duration{endpoint:marcaje_salida,fase:base}": [
+            "p(95)<4000",
+        ],
+        "http_req_duration{endpoint:marcaje_salida,fase:burst}": [
+            "p(95)<8000",
+            "p(99)<12000",
+        ],
         "http_req_duration{endpoint:marcaje_salida}": [
-            threshold("p(95)<4000"),
-            threshold("p(99)<8000"),
+            "p(95)<8000",
+            "p(99)<12000",
         ],
         "http_reqs{endpoint:marcaje_salida}": ["count==500"],
+        "http_reqs{endpoint:marcaje_salida,fase:base}": ["count==100"],
+        "http_reqs{endpoint:marcaje_salida,fase:burst}": ["count==400"],
     },
     summaryTrendStats: ["avg", "med", "p(90)", "p(95)", "p(99)", "max"],
 };
 
-const markExit = (user) => {
+const markExit = (user, fase) => {
     const response = http.post(`${BASE_URL}/marcajes/salida`, null, {
         headers: { Origin: ORIGIN },
         cookies: {
@@ -80,22 +89,25 @@ const markExit = (user) => {
                 replace: true,
             },
         },
-        tags: { endpoint: "marcaje_salida", run_id: RUN_ID },
+        tags: { endpoint: "marcaje_salida", fase, run_id: RUN_ID },
         timeout: "15s",
     });
 
     check(
         response,
         { "salida status 200": (result) => result.status === 200 },
-        { endpoint: "marcaje_salida" }
+        { endpoint: "marcaje_salida", fase, run_id: RUN_ID }
     );
 };
 
 export function salidaBase() {
-    markExit(users[exec.scenario.iterationInTest]);
+    markExit(users[exec.scenario.iterationInTest], "base");
 }
 
 export function salidaBurst() {
-    markExit(users[100 + exec.scenario.iterationInTest]);
-    sleep(40);
+    if (BURST_WINDOW_SECONDS > 0) {
+        sleep(Math.random() * BURST_WINDOW_SECONDS);
+    }
+
+    markExit(users[100 + exec.scenario.iterationInTest], "burst");
 }

@@ -93,7 +93,8 @@ const buildEligibility = (row) => {
       base &&
       Array.isArray(row.hour_assignments) &&
       row.hour_assignments.length > 0,
-    marcaje_entrada: canMark && !row.today_mark_id,
+    marcaje_entrada:
+      canMark && !row.today_mark_id && !row.open_mark_id,
     marcaje_salida:
       canMark &&
       Boolean(row.today_mark_id) &&
@@ -274,7 +275,7 @@ const printProposal = (allocation) => {
       post_horas:
         'usuarios con proyecto no finalizado, fase activa y sin registro duplicado hoy',
       marcaje_entrada:
-        'lideres o empleados no pagados por hora y sin marcaje de hoy',
+        'lideres o empleados no pagados por hora y sin un marcaje abierto',
       marcaje_salida:
         'usuarios con entrada abierta; los empleados tambien requieren horas registradas hoy',
     };
@@ -315,6 +316,7 @@ const readDatabaseSnapshot = async (client) => {
          visible_project.id_proyecto AS visible_project_id,
          hours_assignment.assignments AS hour_assignments,
          today_mark.id_marcaje AS today_mark_id,
+         open_mark.id_marcaje AS open_mark_id,
          today_mark.hora_entrada,
          today_mark.hora_salida,
          (
@@ -412,6 +414,9 @@ const readDatabaseSnapshot = async (client) => {
        LEFT JOIN marcaje today_mark
          ON today_mark.id_usuario = u.id_usuario
         AND today_mark.fecha = $1::date
+       LEFT JOIN marcaje open_mark
+         ON open_mark.id_usuario = u.id_usuario
+        AND open_mark.hora_salida IS NULL
        WHERE u.rol IN ('lider', 'empleado')
          AND u.email ~ '^(lider|empleado)\\.load[0-9]+@test\\.com$'
        ORDER BY load_index, u.id_usuario`,

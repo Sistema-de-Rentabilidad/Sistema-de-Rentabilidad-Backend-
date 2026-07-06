@@ -92,10 +92,15 @@ module.exports = {
   FRONTEND_URL,
   FRONTEND_ORIGIN,
   NODE_ENV: process.env.NODE_ENV,
+  DB_POOL_MAX: parseIntegerEnv('DB_POOL_MAX', 20, {
+    min: 1,
+    max: 100,
+  }),
   DB_CONNECTION_TIMEOUT_MS: parseIntegerEnv('DB_CONNECTION_TIMEOUT_MS', DEFAULT_DB_CONNECTION_TIMEOUT_MS, {
     min: 1000,
     max: 60000,
   }),
+  LOG_PERFORMANCE: process.env.LOG_PERFORMANCE === 'true',
   LOGIN_RATE_LIMIT_STORE: process.env.LOGIN_RATE_LIMIT_STORE || 'auto',
   BCRYPT_SALT_ROUNDS: parseIntegerEnv('BCRYPT_SALT_ROUNDS', 10, { min: 10, max: 14 }),
   LOGIN_RATE_LIMIT_WINDOW_MS: parseIntegerEnv('LOGIN_RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000, {
