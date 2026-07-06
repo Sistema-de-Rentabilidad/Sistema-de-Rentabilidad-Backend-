@@ -87,8 +87,8 @@ const healthCheck = async (req, res) => {
   }
 };
 
-app.get('/health', healthCheck);
-app.get('/health/ready', healthCheck);
+app.get('/api/health', healthCheck);
+app.get('/api/health/ready', healthCheck);
 
 app.get('/api/test/error', (req, res, next) => {
   process.exit(1);
