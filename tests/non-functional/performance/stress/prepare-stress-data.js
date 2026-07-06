@@ -115,6 +115,17 @@ const prepare = async () => {
       );
     }
 
+    const staleOpenMarksResult = await client.query(
+      `DELETE FROM marcaje m
+       USING usuario u
+       WHERE u.id_usuario = m.id_usuario
+         AND u.id_empresa = $1
+         AND u.email ~ '^(lider|empleado)\\.load[0-9]+@test\\.com$'
+         AND m.hora_salida IS NULL
+         AND m.fecha <> timezone('America/Lima', now())::date`,
+      [COMPANY_ID]
+    );
+
     const leadersResult = await client.query(
       `INSERT INTO usuario (
          id_empresa,
@@ -385,6 +396,9 @@ const prepare = async () => {
     console.log(`Proyectos creados: ${projectsResult.rowCount}`);
     console.log(`Fases creadas: ${phasesResult.rowCount}`);
     console.log(`Asignaciones de empleados creadas: ${assignmentsResult.rowCount}`);
+    console.log(
+      `Marcajes abiertos de otros dias eliminados: ${staleOpenMarksResult.rowCount}`
+    );
     console.log(`Marcajes abiertos para salida: ${marksResult.rowCount}`);
     if (RESET_STRESS_DAY) {
       console.log(`Horas K6 reiniciadas hoy: ${resetHours.rowCount}`);
